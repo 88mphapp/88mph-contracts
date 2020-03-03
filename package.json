@@ -1,0 +1,24 @@
+{
+  "name": "88mph-contracts",
+  "version": "1.0.0",
+  "description": "Ethereum smart contracts for 88mph",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ethereum",
+    "defi"
+  ],
+  "author": "Zefram Lou",
+  "license": "GPL-3.0-or-later",
+  "devDependencies": {
+    "@nomiclabs/buidler": "^1.2.0",
+    "@nomiclabs/buidler-truffle5": "^1.2.0",
+    "@nomiclabs/buidler-web3": "^1.2.0",
+    "web3": "^1.2.6"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^2.5.0"
+  }
+}

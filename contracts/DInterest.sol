@@ -55,6 +55,7 @@ contract DInterest is ReentrancyGuard {
 
     // Params
     uint256 public UIRMultiplier; // Upfront interest rate multiplier
+    uint256 public MinDepositPeroid; // Minimum deposit period, in seconds
 
     // External smart contracts
     IMoneyMarket public moneyMarket;

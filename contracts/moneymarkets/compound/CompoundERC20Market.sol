@@ -1,0 +1,49 @@
+pragma solidity 0.5.15;
+
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
+import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "../IMoneyMarket.sol";
+import "../../libs/DecMath.sol";
+import "./imports/CERC20.sol";
+
+contract CompoundERC20Market is IMoneyMarket, Ownable {
+    using SafeMath for uint256;
+    using DecMath for uint256;
+    using SafeERC20 for ERC20Detailed;
+
+    uint internal constant ERRCODE_OK = 0;
+
+    CERC20 public cToken;
+    ERC20Detailed public stablecoin;
+
+    constructor (address _cToken, address _stablecoin) public {
+        cToken = CERC20(_cToken);
+        stablecoin = ERC20Detailed(_stablecoin);
+    }
+
+    function deposit(uint256 amount) external onlyOwner {
+        // Transfer `amount` stablecoin from `msg.sender`
+        stablecoin.safeTransferFrom(msg.sender, address(this), amount);
+
+        // Deposit `amount` stablecoin into cToken
+        if (stablecoin.allowance(address(this), address(cToken)) > 0) {
+            stablecoin.safeApprove(address(cToken), 0);
+        }
+        stablecoin.safeApprove(address(cToken), amount);
+        require(cToken.mint(amount) == ERRCODE_OK, "CompoundERC20Market: Failed to mint cTokens");
+    }
+
+    function withdraw(uint256 amountInUnderlying) external onlyOwner {
+        // Withdraw `amountInUnderlying` stablecoin from cToken
+        require(cToken.redeemUnderlying(amountInUnderlying) == ERRCODE_OK, "CompoundERC20Market: Failed to redeem");
+
+        // Transfer `amountInUnderlying` stablecoin to `msg.sender`
+        stablecoin.safeTransfer(msg.sender, amountInUnderlying);
+    }
+
+    function supplyRatePerBlock() external view returns (uint256) {
+        return cToken.supplyRatePerBlock();
+    }
+}

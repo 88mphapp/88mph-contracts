@@ -36,6 +36,8 @@ contract DInterest is ReentrancyGuard {
                 .mul(_numBlocktimeDatapoints)
                 .add(newBlocktime.mul(blocksSinceLastCall))
                 .div(_numBlocktimeDatapoints.add(blocksSinceLastCall));
+            _lastCallBlock = block.number;
+            _lastCallTimestamp = now;
             _numBlocktimeDatapoints = _numBlocktimeDatapoints.add(
                 blocksSinceLastCall
             );

@@ -4,10 +4,11 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./libs/DecMath.sol";
 import "./moneymarkets/IMoneyMarket.sol";
 
-contract DInterest {
+contract DInterest is ReentrancyGuard {
     using SafeMath for uint256;
     using DecMath for uint256;
     using SafeERC20 for ERC20Detailed;
@@ -22,21 +23,23 @@ contract DInterest {
     uint256 internal _lastCallTimestamp; // Last timestamp when the contract was called
     uint256 internal _numBlocktimeDatapoints; // Number of block time datapoints collected
     modifier updateBlocktime {
-        uint256 blocksSinceLastCall = block.number.sub(_lastCallBlock);
-        // newBlockTime = (now - _lastCallTimestamp) / (block.number - _lastCallBlock)
-        // decimal
-        uint256 newBlocktime = now.sub(_lastCallTimestamp).decdiv(
-            blocksSinceLastCall
-        );
-        // _blocktime = (blocksSinceLastCall * newBlocktime + _numBlocktimeDatapoints * _blocktime) / (_numBlocktimeDatapoints + blocksSinceLastCall)
-        // decimal
-        _blocktime = _blocktime
-            .mul(_numBlocktimeDatapoints)
-            .add(newBlocktime.mul(blocksSinceLastCall))
-            .div(_numBlocktimeDatapoints.add(blocksSinceLastCall));
-        _numBlocktimeDatapoints = _numBlocktimeDatapoints.add(
-            blocksSinceLastCall
-        );
+        if (block.number > _lastCallBlock) {
+            uint256 blocksSinceLastCall = block.number.sub(_lastCallBlock);
+            // newBlockTime = (now - _lastCallTimestamp) / (block.number - _lastCallBlock)
+            // decimal
+            uint256 newBlocktime = now.sub(_lastCallTimestamp).decdiv(
+                blocksSinceLastCall
+            );
+            // _blocktime = (blocksSinceLastCall * newBlocktime + _numBlocktimeDatapoints * _blocktime) / (_numBlocktimeDatapoints + blocksSinceLastCall)
+            // decimal
+            _blocktime = _blocktime
+                .mul(_numBlocktimeDatapoints)
+                .add(newBlocktime.mul(blocksSinceLastCall))
+                .div(_numBlocktimeDatapoints.add(blocksSinceLastCall));
+            _numBlocktimeDatapoints = _numBlocktimeDatapoints.add(
+                blocksSinceLastCall
+            );
+        }
         _;
     }
 
@@ -73,6 +76,7 @@ contract DInterest {
     function deposit(uint256 amount, uint256 maturationTimestamp)
         public
         updateBlocktime
+        nonReentrant
     {
         // Transfer `amount` stablecoin from `msg.sender`
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
@@ -104,7 +108,7 @@ contract DInterest {
         stablecoin.safeTransfer(msg.sender, upfrontInterestAmount);
     }
 
-    function withdraw(uint256 depositID) public updateBlocktime {
+    function withdraw(uint256 depositID) public updateBlocktime nonReentrant {
         Deposit memory depositEntry = userDeposits[msg.sender][depositID];
 
         // Verify deposit is active and set to inactive

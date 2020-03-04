@@ -60,6 +60,10 @@ contract DInterest is ReentrancyGuard {
     IMoneyMarket public moneyMarket;
     ERC20Detailed public stablecoin;
 
+    // Events
+    event EDeposit(address indexed sender, uint256 amount, uint256 maturationTimestamp, uint256 upfrontInterestAmount);
+    event EWithdraw(address indexed sender, uint256 depositID);
+
     constructor(
         uint256 _UIRMultiplier,
         address _moneyMarket,
@@ -108,6 +112,9 @@ contract DInterest is ReentrancyGuard {
 
         // Send `upfrontInterestAmount` stablecoin to `msg.sender`
         stablecoin.safeTransfer(msg.sender, upfrontInterestAmount);
+
+        // Emit event
+        emit EDeposit(msg.sender, amount, maturationTimestamp, upfrontInterestAmount);
     }
 
     function withdraw(uint256 depositID) public updateBlocktime nonReentrant {
@@ -128,6 +135,9 @@ contract DInterest is ReentrancyGuard {
 
         // Send `depositEntry.amount` stablecoin to `msg.sender`
         stablecoin.safeTransfer(msg.sender, depositEntry.amount);
+
+        // Emit event
+        emit EWithdraw(msg.sender, depositID);
     }
 
     function calculateUpfrontInterestRate(uint256 depositPeriodInSeconds)

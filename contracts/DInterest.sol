@@ -62,7 +62,12 @@ contract DInterest is ReentrancyGuard {
     ERC20Detailed public stablecoin;
 
     // Events
-    event EDeposit(address indexed sender, uint256 amount, uint256 maturationTimestamp, uint256 upfrontInterestAmount);
+    event EDeposit(
+        address indexed sender,
+        uint256 amount,
+        uint256 maturationTimestamp,
+        uint256 upfrontInterestAmount
+    );
     event EWithdraw(address indexed sender, uint256 depositID);
 
     constructor(
@@ -81,7 +86,7 @@ contract DInterest is ReentrancyGuard {
     }
 
     function deposit(uint256 amount, uint256 maturationTimestamp)
-        public
+        external
         updateBlocktime
         nonReentrant
     {
@@ -115,10 +120,15 @@ contract DInterest is ReentrancyGuard {
         stablecoin.safeTransfer(msg.sender, upfrontInterestAmount);
 
         // Emit event
-        emit EDeposit(msg.sender, amount, maturationTimestamp, upfrontInterestAmount);
+        emit EDeposit(
+            msg.sender,
+            amount,
+            maturationTimestamp,
+            upfrontInterestAmount
+        );
     }
 
-    function withdraw(uint256 depositID) public updateBlocktime nonReentrant {
+    function withdraw(uint256 depositID) external updateBlocktime nonReentrant {
         Deposit memory depositEntry = userDeposits[msg.sender][depositID];
 
         // Verify deposit is active and set to inactive
@@ -146,10 +156,8 @@ contract DInterest is ReentrancyGuard {
         view
         returns (uint256 upfrontInterestRate)
     {
-        uint256 moneyMarketInterestRatePerBlock = moneyMarket
-            .supplyRatePerBlock();
-        uint256 moneyMarketInterestRatePerSecond = moneyMarketInterestRatePerBlock
-            .decdiv(_blocktime);
+        uint256 moneyMarketInterestRatePerSecond = moneyMarket
+            .supplyRatePerSecond(_blocktime);
 
         // upfrontInterestRate = (1 - 1 / (moneyMarketInterestRatePerSecond * depositPeriodInSeconds)) * UIRMultiplier
         upfrontInterestRate = ONE
@@ -161,5 +169,9 @@ contract DInterest is ReentrancyGuard {
             )
         )
             .decmul(UIRMultiplier);
+    }
+
+    function blocktime() external view returns (uint256) {
+        return _blocktime;
     }
 }

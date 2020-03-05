@@ -1,7 +1,7 @@
 pragma solidity 0.5.15;
 
 // Compound finance ERC20 market interface
-interface CERC20 {
+interface ICERC20 {
     function transfer(address dst, uint256 amount) external returns (bool);
     function transferFrom(address src, address dst, uint256 amount)
         external

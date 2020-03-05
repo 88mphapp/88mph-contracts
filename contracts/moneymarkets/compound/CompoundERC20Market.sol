@@ -1,25 +1,23 @@
 pragma solidity 0.5.15;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
-import "./imports/CERC20.sol";
+import "./imports/ICERC20.sol";
 
 contract CompoundERC20Market is IMoneyMarket, Ownable {
-    using SafeMath for uint256;
     using DecMath for uint256;
     using SafeERC20 for ERC20Detailed;
 
     uint internal constant ERRCODE_OK = 0;
 
-    CERC20 public cToken;
+    ICERC20 public cToken;
     ERC20Detailed public stablecoin;
 
     constructor (address _cToken, address _stablecoin) public {
-        cToken = CERC20(_cToken);
+        cToken = ICERC20(_cToken);
         stablecoin = ERC20Detailed(_stablecoin);
     }
 
@@ -43,7 +41,7 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
         stablecoin.safeTransfer(msg.sender, amountInUnderlying);
     }
 
-    function supplyRatePerBlock() external view returns (uint256) {
-        return cToken.supplyRatePerBlock();
+    function supplyRatePerSecond(uint256 blocktime) external view returns (uint256) {
+        return cToken.supplyRatePerBlock().decdiv(blocktime);
     }
 }

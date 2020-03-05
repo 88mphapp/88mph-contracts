@@ -55,7 +55,10 @@ contract DInterest is ReentrancyGuard {
 
     // Params
     uint256 public UIRMultiplier; // Upfront interest rate multiplier
-    uint256 public MinDepositPeroid; // Minimum deposit period, in seconds
+    uint256 public MinDepositPeriod; // Minimum deposit period, in seconds
+
+    // Instance variables
+    uint256 public totalDeposit;
 
     // External smart contracts
     IMoneyMarket public moneyMarket;
@@ -72,6 +75,7 @@ contract DInterest is ReentrancyGuard {
 
     constructor(
         uint256 _UIRMultiplier,
+        uint256 _MinDepositPeriod,
         address _moneyMarket,
         address _stablecoin
     ) public {
@@ -81,6 +85,10 @@ contract DInterest is ReentrancyGuard {
         _numBlocktimeDatapoints = 10**6; // Start with many datapoints to prevent initial fluctuation
 
         UIRMultiplier = _UIRMultiplier;
+        MinDepositPeriod = _MinDepositPeriod;
+
+        totalDeposit = 0;
+
         moneyMarket = IMoneyMarket(_moneyMarket);
         stablecoin = ERC20Detailed(_stablecoin);
     }
@@ -90,10 +98,14 @@ contract DInterest is ReentrancyGuard {
         updateBlocktime
         nonReentrant
     {
+        // Ensure deposit period is at least MinDepositPeriod
+        uint256 depositPeriod = maturationTimestamp.sub(now);
+        require(depositPeriod >= MinDepositPeriod, "DInterest: Deposit period too short");
+
         // Transfer `amount` stablecoin from `msg.sender`
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
-        // Create Deposit struct for `msg.sender`
+        // Record deposit data for `msg.sender`
         userDeposits[msg.sender].push(
             Deposit({
                 amount: amount,
@@ -102,9 +114,12 @@ contract DInterest is ReentrancyGuard {
             })
         );
 
+        // Update totalDeposit
+        totalDeposit = totalDeposit.add(amount);
+
         // Calculate `upfrontInterestAmount` stablecoin to return to `msg.sender`
         uint256 upfrontInterestRate = calculateUpfrontInterestRate(
-            maturationTimestamp.sub(now)
+            depositPeriod
         );
         uint256 upfrontInterestAmount = amount.decmul(upfrontInterestRate);
 
@@ -141,6 +156,9 @@ contract DInterest is ReentrancyGuard {
             "DInterest: Deposit not mature"
         );
 
+        // Update totalDeposit
+        totalDeposit = totalDeposit.sub(depositEntry.amount);
+
         // Withdraw `depositEntry.amount` stablecoin from money market
         moneyMarket.withdraw(depositEntry.amount);
 
@@ -173,5 +191,20 @@ contract DInterest is ReentrancyGuard {
 
     function blocktime() external view returns (uint256) {
         return _blocktime;
+    }
+
+    function deficit()
+        external
+        view
+        returns (bool isNegative, uint256 deficitAmount)
+    {
+        uint256 totalValue = moneyMarket.totalValue();
+        if (totalValue >= totalDeposit) {
+            isNegative = false;
+            deficitAmount = totalValue.sub(totalDeposit);
+        } else {
+            isNegative = true;
+            deficitAmount = totalDeposit.sub(totalValue);
+        }
     }
 }

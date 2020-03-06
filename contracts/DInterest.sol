@@ -106,7 +106,10 @@ contract DInterest is ReentrancyGuard {
     {
         // Ensure deposit period is at least MinDepositPeriod
         uint256 depositPeriod = maturationTimestamp.sub(now);
-        require(depositPeriod >= MinDepositPeriod, "DInterest: Deposit period too short");
+        require(
+            depositPeriod >= MinDepositPeriod,
+            "DInterest: Deposit period too short"
+        );
 
         // Transfer `amount` stablecoin from `msg.sender`
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
@@ -183,16 +186,16 @@ contract DInterest is ReentrancyGuard {
         uint256 moneyMarketInterestRatePerSecond = moneyMarket
             .supplyRatePerSecond(_blocktime);
 
-        // upfrontInterestRate = (1 - 1 / (moneyMarketInterestRatePerSecond * depositPeriodInSeconds)) * UIRMultiplier
+        // upfrontInterestRate = (1 - 1 / (1 + moneyMarketInterestRatePerSecond * depositPeriodInSeconds * UIRMultiplier))
         upfrontInterestRate = ONE
             .sub(
             ONE.decdiv(
                 ONE.add(
-                    moneyMarketInterestRatePerSecond.mul(depositPeriodInSeconds)
+                    moneyMarketInterestRatePerSecond.mul(depositPeriodInSeconds).decmul(UIRMultiplier)
                 )
             )
         )
-            .decmul(UIRMultiplier);
+            ;
     }
 
     function blocktime() external view returns (uint256) {

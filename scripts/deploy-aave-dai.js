@@ -11,7 +11,7 @@ async function main() {
   console.log(`Deployed AaveMarket at address ${market.address}`);
 
   const DInterest = env.artifacts.require("DInterest");
-  const UIRMultiplier = BigNumber(0.5 * 1e18).integerValue().toFixed(); // Offered interest rate is multiplied by 0.5
+  const UIRMultiplier = BigNumber(0.75 * 1e18).integerValue().toFixed(); // Minimum safe avg interest rate multiplier
   const MinDepositPeriod = 90 * 24 * 60 * 60; // 90 days in seconds
   const dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, market.address, stablecoinAddress);
   console.log(`Deployed DInterest at address ${dInterestPool.address}`);

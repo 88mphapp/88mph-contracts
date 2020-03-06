@@ -8,6 +8,14 @@ const CompoundERC20Market = artifacts.require("CompoundERC20Market");
 const CERC20Mock = artifacts.require("CERC20Mock");
 const ERC20Mock = artifacts.require("ERC20Mock");
 
+// Constants
+const UIRMultiplier = BigNumber(0.75 * 1e18).integerValue().toFixed(); // Minimum safe avg interest rate multiplier
+const MinDepositPeriod = 90 * 24 * 60 * 60; // 90 days in seconds
+const PRECISION = 1e18;
+const YEAR_IN_BLOCKS = 2104400; // Number of blocks in a year
+const YEAR_IN_SEC = 31556952; // Number of seconds in a year
+const epsilon = 1e-6;
+
 // Utilities
 // travel `time` seconds forward in time
 function timeTravel(time) {
@@ -29,17 +37,19 @@ async function latestBlockTimestamp() {
   return (await web3.eth.getBlock("latest")).timestamp;
 }
 
+function calcUpfrontInterestAmount(depositAmount, interestRatePerSecond, depositPeriodInSeconds) {
+  const ONE = BigNumber(1);
+  return BigNumber(depositAmount).times(ONE.minus(ONE.div(ONE.plus(BigNumber(interestRatePerSecond).times(depositPeriodInSeconds).div(PRECISION).times(UIRMultiplier).div(PRECISION)))));
+}
+
 // Converts a JS number into a string that doesn't use scientific notation
 function num2str(num) {
   return BigNumber(num).integerValue().toFixed();
 }
 
-// Constants
-const UIRMultiplier = BigNumber(0.5 * 1e18).integerValue().toFixed(); // Offered interest rate is multiplied by 0.5
-const MinDepositPeriod = 90 * 24 * 60 * 60; // 90 days in seconds
-const PRECISION = 1e18;
-const YEAR_IN_BLOCKS = 2104400; // Number of blocks in a year
-const YEAR_IN_SEC = 31556952; // Number of seconds in a year
+function epsilonEq(curr, prev) {
+  return BigNumber(curr).eq(prev) || BigNumber(curr).minus(prev).div(prev).abs().lt(epsilon);
+}
 
 // Tests
 contract("DInterest: Compound", accounts => {
@@ -56,6 +66,7 @@ contract("DInterest: Compound", accounts => {
   // Constants
   const INIT_EXRATE = 2e26; // 1 cToken = 0.02 stablecoin
   const INIT_INTEREST_RATE = 0.1; // 10% APY
+  const INIT_INTEREST_RATE_PER_BLOCK = 45290900000;
 
   beforeEach(async function () {
     // Initialize mock stablecoin and cToken
@@ -84,10 +95,18 @@ contract("DInterest: Compound", accounts => {
     // acc0 deposits stablecoin into the DInterest pool for 1 year
     await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 });
     let blockNow = await latestBlockTimestamp();
-    await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 });
+    const acc0BeforeBalance = BigNumber(await stablecoin.balanceOf(acc0));
+    await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 });
 
-    // Verify state changes TODO
     // Verify upfront interest amount
+    const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0));
+    const blocktime = BigNumber(await dInterestPool.blocktime()).div(PRECISION);
+    const interestRatePerSecond = BigNumber(INIT_INTEREST_RATE_PER_BLOCK).div(blocktime);
+    const upfrontInterestExpected = calcUpfrontInterestAmount(depositAmount, interestRatePerSecond, num2str(YEAR_IN_SEC)).integerValue();
+    const upfrontInterestActual = acc0CurrentBalance.minus(acc0BeforeBalance).plus(depositAmount);
+    // console.log(upfrontInterestActual.div(depositAmount).toFixed());
+    assert(epsilonEq(upfrontInterestExpected, upfrontInterestActual), "acc0 didn't receive correct amount of upfront interest");
+
     // Verify totalDeposit
     const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit());
     assert(totalDeposit0.eq(depositAmount), "totalDeposit not updated after acc0 deposited");
@@ -126,7 +145,7 @@ contract("DInterest: Compound", accounts => {
     // Verify totalDeposit
     const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit());
     assert(totalDeposit0.eq(depositAmount), "totalDeposit not updated after acc0 withdrawed");
-  
+
     // Wait 6 months
     await timeTravel(0.5 * YEAR_IN_SEC);
 

@@ -1,6 +1,8 @@
 pragma solidity 0.5.15;
 pragma experimental ABIEncoderV2;
 
+import "@nomiclabs/buidler/console.sol";
+
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -8,6 +10,10 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./libs/DecMath.sol";
 import "./moneymarkets/IMoneyMarket.sol";
 
+// DeLorean Interest -- It's coming back from the future!
+// EL PSY CONGROO
+// Author: Zefram Lou
+// Contact: zefram@baconlabs.dev
 contract DInterest is ReentrancyGuard {
     using SafeMath for uint256;
     using DecMath for uint256;

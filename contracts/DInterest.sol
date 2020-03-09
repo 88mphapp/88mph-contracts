@@ -99,11 +99,93 @@ contract DInterest is ReentrancyGuard {
         stablecoin = ERC20Detailed(_stablecoin);
     }
 
+    /**
+        Public actions
+     */
+
     function deposit(uint256 amount, uint256 maturationTimestamp)
         external
         updateBlocktime
         nonReentrant
     {
+        _deposit(amount, maturationTimestamp);
+    }
+
+    function withdraw(uint256 depositID) external updateBlocktime nonReentrant {
+        _withdraw(depositID);
+    }
+
+    function multiDeposit(
+        uint256[] calldata amountList,
+        uint256[] calldata maturationTimestampList
+    ) external updateBlocktime nonReentrant {
+        require(
+            amountList.length == maturationTimestampList.length,
+            "DInterest: List lengths unequal"
+        );
+        for (uint256 i = 0; i < amountList.length; i = i.add(1)) {
+            _deposit(amountList[i], maturationTimestampList[i]);
+        }
+    }
+
+    function multiWithdraw(uint256[] calldata depositIDList)
+        external
+        updateBlocktime
+        nonReentrant
+    {
+        for (uint256 i = 0; i < depositIDList.length; i = i.add(1)) {
+            _withdraw(depositIDList[i]);
+        }
+    }
+
+    /**
+        Public getters
+     */
+
+    function calculateUpfrontInterestRate(uint256 depositPeriodInSeconds)
+        public
+        view
+        returns (uint256 upfrontInterestRate)
+    {
+        uint256 moneyMarketInterestRatePerSecond = moneyMarket
+            .supplyRatePerSecond(_blocktime);
+
+        // upfrontInterestRate = (1 - 1 / (1 + moneyMarketInterestRatePerSecond * depositPeriodInSeconds * UIRMultiplier))
+        upfrontInterestRate = ONE.sub(
+            ONE.decdiv(
+                ONE.add(
+                    moneyMarketInterestRatePerSecond
+                        .mul(depositPeriodInSeconds)
+                        .decmul(UIRMultiplier)
+                )
+            )
+        );
+    }
+
+    function blocktime() external view returns (uint256) {
+        return _blocktime;
+    }
+
+    function deficit()
+        external
+        view
+        returns (bool isNegative, uint256 deficitAmount)
+    {
+        uint256 totalValue = moneyMarket.totalValue();
+        if (totalValue >= totalDeposit) {
+            isNegative = false;
+            deficitAmount = totalValue.sub(totalDeposit);
+        } else {
+            isNegative = true;
+            deficitAmount = totalDeposit.sub(totalValue);
+        }
+    }
+
+    /**
+        Internals
+     */
+
+    function _deposit(uint256 amount, uint256 maturationTimestamp) internal {
         // Ensure deposit period is at least MinDepositPeriod
         uint256 depositPeriod = maturationTimestamp.sub(now);
         require(
@@ -152,7 +234,7 @@ contract DInterest is ReentrancyGuard {
         );
     }
 
-    function withdraw(uint256 depositID) external updateBlocktime nonReentrant {
+    function _withdraw(uint256 depositID) internal {
         Deposit memory depositEntry = userDeposits[msg.sender][depositID];
 
         // Verify deposit is active and set to inactive
@@ -176,44 +258,5 @@ contract DInterest is ReentrancyGuard {
 
         // Emit event
         emit EWithdraw(msg.sender, depositID);
-    }
-
-    function calculateUpfrontInterestRate(uint256 depositPeriodInSeconds)
-        public
-        view
-        returns (uint256 upfrontInterestRate)
-    {
-        uint256 moneyMarketInterestRatePerSecond = moneyMarket
-            .supplyRatePerSecond(_blocktime);
-
-        // upfrontInterestRate = (1 - 1 / (1 + moneyMarketInterestRatePerSecond * depositPeriodInSeconds * UIRMultiplier))
-        upfrontInterestRate = ONE
-            .sub(
-            ONE.decdiv(
-                ONE.add(
-                    moneyMarketInterestRatePerSecond.mul(depositPeriodInSeconds).decmul(UIRMultiplier)
-                )
-            )
-        )
-            ;
-    }
-
-    function blocktime() external view returns (uint256) {
-        return _blocktime;
-    }
-
-    function deficit()
-        external
-        view
-        returns (bool isNegative, uint256 deficitAmount)
-    {
-        uint256 totalValue = moneyMarket.totalValue();
-        if (totalValue >= totalDeposit) {
-            isNegative = false;
-            deficitAmount = totalValue.sub(totalDeposit);
-        } else {
-            isNegative = true;
-            deficitAmount = totalDeposit.sub(totalValue);
-        }
     }
 }

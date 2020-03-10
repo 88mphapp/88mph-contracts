@@ -58,6 +58,7 @@ contract DInterest is ReentrancyGuard {
         bool active; // True if not yet withdrawn, false if withdrawn
     }
     mapping(address => Deposit[]) public userDeposits;
+    mapping(address => Deposit[]) public sponsorDeposits;
 
     // Params
     uint256 public UIRMultiplier; // Upfront interest rate multiplier
@@ -73,11 +74,20 @@ contract DInterest is ReentrancyGuard {
     // Events
     event EDeposit(
         address indexed sender,
+        uint256 depositID,
         uint256 amount,
         uint256 maturationTimestamp,
         uint256 upfrontInterestAmount
     );
     event EWithdraw(address indexed sender, uint256 depositID);
+    event ESponsorDeposit(
+        address indexed sender,
+        uint256 depositID,
+        uint256 amount,
+        uint256 maturationTimestamp,
+        string data
+    );
+    event ESponsorWithdraw(address indexed sender, uint256 depositID);
 
     constructor(
         uint256 _UIRMultiplier,
@@ -182,6 +192,84 @@ contract DInterest is ReentrancyGuard {
     }
 
     /**
+        Sponsor actions
+     */
+
+    function sponsorDeposit(
+        uint256 amount,
+        uint256 maturationTimestamp,
+        string calldata data
+    ) external updateBlocktime nonReentrant {
+        // Ensure deposit period is at least MinDepositPeriod
+        uint256 depositPeriod = maturationTimestamp.sub(now);
+        require(
+            depositPeriod >= MinDepositPeriod,
+            "DInterest: Deposit period too short"
+        );
+
+        // Transfer `amount` stablecoin from `msg.sender`
+        stablecoin.safeTransferFrom(msg.sender, address(this), amount);
+
+        // Record deposit data for `msg.sender`
+        sponsorDeposits[msg.sender].push(
+            Deposit({
+                amount: amount,
+                maturationTimestamp: maturationTimestamp,
+                active: true
+            })
+        );
+
+        // Update totalDeposit
+        totalDeposit = totalDeposit.add(amount);
+
+        // Lend `amount` stablecoin to money market
+        if (stablecoin.allowance(address(this), address(moneyMarket)) > 0) {
+            stablecoin.safeApprove(address(moneyMarket), 0);
+        }
+        stablecoin.safeApprove(address(moneyMarket), amount);
+        moneyMarket.deposit(amount);
+
+        // Emit event
+        emit ESponsorDeposit(
+            msg.sender,
+            sponsorDeposits[msg.sender].length.sub(1),
+            amount,
+            maturationTimestamp,
+            data
+        );
+    }
+
+    function sponsorWithdraw(uint256 depositID)
+        external
+        updateBlocktime
+        nonReentrant
+    {
+        Deposit memory depositEntry = sponsorDeposits[msg.sender][depositID];
+
+        // Verify deposit is active and set to inactive
+        require(depositEntry.active, "DInterest: Deposit not active");
+        depositEntry.active = false;
+
+        // Verify `now >= depositEntry.maturationTimestamp`
+        require(
+            now >= depositEntry.maturationTimestamp,
+            "DInterest: Deposit not mature"
+        );
+
+        // Update totalDeposit
+        totalDeposit = totalDeposit.sub(depositEntry.amount);
+
+        // Withdraw `depositEntry.amount` stablecoin from money market
+        moneyMarket.withdraw(depositEntry.amount);
+
+        // Send `depositEntry.amount` stablecoin to `msg.sender`
+        stablecoin.safeTransfer(msg.sender, depositEntry.amount);
+
+        // Emit event
+        emit ESponsorWithdraw(msg.sender, depositID);
+    }
+
+    /**
         Internals
      */
 
@@ -228,6 +316,7 @@ contract DInterest is ReentrancyGuard {
         // Emit event
         emit EDeposit(
             msg.sender,
+            userDeposits[msg.sender].length.sub(1),
             amount,
             maturationTimestamp,
             upfrontInterestAmount

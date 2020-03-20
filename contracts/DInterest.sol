@@ -300,24 +300,24 @@ contract DInterest is ReentrancyGuard {
         // Update totalDeposit
         totalDeposit = totalDeposit.add(amount);
 
-        // Send feeAmount stablecoin to beneficiary
-        uint256 feeAmount = feeModel.getFee(amount);
-        stablecoin.safeTransfer(feeModel.beneficiary(), feeAmount);
-
         // Calculate `upfrontInterestAmount` stablecoin to return to `msg.sender`
-        uint256 amountAfterFee = amount.sub(feeAmount);
         uint256 upfrontInterestRate = calculateUpfrontInterestRate(
             depositPeriod
         );
-        uint256 upfrontInterestAmount = amountAfterFee.decmul(upfrontInterestRate);
+        uint256 upfrontInterestAmount = amount.decmul(upfrontInterestRate);
+        uint256 feeAmount = feeModel.getFee(upfrontInterestAmount);
+        upfrontInterestAmount = upfrontInterestAmount.sub(feeAmount);
 
-        // Lend `amountAfterFee - upfrontInterestAmount` stablecoin to money market
-        uint256 principalAmount = amountAfterFee.sub(upfrontInterestAmount);
+        // Lend `amount - upfrontInterestAmount` stablecoin to money market
+        uint256 principalAmount = amount.sub(upfrontInterestAmount).sub(feeAmount);
         if (stablecoin.allowance(address(this), address(moneyMarket)) > 0) {
             stablecoin.safeApprove(address(moneyMarket), 0);
         }
         stablecoin.safeApprove(address(moneyMarket), principalAmount);
         moneyMarket.deposit(principalAmount);
+
+        // Send `feeAmount` stablecoin to `feeModel.beneficiary()`
+        stablecoin.safeTransfer(feeModel.beneficiary(), feeAmount);
 
         // Send `upfrontInterestAmount` stablecoin to `msg.sender`
         stablecoin.safeTransfer(msg.sender, upfrontInterestAmount);

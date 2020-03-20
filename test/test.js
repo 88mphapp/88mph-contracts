@@ -38,14 +38,14 @@ async function latestBlockTimestamp() {
   return (await web3.eth.getBlock("latest")).timestamp;
 }
 
-function calcFeeAmount(depositAmount) {
-  return depositAmount * 0.025;
+function calcFeeAmount(interestAmount) {
+  return interestAmount * 0.1;
 }
 
 function calcUpfrontInterestAmount(depositAmount, interestRatePerSecond, depositPeriodInSeconds) {
   const ONE = BigNumber(1);
-  const feeAmount = calcFeeAmount(depositAmount);
-  return BigNumber(depositAmount).minus(feeAmount).times(ONE.minus(ONE.div(ONE.plus(BigNumber(interestRatePerSecond).times(depositPeriodInSeconds).div(PRECISION).times(UIRMultiplier).div(PRECISION)))));
+  const interestBeforeFee = BigNumber(depositAmount).times(ONE.minus(ONE.div(ONE.plus(BigNumber(interestRatePerSecond).times(depositPeriodInSeconds).div(PRECISION).times(UIRMultiplier).div(PRECISION)))));
+  return interestBeforeFee.minus(calcFeeAmount(interestBeforeFee));
 }
 
 // Converts a JS number into a string that doesn't use scientific notation

@@ -15,7 +15,7 @@ contract FeeModel is Ownable {
         pure
         returns (uint256 _feeAmount)
     {
-        _feeAmount = _txAmount.mul(25).div(1000);
+        _feeAmount = _txAmount.div(10);
     }
 
     function setBeneficiary(address payable _addr) public onlyOwner {

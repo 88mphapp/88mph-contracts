@@ -10,10 +10,14 @@ async function main() {
   const market = await CompoundERC20Market.new(cTokenAddress, stablecoinAddress);
   console.log(`Deployed CompoundERC20Market at address ${market.address}`);
 
+  const FeeModel = env.artifacts.require("FeeModel");
+  const feeModel = await FeeModel.new();
+  console.log(`Deployed FeeModel at address ${feeModel.address}`);
+
   const DInterest = env.artifacts.require("DInterest");
-  const UIRMultiplier = BigNumber(0.75 * 1e18).integerValue().toFixed(); // Minimum safe avg interest rate multiplier
+  const UIRMultiplier = BigNumber(0.5 * 1e18).integerValue().toFixed(); // Minimum safe avg interest rate multiplier
   const MinDepositPeriod = 90 * 24 * 60 * 60; // 90 days in seconds
-  const dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, market.address, stablecoinAddress);
+  const dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, market.address, stablecoinAddress, feeModel.address);
   console.log(`Deployed DInterest at address ${dInterestPool.address}`);
 
   await market.transferOwnership(dInterestPool.address);

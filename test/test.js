@@ -10,7 +10,7 @@ const CERC20Mock = artifacts.require("CERC20Mock");
 const ERC20Mock = artifacts.require("ERC20Mock");
 
 // Constants
-const UIRMultiplier = BigNumber(0.75 * 1e18).integerValue().toFixed(); // Minimum safe avg interest rate multiplier
+const UIRMultiplier = BigNumber(0.5 * 1e18).integerValue().toFixed(); // Minimum safe avg interest rate multiplier
 const MinDepositPeriod = 90 * 24 * 60 * 60; // 90 days in seconds
 const PRECISION = 1e18;
 const YEAR_IN_BLOCKS = 2104400; // Number of blocks in a year

@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./libs/DecMath.sol";
 import "./moneymarkets/IMoneyMarket.sol";
+import "./FeeModel.sol";
 
 // DeLorean Interest -- It's coming back from the future!
 // EL PSY CONGROO
@@ -70,6 +71,7 @@ contract DInterest is ReentrancyGuard {
     // External smart contracts
     IMoneyMarket public moneyMarket;
     ERC20Detailed public stablecoin;
+    FeeModel public feeModel;
 
     // Events
     event EDeposit(
@@ -93,7 +95,8 @@ contract DInterest is ReentrancyGuard {
         uint256 _UIRMultiplier,
         uint256 _MinDepositPeriod,
         address _moneyMarket,
-        address _stablecoin
+        address _stablecoin,
+        address _feeModel
     ) public {
         _blocktime = 15 * PRECISION; // Default block time is 15 seconds
         _lastCallBlock = block.number;
@@ -107,6 +110,7 @@ contract DInterest is ReentrancyGuard {
 
         moneyMarket = IMoneyMarket(_moneyMarket);
         stablecoin = ERC20Detailed(_stablecoin);
+        feeModel = FeeModel(_feeModel);
     }
 
     /**
@@ -296,14 +300,19 @@ contract DInterest is ReentrancyGuard {
         // Update totalDeposit
         totalDeposit = totalDeposit.add(amount);
 
+        // Send feeAmount stablecoin to beneficiary
+        uint256 feeAmount = feeModel.getFee(amount);
+        stablecoin.safeTransfer(feeModel.beneficiary(), feeAmount);
+
         // Calculate `upfrontInterestAmount` stablecoin to return to `msg.sender`
+        uint256 amountAfterFee = amount.sub(feeAmount);
         uint256 upfrontInterestRate = calculateUpfrontInterestRate(
             depositPeriod
         );
-        uint256 upfrontInterestAmount = amount.decmul(upfrontInterestRate);
+        uint256 upfrontInterestAmount = amountAfterFee.decmul(upfrontInterestRate);
 
-        // Lend `amount - upfrontInterestAmount` stablecoin to money market
-        uint256 principalAmount = amount.sub(upfrontInterestAmount);
+        // Lend `amountAfterFee - upfrontInterestAmount` stablecoin to money market
+        uint256 principalAmount = amountAfterFee.sub(upfrontInterestAmount);
         if (stablecoin.allowance(address(this), address(moneyMarket)) > 0) {
             stablecoin.safeApprove(address(moneyMarket), 0);
         }

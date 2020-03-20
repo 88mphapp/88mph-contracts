@@ -3,6 +3,7 @@ const BigNumber = require("bignumber.js");
 
 // Contract artifacts
 const DInterest = artifacts.require("DInterest");
+const FeeModel = artifacts.require("FeeModel");
 const AaveMarket = artifacts.require("AaveMarket");
 const CompoundERC20Market = artifacts.require("CompoundERC20Market");
 const CERC20Mock = artifacts.require("CERC20Mock");
@@ -37,9 +38,14 @@ async function latestBlockTimestamp() {
   return (await web3.eth.getBlock("latest")).timestamp;
 }
 
+function calcFeeAmount(depositAmount) {
+  return depositAmount * 0.025;
+}
+
 function calcUpfrontInterestAmount(depositAmount, interestRatePerSecond, depositPeriodInSeconds) {
   const ONE = BigNumber(1);
-  return BigNumber(depositAmount).times(ONE.minus(ONE.div(ONE.plus(BigNumber(interestRatePerSecond).times(depositPeriodInSeconds).div(PRECISION).times(UIRMultiplier).div(PRECISION)))));
+  const feeAmount = calcFeeAmount(depositAmount);
+  return BigNumber(depositAmount).minus(feeAmount).times(ONE.minus(ONE.div(ONE.plus(BigNumber(interestRatePerSecond).times(depositPeriodInSeconds).div(PRECISION).times(UIRMultiplier).div(PRECISION)))));
 }
 
 // Converts a JS number into a string that doesn't use scientific notation
@@ -62,6 +68,7 @@ contract("DInterest: Compound", accounts => {
   let cToken;
   let dInterestPool;
   let market;
+  let feeModel;
 
   // Constants
   const INIT_EXRATE = 2e26; // 1 cToken = 0.02 stablecoin
@@ -83,14 +90,15 @@ contract("DInterest: Compound", accounts => {
     market = await CompoundERC20Market.new(cToken.address, stablecoin.address);
 
     // Initialize the DInterest pool
-    dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, market.address, stablecoin.address);
+    feeModel = await FeeModel.new();
+    dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, market.address, stablecoin.address, feeModel.address);
 
     // Transfer the ownership of the money market to the DInterest pool
     await market.transferOwnership(dInterestPool.address);
   });
 
   it("deposit()", async function () {
-    const depositAmount = 10 * PRECISION;
+    const depositAmount = 100 * PRECISION;
 
     // acc0 deposits stablecoin into the DInterest pool for 1 year
     await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 });

@@ -11,6 +11,7 @@ import "./libs/DecMath.sol";
 import "./moneymarkets/IMoneyMarket.sol";
 import "./FeeModel.sol";
 
+
 // DeLorean Interest -- It's coming back from the future!
 // EL PSY CONGROO
 // Author: Zefram Lou
@@ -56,6 +57,7 @@ contract DInterest is ReentrancyGuard {
     struct Deposit {
         uint256 amount; // Amount of stablecoin deposited
         uint256 maturationTimestamp; // Unix timestamp after which the deposit may be withdrawn, in seconds
+        uint256 initialDeficit; // Deficit incurred to the pool at time of deposit
         bool active; // True if not yet withdrawn, false if withdrawn
     }
     mapping(address => Deposit[]) public userDeposits;
@@ -81,7 +83,7 @@ contract DInterest is ReentrancyGuard {
         uint256 maturationTimestamp,
         uint256 upfrontInterestAmount
     );
-    event EWithdraw(address indexed sender, uint256 depositID);
+    event EWithdraw(address indexed sender, uint256 depositID, bool early);
     event ESponsorDeposit(
         address indexed sender,
         uint256 depositID,
@@ -129,6 +131,10 @@ contract DInterest is ReentrancyGuard {
         _withdraw(depositID);
     }
 
+    function earlyWithdraw(uint256 depositID) external updateBlocktime nonReentrant {
+        _earlyWithdraw(depositID);
+    }
+
     function multiDeposit(
         uint256[] calldata amountList,
         uint256[] calldata maturationTimestampList
@@ -149,6 +155,16 @@ contract DInterest is ReentrancyGuard {
     {
         for (uint256 i = 0; i < depositIDList.length; i = i.add(1)) {
             _withdraw(depositIDList[i]);
+        }
+    }
+
+    function multiEarlyWithdraw(uint256[] calldata depositIDList)
+        external
+        updateBlocktime
+        nonReentrant
+    {
+        for (uint256 i = 0; i < depositIDList.length; i = i.add(1)) {
+            _earlyWithdraw(depositIDList[i]);
         }
     }
 
@@ -219,6 +235,7 @@ contract DInterest is ReentrancyGuard {
             Deposit({
                 amount: amount,
                 maturationTimestamp: maturationTimestamp,
+                initialDeficit: 0,
                 active: true
             })
         );
@@ -288,15 +305,6 @@ contract DInterest is ReentrancyGuard {
         // Transfer `amount` stablecoin from `msg.sender`
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
-        // Record deposit data for `msg.sender`
-        userDeposits[msg.sender].push(
-            Deposit({
-                amount: amount,
-                maturationTimestamp: maturationTimestamp,
-                active: true
-            })
-        );
-
         // Update totalDeposit
         totalDeposit = totalDeposit.add(amount);
 
@@ -306,10 +314,24 @@ contract DInterest is ReentrancyGuard {
         );
         uint256 upfrontInterestAmount = amount.decmul(upfrontInterestRate);
         uint256 feeAmount = feeModel.getFee(upfrontInterestAmount);
+
+        // Record deposit data for `msg.sender`
+        userDeposits[msg.sender].push(
+            Deposit({
+                amount: amount,
+                maturationTimestamp: maturationTimestamp,
+                initialDeficit: upfrontInterestAmount,
+                active: true
+            })
+        );
+
+        // Deduct `feeAmount` from `upfrontInterestAmount`
         upfrontInterestAmount = upfrontInterestAmount.sub(feeAmount);
 
         // Lend `amount - upfrontInterestAmount` stablecoin to money market
-        uint256 principalAmount = amount.sub(upfrontInterestAmount).sub(feeAmount);
+        uint256 principalAmount = amount.sub(upfrontInterestAmount).sub(
+            feeAmount
+        );
         if (stablecoin.allowance(address(this), address(moneyMarket)) > 0) {
             stablecoin.safeApprove(address(moneyMarket), 0);
         }
@@ -355,6 +377,29 @@ contract DInterest is ReentrancyGuard {
         stablecoin.safeTransfer(msg.sender, depositEntry.amount);
 
         // Emit event
-        emit EWithdraw(msg.sender, depositID);
+        emit EWithdraw(msg.sender, depositID, false);
+    }
+
+    function _earlyWithdraw(uint256 depositID) internal {
+        Deposit memory depositEntry = userDeposits[msg.sender][depositID];
+
+        // Verify deposit is active and set to inactive
+        require(depositEntry.active, "DInterest: Deposit not active");
+        depositEntry.active = false;
+
+        // Transfer `depositEntry.initialDeficit` from `msg.sender`
+        stablecoin.safeTransferFrom(msg.sender, address(this), depositEntry.initialDeficit);
+
+        // Update totalDeposit
+        totalDeposit = totalDeposit.sub(depositEntry.amount);
+
+        // Withdraw `depositEntry.amount` stablecoin from money market
+        moneyMarket.withdraw(depositEntry.amount.sub(depositEntry.initialDeficit));
+
+        // Send `depositEntry.amount` stablecoin to `msg.sender`
+        stablecoin.safeTransfer(msg.sender, depositEntry.amount);
+
+        // Emit event
+        emit EWithdraw(msg.sender, depositID, true);
     }
 }

@@ -172,4 +172,26 @@ contract("DInterest: Compound", accounts => {
     const totalDeposit1 = BigNumber(await dInterestPool.totalDeposit());
     assert(totalDeposit1.eq(0), "totalDeposit not updated after acc1 withdrawed");
   });
+
+  it("earlyWithdraw()", async function () {
+    const depositAmount = 10 * PRECISION;
+
+    // acc0 deposits stablecoin into the DInterest pool for 1 year
+    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 });
+    let blockNow = await latestBlockTimestamp();
+    await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 });
+
+    // acc0 withdraws early
+    const acc0BeforeBalance = BigNumber(await stablecoin.balanceOf(acc0));
+    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 });
+    await dInterestPool.earlyWithdraw(0, { from: acc0 });
+
+    // Verify withdrawn amount
+    const initialDeficit = BigNumber((await dInterestPool.userDeposits(acc0, 0)).initialDeficit);
+    const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0));
+    assert.equal(acc0CurrentBalance.minus(acc0BeforeBalance).toNumber(), BigNumber(depositAmount).minus(initialDeficit).toNumber(), "acc0 didn't withdraw correct amount of stablecoin");
+    // Verify totalDeposit
+    const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit());
+    assert(totalDeposit0.eq(0), "totalDeposit not updated after acc0 withdrawed");
+  });
 });

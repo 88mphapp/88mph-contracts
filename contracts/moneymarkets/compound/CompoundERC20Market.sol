@@ -61,4 +61,8 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
         uint256 cTokenPrice = cToken.exchangeRateStored();
         return cTokenBalance.decmul(cTokenPrice);
     }
+
+    function price() external view returns (uint256) {
+        return cToken.exchangeRateStored();
+    }
 }

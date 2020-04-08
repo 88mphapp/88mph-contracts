@@ -16,7 +16,7 @@ contract AaveMarket is IMoneyMarket, Ownable {
     using SafeERC20 for ERC20Detailed;
 
     uint256 internal constant YEAR = 31556952; // Number of seconds in one Gregorian calendar year (365.2425 days)
-    uint16 internal constant REFERRALCODE = 0; // Aave referral program code
+    uint16 internal constant REFERRALCODE = 20; // Aave referral program code
 
     ILendingPoolAddressesProvider public provider; // Used for fetching the current address of LendingPool
     ERC20Detailed public stablecoin;
@@ -78,5 +78,21 @@ contract AaveMarket is IMoneyMarket, Ownable {
         IAToken aToken = IAToken(aTokenAddress);
 
         return aToken.balanceOf(address(this));
+    }
+
+    function price() external view returns (uint256) {
+        ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
+
+        // Initialize aToken
+        (, , , , , , , , , , , address aTokenAddress, ) = lendingPool
+            .getReserveData(address(stablecoin));
+        IAToken aToken = IAToken(aTokenAddress);
+
+        uint256 principalBalance = aToken.principalBalanceOf(address(this));
+        if (principalBalance == 0) {
+            return 0;
+        }
+        uint256 balance = aToken.balanceOf(address(this));
+        return balance.decdiv(principalBalance);
     }
 }

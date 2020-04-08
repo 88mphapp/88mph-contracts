@@ -22,12 +22,4 @@ contract FeeModel is Ownable {
         require(_addr != address(0), "0 address");
         beneficiary = _addr;
     }
-
-    function _percent(uint256 _percentage) internal pure returns (uint256) {
-        return PRECISION.mul(_percentage).div(100);
-    }
-
-    function _dollar(uint256 _dollarAmount) internal pure returns (uint256) {
-        return PRECISION.mul(_dollarAmount);
-    }
 }

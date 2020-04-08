@@ -9,7 +9,7 @@ async function main() {
   console.log(`Deployed AaveMarket at address ${market.address}`);
 
   const FeeModel = env.artifacts.require("FeeModel");
-  const feeModel = await FeeModel.at('0xf1409a2f1F5f53e46BbAfd334311c80e675a410D');//new();
+  const feeModel = await FeeModel.new();
   console.log(`Deployed FeeModel at address ${feeModel.address}`);
 
   const DInterest = env.artifacts.require("DInterest");

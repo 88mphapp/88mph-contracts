@@ -29,6 +29,9 @@ contract AaveMarket is IMoneyMarket, Ownable {
     function deposit(uint256 amount) external onlyOwner {
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
 
+        // Transfer `amount` stablecoin from `msg.sender`
+        stablecoin.safeTransferFrom(msg.sender, address(this), amount);
+
         // Approve `amount` stablecoin to lendingPool
         if (stablecoin.allowance(address(this), address(lendingPool)) > 0) {
             stablecoin.safeApprove(address(lendingPool), 0);

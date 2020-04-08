@@ -1,26 +1,24 @@
-pragma solidity 0.5.15;
+pragma solidity 0.6.5;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../libs/DecMath.sol";
 
-contract ATokenMock is ERC20Detailed, ERC20 {
+contract ATokenMock is ERC20 {
     using SafeMath for uint256;
     using DecMath for uint256;
 
     uint256 internal constant YEAR = 31556952; // Number of seconds in one Gregorian calendar year (365.2425 days)
 
-    ERC20Detailed public dai;
+    ERC20 public dai;
     uint256 public liquidityRate;
     address[] public users;
 
     constructor(address _dai)
         public
-        ERC20Detailed("aDAI", "aDAI", 18)
+        ERC20("aDAI", "aDAI")
     {
-        dai = ERC20Detailed(_dai);
+        dai = ERC20(_dai);
 
         liquidityRate = 10 ** 26; // 10% APY
     }

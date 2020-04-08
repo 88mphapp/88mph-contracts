@@ -1,10 +1,8 @@
-pragma solidity 0.5.15;
+pragma solidity 0.6.5;
 pragma experimental ABIEncoderV2;
 
-import "@nomiclabs/buidler/console.sol";
-
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./libs/DecMath.sol";
@@ -19,7 +17,7 @@ import "./FeeModel.sol";
 contract DInterest is ReentrancyGuard {
     using SafeMath for uint256;
     using DecMath for uint256;
-    using SafeERC20 for ERC20Detailed;
+    using SafeERC20 for ERC20;
 
     // Constants
     uint256 internal constant PRECISION = 10**18;
@@ -72,7 +70,7 @@ contract DInterest is ReentrancyGuard {
 
     // External smart contracts
     IMoneyMarket public moneyMarket;
-    ERC20Detailed public stablecoin;
+    ERC20 public stablecoin;
     FeeModel public feeModel;
 
     // Events
@@ -109,9 +107,8 @@ contract DInterest is ReentrancyGuard {
         MinDepositPeriod = _MinDepositPeriod;
 
         totalDeposit = 0;
-
         moneyMarket = IMoneyMarket(_moneyMarket);
-        stablecoin = ERC20Detailed(_stablecoin);
+        stablecoin = ERC20(_stablecoin);
         feeModel = FeeModel(_feeModel);
     }
 

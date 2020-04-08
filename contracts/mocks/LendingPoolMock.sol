@@ -1,6 +1,6 @@
-pragma solidity 0.5.15;
+pragma solidity 0.6.5;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./ATokenMock.sol";
 
 contract LendingPoolMock {
@@ -10,10 +10,10 @@ contract LendingPoolMock {
         reserveAToken[_reserve] = _aTokenAddress;
     }
 
-    function deposit(address _reserve, uint256 _amount, uint16 _referralCode)
+    function deposit(address _reserve, uint256 _amount, uint16)
         external
     {
-        ERC20Detailed token = ERC20Detailed(_reserve);
+        ERC20 token = ERC20(_reserve);
         token.transferFrom(msg.sender, address(this), _amount);
 
         // Mint aTokens
@@ -27,19 +27,19 @@ contract LendingPoolMock {
         external
         view
         returns (
-            uint256 totalLiquidity,
-            uint256 availableLiquidity,
-            uint256 totalBorrowsStable,
-            uint256 totalBorrowsVariable,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
             uint256 liquidityRate,
-            uint256 variableBorrowRate,
-            uint256 stableBorrowRate,
-            uint256 averageStableBorrowRate,
-            uint256 utilizationRate,
-            uint256 liquidityIndex,
-            uint256 variableBorrowIndex,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
             address aTokenAddress,
-            uint40 lastUpdateTimestamp
+            uint40
         )
     {
         aTokenAddress = reserveAToken[_reserve];

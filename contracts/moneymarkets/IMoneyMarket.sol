@@ -1,4 +1,4 @@
-pragma solidity 0.5.15;
+pragma solidity 0.6.5;
 
 // Interface for money market protocols (Compound, Aave, bZx, etc.)
 interface IMoneyMarket {

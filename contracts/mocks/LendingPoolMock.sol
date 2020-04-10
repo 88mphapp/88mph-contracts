@@ -2,9 +2,15 @@ pragma solidity 0.6.5;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./ATokenMock.sol";
+import "./LendingPoolCoreMock.sol";
 
 contract LendingPoolMock {
     mapping(address => address) internal reserveAToken;
+    LendingPoolCoreMock public core;
+
+    constructor(address _core) public {
+        core = LendingPoolCoreMock(_core);
+    }
 
     function setReserveAToken(address _reserve, address _aTokenAddress) external {
         reserveAToken[_reserve] = _aTokenAddress;
@@ -14,7 +20,7 @@ contract LendingPoolMock {
         external
     {
         ERC20 token = ERC20(_reserve);
-        token.transferFrom(msg.sender, address(this), _amount);
+        core.bounceTransfer(_reserve, msg.sender, _amount);
 
         // Mint aTokens
         address aTokenAddress = reserveAToken[_reserve];

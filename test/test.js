@@ -10,6 +10,7 @@ const CERC20Mock = artifacts.require("CERC20Mock");
 const ERC20Mock = artifacts.require("ERC20Mock");
 const ATokenMock = artifacts.require("ATokenMock");
 const LendingPoolMock = artifacts.require("LendingPoolMock");
+const LendingPoolCoreMock = artifacts.require("LendingPoolCoreMock");
 const LendingPoolAddressesProviderMock = artifacts.require("LendingPoolAddressesProviderMock");
 
 // Constants
@@ -207,6 +208,7 @@ contract("DInterest: Aave", accounts => {
   // Contract instances
   let stablecoin;
   let aToken;
+  let lendingPoolCore;
   let lendingPool;
   let lendingPoolAddressesProvider;
   let dInterestPool;
@@ -221,10 +223,12 @@ contract("DInterest: Aave", accounts => {
     // Initialize mock stablecoin and Aave
     stablecoin = await ERC20Mock.new();
     aToken = await ATokenMock.new(stablecoin.address);
-    lendingPool = await LendingPoolMock.new();
+    lendingPoolCore = await LendingPoolCoreMock.new();
+    lendingPool = await LendingPoolMock.new(lendingPoolCore.address);
     await lendingPool.setReserveAToken(stablecoin.address, aToken.address);
     lendingPoolAddressesProvider = await LendingPoolAddressesProviderMock.new();
     await lendingPoolAddressesProvider.setLendingPoolImpl(lendingPool.address);
+    await lendingPoolAddressesProvider.setLendingPoolCoreImpl(lendingPoolCore.address);
 
     // Mint stablecoin
     const mintAmount = 1000 * PRECISION;

@@ -1,27 +1,27 @@
-pragma solidity 0.5.15;
+pragma solidity 0.6.5;
 
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
 import "./imports/ICERC20.sol";
 
 contract CompoundERC20Market is IMoneyMarket, Ownable {
     using DecMath for uint256;
-    using SafeERC20 for ERC20Detailed;
+    using SafeERC20 for ERC20;
 
     uint256 internal constant ERRCODE_OK = 0;
 
     ICERC20 public cToken;
-    ERC20Detailed public stablecoin;
+    ERC20 public stablecoin;
 
     constructor(address _cToken, address _stablecoin) public {
         cToken = ICERC20(_cToken);
-        stablecoin = ERC20Detailed(_stablecoin);
+        stablecoin = ERC20(_stablecoin);
     }
 
-    function deposit(uint256 amount) external onlyOwner {
+    function deposit(uint256 amount) external override(IMoneyMarket) onlyOwner {
         // Transfer `amount` stablecoin from `msg.sender`
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -36,7 +36,7 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
         );
     }
 
-    function withdraw(uint256 amountInUnderlying) external onlyOwner {
+    function withdraw(uint256 amountInUnderlying) external override(IMoneyMarket) onlyOwner {
         // Withdraw `amountInUnderlying` stablecoin from cToken
         require(
             cToken.redeemUnderlying(amountInUnderlying) == ERRCODE_OK,
@@ -50,15 +50,20 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
     function supplyRatePerSecond(uint256 blocktime)
         external
         view
+        override(IMoneyMarket)
         returns (uint256)
     {
         return cToken.supplyRatePerBlock().decdiv(blocktime);
     }
 
-    function totalValue() external view returns (uint256) {
+    function totalValue() external view override(IMoneyMarket) returns (uint256) {
         uint256 cTokenBalance = cToken.balanceOf(address(this));
         // Amount of stablecoin units that 1 unit of cToken can be exchanged for, scaled by 10^18
         uint256 cTokenPrice = cToken.exchangeRateStored();
         return cTokenBalance.decmul(cTokenPrice);
+    }
+
+    function price() external view override(IMoneyMarket) returns (uint256) {
+        return cToken.exchangeRateStored();
     }
 }

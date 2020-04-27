@@ -2,8 +2,6 @@ const env = require("@nomiclabs/buidler");
 const BigNumber = require("bignumber.js");
 
 async function main() {
-  await env.run("compile");
-
   const AaveMarket = env.artifacts.require("AaveMarket");
   const providerAddress = "0x24a42fD28C976A61Df5D00D0599C34c4f90748c8"; // LendingPoolAddressesProvider Mainnet
   const stablecoinAddress = "0x6B175474E89094C44Da98b954EedeAC495271d0F"; // DAI Mainnet

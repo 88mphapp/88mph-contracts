@@ -2,8 +2,6 @@ const env = require("@nomiclabs/buidler");
 const BigNumber = require("bignumber.js");
 
 async function main() {
-  await env.run("compile");
-
   const CompoundERC20Market = env.artifacts.require("CompoundERC20Market");
   const cTokenAddress = "0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643"; // cDAI Mainnet
   const stablecoinAddress = "0x6B175474E89094C44Da98b954EedeAC495271d0F"; // DAI Mainnet

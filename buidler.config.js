@@ -13,7 +13,7 @@ try {
 
 module.exports = {
   solc: {
-    version: "0.5.15",
+    version: "0.6.5",
     optimizer: {
       enabled: true,
       runs: 200

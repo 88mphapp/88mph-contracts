@@ -12,6 +12,7 @@ contract ATokenMock is ERC20 {
 
     ERC20 public dai;
     uint256 public liquidityRate;
+    uint256 public normalizedIncome;
     address[] public users;
 
     constructor(address _dai)
@@ -21,6 +22,7 @@ contract ATokenMock is ERC20 {
         dai = ERC20(_dai);
 
         liquidityRate = 10 ** 26; // 10% APY
+        normalizedIncome = 10 ** 27;
     }
 
     function redeem(uint256 _amount) external {
@@ -45,6 +47,7 @@ contract ATokenMock is ERC20 {
             interest = balanceOf(user).mul(_seconds).decmul(liquidityRate.div(YEAR.mul(10**9)));
             _mint(user, interest);
         }
+        normalizedIncome = normalizedIncome.mul(_seconds).mul(liquidityRate.div(YEAR.mul(10**9))).div(10**27);
     }
 
     function setLiquidityRate(uint256 _liquidityRate) external {

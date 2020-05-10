@@ -149,7 +149,7 @@ contract("DInterest: Compound", accounts => {
 
     // acc0 withdraws
     const acc0BeforeBalance = await stablecoin.balanceOf(acc0);
-    await dInterestPool.withdraw(0, { from: acc0 });
+    await dInterestPool.withdraw(0, 0, { from: acc0 });
 
     // Verify withdrawn amount
     const acc0CurrentBalance = await stablecoin.balanceOf(acc0);
@@ -167,7 +167,7 @@ contract("DInterest: Compound", accounts => {
 
     // acc1 withdraws
     const acc1BeforeBalance = await stablecoin.balanceOf(acc1);
-    await dInterestPool.withdraw(0, { from: acc1 });
+    await dInterestPool.withdraw(0, 0, { from: acc1 });
 
     // Verify withdrawn amount
     const acc1CurrentBalance = await stablecoin.balanceOf(acc1);
@@ -188,7 +188,7 @@ contract("DInterest: Compound", accounts => {
     // acc0 withdraws early
     const acc0BeforeBalance = BigNumber(await stablecoin.balanceOf(acc0));
     await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 });
-    await dInterestPool.earlyWithdraw(0, { from: acc0 });
+    await dInterestPool.earlyWithdraw(0, 0, { from: acc0 });
 
     // Verify withdrawn amount
     const initialDeficit = BigNumber((await dInterestPool.userDeposits(acc0, 0)).initialDeficit);
@@ -225,6 +225,7 @@ contract("DInterest: Aave", accounts => {
     aToken = await ATokenMock.new(stablecoin.address);
     lendingPoolCore = await LendingPoolCoreMock.new();
     lendingPool = await LendingPoolMock.new(lendingPoolCore.address);
+    await lendingPoolCore.setLendingPool(lendingPool.address);
     await lendingPool.setReserveAToken(stablecoin.address, aToken.address);
     lendingPoolAddressesProvider = await LendingPoolAddressesProviderMock.new();
     await lendingPoolAddressesProvider.setLendingPoolImpl(lendingPool.address);
@@ -293,7 +294,7 @@ contract("DInterest: Aave", accounts => {
 
     // acc0 withdraws
     const acc0BeforeBalance = await stablecoin.balanceOf(acc0);
-    await dInterestPool.withdraw(0, { from: acc0 });
+    await dInterestPool.withdraw(0, 0, { from: acc0 });
 
     // Verify withdrawn amount
     const acc0CurrentBalance = await stablecoin.balanceOf(acc0);
@@ -308,7 +309,7 @@ contract("DInterest: Aave", accounts => {
 
     // acc1 withdraws
     const acc1BeforeBalance = await stablecoin.balanceOf(acc1);
-    await dInterestPool.withdraw(0, { from: acc1 });
+    await dInterestPool.withdraw(0, 0, { from: acc1 });
 
     // Verify withdrawn amount
     const acc1CurrentBalance = await stablecoin.balanceOf(acc1);
@@ -329,7 +330,7 @@ contract("DInterest: Aave", accounts => {
     // acc0 withdraws early
     const acc0BeforeBalance = BigNumber(await stablecoin.balanceOf(acc0));
     await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 });
-    await dInterestPool.earlyWithdraw(0, { from: acc0 });
+    await dInterestPool.earlyWithdraw(0, 0, { from: acc0 });
 
     // Verify withdrawn amount
     const initialDeficit = BigNumber((await dInterestPool.userDeposits(acc0, 0)).initialDeficit);

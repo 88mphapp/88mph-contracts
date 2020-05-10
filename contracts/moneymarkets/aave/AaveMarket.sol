@@ -9,6 +9,7 @@ import "../../libs/DecMath.sol";
 import "./imports/IAToken.sol";
 import "./imports/ILendingPool.sol";
 import "./imports/ILendingPoolAddressesProvider.sol";
+import "./imports/ILendingPoolCore.sol";
 
 contract AaveMarket is IMoneyMarket, Ownable {
     using SafeMath for uint256;
@@ -86,18 +87,7 @@ contract AaveMarket is IMoneyMarket, Ownable {
     }
 
     function price() external view override(IMoneyMarket) returns (uint256) {
-        ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
-
-        // Initialize aToken
-        (, , , , , , , , , , , address aTokenAddress, ) = lendingPool
-            .getReserveData(address(stablecoin));
-        IAToken aToken = IAToken(aTokenAddress);
-
-        uint256 principalBalance = aToken.principalBalanceOf(address(this));
-        if (principalBalance == 0) {
-            return 0;
-        }
-        uint256 balance = aToken.balanceOf(address(this));
-        return balance.decdiv(principalBalance);
+        ILendingPoolCore lendingPoolCore = ILendingPoolCore(provider.getLendingPoolCore());
+        return lendingPoolCore.getReserveNormalizedIncome(address(stablecoin));
     }
 }

@@ -53,6 +53,7 @@ contract DInterest is ReentrancyGuard {
 
     // User deposit data
     struct Deposit {
+        uint256 id; // ID unique among all deposits & all users, only used in userDeposits, starts from 1
         uint256 amount; // Amount of stablecoin deposited
         uint256 maturationTimestamp; // Unix timestamp after which the deposit may be withdrawn, in seconds
         uint256 initialDeficit; // Deficit incurred to the pool at time of deposit
@@ -60,6 +61,21 @@ contract DInterest is ReentrancyGuard {
     }
     mapping(address => Deposit[]) public userDeposits;
     mapping(address => Deposit[]) public sponsorDeposits;
+    uint256 public latestUserDepositID; // the ID of the most recently created userDeposit
+    uint256 public latestFundedUserDepositID; // the ID of the most recently created userDeposit that was funded
+    uint256 public unfundedUserDepositAmount; // the deposited stablecoin amount whose deficit hasn't been funded
+
+    // Funding data
+    struct Funding {
+        // deposits with fromDepositID < ID <= toDepositID are funded
+        uint256 fromDepositID;
+        uint256 toDepositID;
+        uint256 recordedFundedDepositAmount;
+        uint256 recordedMoneyMarketPrice;
+        address interestReceipient;
+        address owner; // can change owner & interestReceipient
+    }
+    Funding[] public fundingList;
 
     // Params
     uint256 public UIRMultiplier; // Upfront interest rate multiplier
@@ -76,20 +92,27 @@ contract DInterest is ReentrancyGuard {
     // Events
     event EDeposit(
         address indexed sender,
-        uint256 depositID,
+        uint256 depositIdx,
         uint256 amount,
         uint256 maturationTimestamp,
         uint256 upfrontInterestAmount
     );
-    event EWithdraw(address indexed sender, uint256 depositID, bool early);
+    event EWithdraw(address indexed sender, uint256 depositIdx, bool early);
     event ESponsorDeposit(
         address indexed sender,
-        uint256 depositID,
+        uint256 depositIdx,
         uint256 amount,
         uint256 maturationTimestamp,
         string data
     );
-    event ESponsorWithdraw(address indexed sender, uint256 depositID);
+    event ESponsorWithdraw(address indexed sender, uint256 depositIdx);
+    event EFund(
+        address indexed sender,
+        uint256 fundingIdx,
+        uint256 deficitAmount
+    );
+    event EFundingSetOwner(address newOwner);
+    event EFundingSetInterestReceipient(address newInterestReceipient);
 
     constructor(
         uint256 _UIRMultiplier,
@@ -124,12 +147,20 @@ contract DInterest is ReentrancyGuard {
         _deposit(amount, maturationTimestamp);
     }
 
-    function withdraw(uint256 depositID) external updateBlocktime nonReentrant {
-        _withdraw(depositID);
+    function withdraw(uint256 depositIdx, uint256 fundingIdx)
+        external
+        updateBlocktime
+        nonReentrant
+    {
+        _withdraw(depositIdx, fundingIdx);
     }
 
-    function earlyWithdraw(uint256 depositID) external updateBlocktime nonReentrant {
-        _earlyWithdraw(depositID);
+    function earlyWithdraw(uint256 depositIdx, uint256 fundingIdx)
+        external
+        updateBlocktime
+        nonReentrant
+    {
+        _earlyWithdraw(depositIdx, fundingIdx);
     }
 
     function multiDeposit(
@@ -145,23 +176,29 @@ contract DInterest is ReentrancyGuard {
         }
     }
 
-    function multiWithdraw(uint256[] calldata depositIDList)
-        external
-        updateBlocktime
-        nonReentrant
-    {
-        for (uint256 i = 0; i < depositIDList.length; i = i.add(1)) {
-            _withdraw(depositIDList[i]);
+    function multiWithdraw(
+        uint256[] calldata depositIdxList,
+        uint256[] calldata fundingIdxList
+    ) external updateBlocktime nonReentrant {
+        require(
+            depositIdxList.length == fundingIdxList.length,
+            "DInterest: List lengths unequal"
+        );
+        for (uint256 i = 0; i < depositIdxList.length; i = i.add(1)) {
+            _withdraw(depositIdxList[i], fundingIdxList[i]);
         }
     }
 
-    function multiEarlyWithdraw(uint256[] calldata depositIDList)
-        external
-        updateBlocktime
-        nonReentrant
-    {
-        for (uint256 i = 0; i < depositIDList.length; i = i.add(1)) {
-            _earlyWithdraw(depositIDList[i]);
+    function multiEarlyWithdraw(
+        uint256[] calldata depositIdxList,
+        uint256[] calldata fundingIdxList
+    ) external updateBlocktime nonReentrant {
+        require(
+            depositIdxList.length == fundingIdxList.length,
+            "DInterest: List lengths unequal"
+        );
+        for (uint256 i = 0; i < depositIdxList.length; i = i.add(1)) {
+            _earlyWithdraw(depositIdxList[i], fundingIdxList[i]);
         }
     }
 
@@ -193,19 +230,25 @@ contract DInterest is ReentrancyGuard {
         return _blocktime;
     }
 
-    function deficit()
-        external
+    function surplus()
+        public
         view
-        returns (bool isNegative, uint256 deficitAmount)
+        returns (bool isNegative, uint256 surplusAmount)
     {
         uint256 totalValue = moneyMarket.totalValue();
         if (totalValue >= totalDeposit) {
+            // Locked value more than owed deposits, positive surplus
             isNegative = false;
-            deficitAmount = totalValue.sub(totalDeposit);
+            surplusAmount = totalValue.sub(totalDeposit);
         } else {
+            // Locked value less than owed deposits, negative surplus
             isNegative = true;
-            deficitAmount = totalDeposit.sub(totalValue);
+            surplusAmount = totalDeposit.sub(totalValue);
         }
+    }
+
+    function userDepositIsFunded(uint256 id) public view returns (bool) {
+        return (id <= latestFundedUserDepositID);
     }
 
     /**
@@ -230,6 +273,7 @@ contract DInterest is ReentrancyGuard {
         // Record deposit data for `msg.sender`
         sponsorDeposits[msg.sender].push(
             Deposit({
+                id: 0,
                 amount: amount,
                 maturationTimestamp: maturationTimestamp,
                 initialDeficit: 0,
@@ -257,12 +301,12 @@ contract DInterest is ReentrancyGuard {
         );
     }
 
-    function sponsorWithdraw(uint256 depositID)
+    function sponsorWithdraw(uint256 depositIdx)
         external
         updateBlocktime
         nonReentrant
     {
-        Deposit memory depositEntry = sponsorDeposits[msg.sender][depositID];
+        Deposit memory depositEntry = sponsorDeposits[msg.sender][depositIdx];
 
         // Verify deposit is active and set to inactive
         require(depositEntry.active, "DInterest: Deposit not active");
@@ -284,7 +328,77 @@ contract DInterest is ReentrancyGuard {
         stablecoin.safeTransfer(msg.sender, depositEntry.amount);
 
         // Emit event
-        emit ESponsorWithdraw(msg.sender, depositID);
+        emit ESponsorWithdraw(msg.sender, depositIdx);
+    }
+
+    /**
+        Deficit funding
+     */
+
+    function fund(address interestReceipient)
+        external
+        updateBlocktime
+        nonReentrant
+    {
+        // Calculate current deficit
+        (bool isNegative, uint256 deficit) = surplus();
+        require(isNegative, "DInterest: No deficit available");
+        require(
+            !userDepositIsFunded(latestUserDepositID),
+            "DInterest: All deposits funded"
+        );
+
+        // Create funding struct
+        fundingList.push(
+            Funding({
+                fromDepositID: latestFundedUserDepositID,
+                toDepositID: latestUserDepositID,
+                recordedFundedDepositAmount: unfundedUserDepositAmount,
+                recordedMoneyMarketPrice: moneyMarket.price(),
+                interestReceipient: interestReceipient,
+                owner: msg.sender
+            })
+        );
+
+        // Update relevant values
+        latestFundedUserDepositID = latestUserDepositID;
+        unfundedUserDepositAmount = 0;
+
+        // Transfer `deficit` stablecoins from msg.sender
+        stablecoin.safeTransferFrom(msg.sender, address(this), deficit);
+
+        // Deposit `deficit` stablecoins into moneyMarket
+        if (stablecoin.allowance(address(this), address(moneyMarket)) > 0) {
+            stablecoin.safeApprove(address(moneyMarket), 0);
+        }
+        stablecoin.safeApprove(address(moneyMarket), deficit);
+        moneyMarket.deposit(deficit);
+
+        // Emit event
+        emit EFund(msg.sender, fundingList.length.sub(1), deficit);
+        emit EFundingSetOwner(msg.sender);
+        emit EFundingSetInterestReceipient(interestReceipient);
+    }
+
+    function fundingSetOwner(uint256 fundingIdx, address newOwner)
+        external
+        updateBlocktime
+        nonReentrant
+    {
+        Funding storage f = fundingList[fundingIdx];
+        require(f.owner == msg.sender, "DInterest: Not funding owner");
+        f.owner = newOwner;
+        emit EFundingSetOwner(newOwner);
+    }
+
+    function fundingSetInterestReceipient(
+        uint256 fundingIdx,
+        address newInterestReceipient
+    ) external updateBlocktime nonReentrant {
+        Funding storage f = fundingList[fundingIdx];
+        require(f.owner == msg.sender, "DInterest: Not funding owner");
+        f.interestReceipient = newInterestReceipient;
+        emit EFundingSetInterestReceipient(newInterestReceipient);
     }
 
     /**
@@ -305,6 +419,11 @@ contract DInterest is ReentrancyGuard {
         // Update totalDeposit
         totalDeposit = totalDeposit.add(amount);
 
+        // Update funding related data
+        uint256 id = latestUserDepositID.add(1);
+        latestUserDepositID = id;
+        unfundedUserDepositAmount = unfundedUserDepositAmount.add(amount);
+
         // Calculate `upfrontInterestAmount` stablecoin to return to `msg.sender`
         uint256 upfrontInterestRate = calculateUpfrontInterestRate(
             depositPeriod
@@ -315,6 +434,7 @@ contract DInterest is ReentrancyGuard {
         // Record deposit data for `msg.sender`
         userDeposits[msg.sender].push(
             Deposit({
+                id: id,
                 amount: amount,
                 maturationTimestamp: maturationTimestamp,
                 initialDeficit: upfrontInterestAmount,
@@ -351,8 +471,8 @@ contract DInterest is ReentrancyGuard {
         );
     }
 
-    function _withdraw(uint256 depositID) internal {
-        Deposit memory depositEntry = userDeposits[msg.sender][depositID];
+    function _withdraw(uint256 depositIdx, uint256 fundingIdx) internal {
+        Deposit storage depositEntry = userDeposits[msg.sender][depositIdx];
 
         // Verify deposit is active and set to inactive
         require(depositEntry.active, "DInterest: Deposit not active");
@@ -370,33 +490,92 @@ contract DInterest is ReentrancyGuard {
         // Withdraw `depositEntry.amount` stablecoin from money market
         moneyMarket.withdraw(depositEntry.amount);
 
+        // If deposit was funded, payout interest to funder
+        if (userDepositIsFunded(depositEntry.id)) {
+            Funding storage f = fundingList[fundingIdx];
+            require(
+                depositEntry.id > f.fromDepositID &&
+                    depositEntry.id <= f.toDepositID,
+                "DInterest: Deposit not funded by fundingIdx"
+            );
+            uint256 currentMoneyMarketPrice = moneyMarket.price();
+            uint256 interestAmount = f
+                .recordedFundedDepositAmount
+                .mul(currentMoneyMarketPrice)
+                .div(f.recordedMoneyMarketPrice)
+                .sub(f.recordedFundedDepositAmount);
+
+            // Update funding values
+            f.recordedFundedDepositAmount = f.recordedFundedDepositAmount.sub(
+                depositEntry.amount
+            );
+            f.recordedMoneyMarketPrice = currentMoneyMarketPrice;
+
+            // Send interest
+            stablecoin.safeTransfer(f.interestReceipient, interestAmount);
+        }
+
         // Send `depositEntry.amount` stablecoin to `msg.sender`
         stablecoin.safeTransfer(msg.sender, depositEntry.amount);
 
         // Emit event
-        emit EWithdraw(msg.sender, depositID, false);
+        emit EWithdraw(msg.sender, depositIdx, false);
     }
 
-    function _earlyWithdraw(uint256 depositID) internal {
-        Deposit memory depositEntry = userDeposits[msg.sender][depositID];
+    function _earlyWithdraw(uint256 depositIdx, uint256 fundingIdx) internal {
+        Deposit storage depositEntry = userDeposits[msg.sender][depositIdx];
 
         // Verify deposit is active and set to inactive
         require(depositEntry.active, "DInterest: Deposit not active");
         depositEntry.active = false;
 
         // Transfer `depositEntry.initialDeficit` from `msg.sender`
-        stablecoin.safeTransferFrom(msg.sender, address(this), depositEntry.initialDeficit);
+        stablecoin.safeTransferFrom(
+            msg.sender,
+            address(this),
+            depositEntry.initialDeficit
+        );
 
         // Update totalDeposit
         totalDeposit = totalDeposit.sub(depositEntry.amount);
 
         // Withdraw `depositEntry.amount` stablecoin from money market
-        moneyMarket.withdraw(depositEntry.amount.sub(depositEntry.initialDeficit));
+        moneyMarket.withdraw(
+            depositEntry.amount.sub(depositEntry.initialDeficit)
+        );
+
+        // If deposit was funded, payout initialDeficit + interest to funder
+        if (userDepositIsFunded(depositEntry.id)) {
+            Funding storage f = fundingList[fundingIdx];
+            require(
+                depositEntry.id > f.fromDepositID &&
+                    depositEntry.id <= f.toDepositID,
+                "DInterest: Deposit not funded by fundingIdx"
+            );
+            uint256 currentMoneyMarketPrice = moneyMarket.price();
+            uint256 interestAmount = f
+                .recordedFundedDepositAmount
+                .mul(currentMoneyMarketPrice)
+                .div(f.recordedMoneyMarketPrice)
+                .sub(f.recordedFundedDepositAmount);
+
+            // Update funding values
+            f.recordedFundedDepositAmount = f.recordedFundedDepositAmount.sub(
+                depositEntry.amount
+            );
+            f.recordedMoneyMarketPrice = currentMoneyMarketPrice;
+
+            // Send initialDeficit + interest to funder
+            stablecoin.safeTransfer(
+                f.interestReceipient,
+                interestAmount.add(depositEntry.initialDeficit)
+            );
+        }
 
         // Send `depositEntry.amount` stablecoin to `msg.sender`
         stablecoin.safeTransfer(msg.sender, depositEntry.amount);
 
         // Emit event
-        emit EWithdraw(msg.sender, depositID, true);
+        emit EWithdraw(msg.sender, depositIdx, true);
     }
 }

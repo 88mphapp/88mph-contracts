@@ -77,16 +77,17 @@ contract DInterest is ReentrancyGuard {
     Funding[] public fundingList;
 
     // Params
-    uint256 public UIRMultiplier; // Upfront interest rate multiplier
-    uint256 public MinDepositPeriod; // Minimum deposit period, in seconds
+    uint256 public immutable UIRMultiplier; // Upfront interest rate multiplier
+    uint256 public immutable MinDepositPeriod; // Minimum deposit period, in seconds
+    uint256 public immutable MaxDepositAmount; // Maximum deposit amount for each deposit, in stablecoins
 
     // Instance variables
     uint256 public totalDeposit;
 
     // External smart contracts
-    IMoneyMarket public moneyMarket;
-    ERC20 public stablecoin;
-    FeeModel public feeModel;
+    IMoneyMarket public immutable moneyMarket;
+    ERC20 public immutable stablecoin;
+    FeeModel public immutable feeModel;
 
     // Events
     event EDeposit(
@@ -108,6 +109,7 @@ contract DInterest is ReentrancyGuard {
     constructor(
         uint256 _UIRMultiplier,
         uint256 _MinDepositPeriod,
+        uint256 _MaxDepositAmount,
         address _moneyMarket,
         address _stablecoin,
         address _feeModel
@@ -119,6 +121,7 @@ contract DInterest is ReentrancyGuard {
 
         UIRMultiplier = _UIRMultiplier;
         MinDepositPeriod = _MinDepositPeriod;
+        MaxDepositAmount = _MaxDepositAmount;
 
         totalDeposit = 0;
         moneyMarket = IMoneyMarket(_moneyMarket);
@@ -330,6 +333,9 @@ contract DInterest is ReentrancyGuard {
      */
 
     function _deposit(uint256 amount, uint256 maturationTimestamp) internal {
+        // Ensure deposit amount is not more than maximum
+        require(amount <= MaxDepositAmount, "DInterest: Deposit amount exceeds max");
+
         // Ensure deposit period is at least MinDepositPeriod
         uint256 depositPeriod = maturationTimestamp.sub(now);
         require(

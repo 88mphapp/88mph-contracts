@@ -14,9 +14,10 @@ const LendingPoolCoreMock = artifacts.require("LendingPoolCoreMock");
 const LendingPoolAddressesProviderMock = artifacts.require("LendingPoolAddressesProviderMock");
 
 // Constants
+const PRECISION = 1e18;
 const UIRMultiplier = BigNumber(0.5 * 1e18).integerValue().toFixed(); // Minimum safe avg interest rate multiplier
 const MinDepositPeriod = 90 * 24 * 60 * 60; // 90 days in seconds
-const PRECISION = 1e18;
+const MaxDepositAmount = BigNumber(1000 * PRECISION).toFixed(); // 1000 stablecoins
 const YEAR_IN_BLOCKS = 2104400; // Number of blocks in a year
 const YEAR_IN_SEC = 31556952; // Number of seconds in a year
 const epsilon = 1e-6;
@@ -95,7 +96,7 @@ contract("DInterest: Compound", accounts => {
 
     // Initialize the DInterest pool
     feeModel = await FeeModel.new();
-    dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, market.address, stablecoin.address, feeModel.address);
+    dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, MaxDepositAmount, market.address, stablecoin.address, feeModel.address);
 
     // Transfer the ownership of the money market to the DInterest pool
     await market.transferOwnership(dInterestPool.address);
@@ -248,7 +249,7 @@ contract("DInterest: Aave", accounts => {
 
     // Initialize the DInterest pool
     feeModel = await FeeModel.new();
-    dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, market.address, stablecoin.address, feeModel.address);
+    dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, MaxDepositAmount, market.address, stablecoin.address, feeModel.address);
 
     // Transfer the ownership of the money market to the DInterest pool
     await market.transferOwnership(dInterestPool.address);

@@ -151,6 +151,12 @@ contract("DInterest: Compound", accounts => {
     const acc0BeforeBalance = await stablecoin.balanceOf(acc0);
     await dInterestPool.withdraw(0, 0, { from: acc0 });
 
+    // try withdrawing again (should fail)
+    try {
+      await dInterestPool.withdraw(0, 0, { from: acc0 });
+      assert.fail("acc0 withdrew twice");
+    } catch (error) {}
+
     // Verify withdrawn amount
     const acc0CurrentBalance = await stablecoin.balanceOf(acc0);
     assert.equal(acc0CurrentBalance - acc0BeforeBalance, depositAmount, "acc0 didn't withdraw correct amount of stablecoin");
@@ -295,6 +301,12 @@ contract("DInterest: Aave", accounts => {
     // acc0 withdraws
     const acc0BeforeBalance = await stablecoin.balanceOf(acc0);
     await dInterestPool.withdraw(0, 0, { from: acc0 });
+
+    // try withdrawing again (should fail)
+    try {
+      await dInterestPool.withdraw(0, 0, { from: acc0 });
+      assert.fail("acc0 withdrew twice");
+    } catch (error) {}
 
     // Verify withdrawn amount
     const acc0CurrentBalance = await stablecoin.balanceOf(acc0);

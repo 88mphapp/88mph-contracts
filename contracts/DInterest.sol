@@ -53,14 +53,13 @@ contract DInterest is ReentrancyGuard {
 
     // User deposit data
     struct Deposit {
-        uint256 id; // ID unique among all deposits & all users, only used in userDeposits, starts from 1
+        uint256 id; // ID unique among all deposits & all users, starts from 1
         uint256 amount; // Amount of stablecoin deposited
         uint256 maturationTimestamp; // Unix timestamp after which the deposit may be withdrawn, in seconds
         uint256 initialDeficit; // Deficit incurred to the pool at time of deposit
         bool active; // True if not yet withdrawn, false if withdrawn
     }
     mapping(address => Deposit[]) public userDeposits;
-    mapping(address => Deposit[]) public sponsorDeposits;
     uint256 public latestUserDepositID; // the ID of the most recently created userDeposit
     uint256 public latestFundedUserDepositID; // the ID of the most recently created userDeposit that was funded
     uint256 public unfundedUserDepositAmount; // the deposited stablecoin amount whose deficit hasn't been funded
@@ -98,14 +97,6 @@ contract DInterest is ReentrancyGuard {
         uint256 upfrontInterestAmount
     );
     event EWithdraw(address indexed sender, uint256 depositIdx, bool early);
-    event ESponsorDeposit(
-        address indexed sender,
-        uint256 depositIdx,
-        uint256 amount,
-        uint256 maturationTimestamp,
-        string data
-    );
-    event ESponsorWithdraw(address indexed sender, uint256 depositIdx);
     event EFund(
         address indexed sender,
         uint256 fundingIdx,
@@ -203,135 +194,6 @@ contract DInterest is ReentrancyGuard {
     }
 
     /**
-        Public getters
-     */
-
-    function calculateUpfrontInterestRate(uint256 depositPeriodInSeconds)
-        public
-        view
-        returns (uint256 upfrontInterestRate)
-    {
-        uint256 moneyMarketInterestRatePerSecond = moneyMarket
-            .supplyRatePerSecond(_blocktime);
-
-        // upfrontInterestRate = (1 - 1 / (1 + moneyMarketInterestRatePerSecond * depositPeriodInSeconds * UIRMultiplier))
-        upfrontInterestRate = ONE.sub(
-            ONE.decdiv(
-                ONE.add(
-                    moneyMarketInterestRatePerSecond
-                        .mul(depositPeriodInSeconds)
-                        .decmul(UIRMultiplier)
-                )
-            )
-        );
-    }
-
-    function blocktime() external view returns (uint256) {
-        return _blocktime;
-    }
-
-    function surplus()
-        public
-        view
-        returns (bool isNegative, uint256 surplusAmount)
-    {
-        uint256 totalValue = moneyMarket.totalValue();
-        if (totalValue >= totalDeposit) {
-            // Locked value more than owed deposits, positive surplus
-            isNegative = false;
-            surplusAmount = totalValue.sub(totalDeposit);
-        } else {
-            // Locked value less than owed deposits, negative surplus
-            isNegative = true;
-            surplusAmount = totalDeposit.sub(totalValue);
-        }
-    }
-
-    function userDepositIsFunded(uint256 id) public view returns (bool) {
-        return (id <= latestFundedUserDepositID);
-    }
-
-    /**
-        Sponsor actions
-     */
-
-    function sponsorDeposit(
-        uint256 amount,
-        uint256 maturationTimestamp,
-        string calldata data
-    ) external updateBlocktime nonReentrant {
-        // Ensure deposit period is at least MinDepositPeriod
-        uint256 depositPeriod = maturationTimestamp.sub(now);
-        require(
-            depositPeriod >= MinDepositPeriod,
-            "DInterest: Deposit period too short"
-        );
-
-        // Transfer `amount` stablecoin from `msg.sender`
-        stablecoin.safeTransferFrom(msg.sender, address(this), amount);
-
-        // Record deposit data for `msg.sender`
-        sponsorDeposits[msg.sender].push(
-            Deposit({
-                id: 0,
-                amount: amount,
-                maturationTimestamp: maturationTimestamp,
-                initialDeficit: 0,
-                active: true
-            })
-        );
-
-        // Update totalDeposit
-        totalDeposit = totalDeposit.add(amount);
-
-        // Lend `amount` stablecoin to money market
-        if (stablecoin.allowance(address(this), address(moneyMarket)) > 0) {
-            stablecoin.safeApprove(address(moneyMarket), 0);
-        }
-        stablecoin.safeApprove(address(moneyMarket), amount);
-        moneyMarket.deposit(amount);
-
-        // Emit event
-        emit ESponsorDeposit(
-            msg.sender,
-            sponsorDeposits[msg.sender].length.sub(1),
-            amount,
-            maturationTimestamp,
-            data
-        );
-    }
-
-    function sponsorWithdraw(uint256 depositIdx)
-        external
-        updateBlocktime
-        nonReentrant
-    {
-        Deposit memory depositEntry = sponsorDeposits[msg.sender][depositIdx];
-
-        // Verify deposit is active and set to inactive
-        require(depositEntry.active, "DInterest: Deposit not active");
-        depositEntry.active = false;
-
-        // Verify `now >= depositEntry.maturationTimestamp`
-        require(
-            now >= depositEntry.maturationTimestamp,
-            "DInterest: Deposit not mature"
-        );
-
-        // Update totalDeposit
-        totalDeposit = totalDeposit.sub(depositEntry.amount);
-
-        // Withdraw `depositEntry.amount` stablecoin from money market
-        moneyMarket.withdraw(depositEntry.amount);
-
-        // Send `depositEntry.amount` stablecoin to `msg.sender`
-        stablecoin.safeTransfer(msg.sender, depositEntry.amount);
-
-        // Emit event
-        emit ESponsorWithdraw(msg.sender, depositIdx);
-    }
-
-    /**
         Deficit funding
      */
 
@@ -385,20 +247,82 @@ contract DInterest is ReentrancyGuard {
         updateBlocktime
         nonReentrant
     {
+        require(newOwner != address(0), "DInterest: newOwner == 0");
         Funding storage f = fundingList[fundingIdx];
         require(f.owner == msg.sender, "DInterest: Not funding owner");
         f.owner = newOwner;
         emit EFundingSetOwner(newOwner);
     }
 
+    function fundingRenounceOwnership(uint256 fundingIdx)
+        external
+        updateBlocktime
+        nonReentrant
+    {
+        Funding storage f = fundingList[fundingIdx];
+        require(f.owner == msg.sender, "DInterest: Not funding owner");
+        f.owner = address(0);
+        emit EFundingSetOwner(address(0));
+    }
+
     function fundingSetInterestReceipient(
         uint256 fundingIdx,
         address newInterestReceipient
     ) external updateBlocktime nonReentrant {
+        require(newInterestReceipient != address(0), "DInterest: newInterestReceipient == 0");
         Funding storage f = fundingList[fundingIdx];
         require(f.owner == msg.sender, "DInterest: Not funding owner");
         f.interestReceipient = newInterestReceipient;
         emit EFundingSetInterestReceipient(newInterestReceipient);
+    }
+
+    /**
+        Public getters
+     */
+
+    function calculateUpfrontInterestRate(uint256 depositPeriodInSeconds)
+        public
+        view
+        returns (uint256 upfrontInterestRate)
+    {
+        uint256 moneyMarketInterestRatePerSecond = moneyMarket
+            .supplyRatePerSecond(_blocktime);
+
+        // upfrontInterestRate = (1 - 1 / (1 + moneyMarketInterestRatePerSecond * depositPeriodInSeconds * UIRMultiplier))
+        upfrontInterestRate = ONE.sub(
+            ONE.decdiv(
+                ONE.add(
+                    moneyMarketInterestRatePerSecond
+                        .mul(depositPeriodInSeconds)
+                        .decmul(UIRMultiplier)
+                )
+            )
+        );
+    }
+
+    function blocktime() external view returns (uint256) {
+        return _blocktime;
+    }
+
+    function surplus()
+        public
+        view
+        returns (bool isNegative, uint256 surplusAmount)
+    {
+        uint256 totalValue = moneyMarket.totalValue();
+        if (totalValue >= totalDeposit) {
+            // Locked value more than owed deposits, positive surplus
+            isNegative = false;
+            surplusAmount = totalValue.sub(totalDeposit);
+        } else {
+            // Locked value less than owed deposits, negative surplus
+            isNegative = true;
+            surplusAmount = totalDeposit.sub(totalValue);
+        }
+    }
+
+    function userDepositIsFunded(uint256 id) public view returns (bool) {
+        return (id <= latestFundedUserDepositID);
     }
 
     /**

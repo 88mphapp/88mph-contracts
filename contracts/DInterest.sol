@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./libs/DecMath.sol";
 import "./moneymarkets/IMoneyMarket.sol";
 import "./FeeModel.sol";
+import "./NFT.sol";
 
 
 // DeLorean Interest -- It's coming back from the future!
@@ -52,28 +53,27 @@ contract DInterest is ReentrancyGuard {
     }
 
     // User deposit data
+    // Each deposit has an ID used in the depositNFT, which is equal to its index in `deposits` plus 1
     struct Deposit {
-        uint256 id; // ID unique among all deposits & all users, starts from 1
         uint256 amount; // Amount of stablecoin deposited
         uint256 maturationTimestamp; // Unix timestamp after which the deposit may be withdrawn, in seconds
         uint256 initialDeficit; // Deficit incurred to the pool at time of deposit
         uint256 initialMoneyMarketPrice; // Money market's price at time of deposit
         bool active; // True if not yet withdrawn, false if withdrawn
     }
-    mapping(address => Deposit[]) public userDeposits;
-    uint256 public latestUserDepositID; // the ID of the most recently created userDeposit
-    uint256 public latestFundedUserDepositID; // the ID of the most recently created userDeposit that was funded
+    Deposit[] public deposits;
+    uint256 public latestUserDepositID; // the ID of the most recently created deposit
+    uint256 public latestFundedUserDepositID; // the ID of the most recently created deposit that was funded
     uint256 public unfundedUserDepositAmount; // the deposited stablecoin amount whose deficit hasn't been funded
 
     // Funding data
+    // Each funding has an ID used in the fundingNFT, which is equal to its index in `fundingList` plus 1
     struct Funding {
         // deposits with fromDepositID < ID <= toDepositID are funded
         uint256 fromDepositID;
         uint256 toDepositID;
         uint256 recordedFundedDepositAmount;
         uint256 recordedMoneyMarketPrice;
-        address interestReceipient;
-        address owner; // can change owner & interestReceipient
     }
     Funding[] public fundingList;
 
@@ -89,6 +89,8 @@ contract DInterest is ReentrancyGuard {
     IMoneyMarket public moneyMarket;
     ERC20 public stablecoin;
     FeeModel public feeModel;
+    NFT public depositNFT;
+    NFT public fundingNFT;
 
     // Events
     event EDeposit(
@@ -104,11 +106,6 @@ contract DInterest is ReentrancyGuard {
         uint256 indexed fundingIdx,
         uint256 deficitAmount
     );
-    event EFundingSetOwner(uint256 indexed fundingIdx, address newOwner);
-    event EFundingSetInterestReceipient(
-        uint256 indexed fundingIdx,
-        address newInterestReceipient
-    );
 
     constructor(
         uint256 _UIRMultiplier,
@@ -116,7 +113,9 @@ contract DInterest is ReentrancyGuard {
         uint256 _MaxDepositAmount,
         address _moneyMarket,
         address _stablecoin,
-        address _feeModel
+        address _feeModel,
+        address _depositNFT,
+        address _fundingNFT
     ) public {
         _blocktime = 15 * PRECISION; // Default block time is 15 seconds
         _lastCallBlock = block.number;
@@ -131,6 +130,8 @@ contract DInterest is ReentrancyGuard {
         moneyMarket = IMoneyMarket(_moneyMarket);
         stablecoin = ERC20(_stablecoin);
         feeModel = FeeModel(_feeModel);
+        depositNFT = NFT(_depositNFT);
+        fundingNFT = NFT(_fundingNFT);
     }
 
     /**
@@ -216,7 +217,10 @@ contract DInterest is ReentrancyGuard {
             !userDepositIsFunded(latestUserDepositID),
             "DInterest: All deposits funded"
         );
-        require(interestReceipient != address(0), "DInterest: interestReceipient == 0");
+        require(
+            interestReceipient != address(0),
+            "DInterest: interestReceipient == 0"
+        );
 
         // Create funding struct
         fundingList.push(
@@ -224,9 +228,7 @@ contract DInterest is ReentrancyGuard {
                 fromDepositID: latestFundedUserDepositID,
                 toDepositID: latestUserDepositID,
                 recordedFundedDepositAmount: unfundedUserDepositAmount,
-                recordedMoneyMarketPrice: moneyMarket.price(),
-                interestReceipient: interestReceipient,
-                owner: msg.sender
+                recordedMoneyMarketPrice: moneyMarket.price()
             })
         );
 
@@ -244,44 +246,43 @@ contract DInterest is ReentrancyGuard {
         stablecoin.safeApprove(address(moneyMarket), deficit);
         moneyMarket.deposit(deficit);
 
+        // Mint fundingNFT
+        fundingNFT.mint(msg.sender, fundingList.length);
+
         // Emit event
         uint256 fundingIdx = fundingList.length.sub(1);
         emit EFund(msg.sender, fundingIdx, deficit);
-        emit EFundingSetOwner(fundingIdx, msg.sender);
-        emit EFundingSetInterestReceipient(fundingIdx, interestReceipient);
     }
 
     function fundMultiple(
-        address[] calldata userList,
         uint256[] calldata depositIdxList,
         address interestReceipient
     ) external updateBlocktime nonReentrant {
         // Verify input
         require(
-            userList.length == depositIdxList.length,
-            "DInterest: List lengths unequal"
+            interestReceipient != address(0),
+            "DInterest: interestReceipient == 0"
         );
-        require(interestReceipient != address(0), "DInterest: interestReceipient == 0");
 
         uint256 totalDeficit = 0;
         uint256 totalDepositToFund = 0;
 
         Deposit storage depositEntry;
-        address user;
         uint256 depositIdx;
+        uint256 depositID;
         uint256 tmpLatestFundedUserDepositID = latestFundedUserDepositID;
         bool isNegative;
         uint256 deficit;
-        for (uint256 i = 0; i < userList.length; i = i.add(1)) {
-            user = userList[i];
+        for (uint256 i = 0; i < depositIdxList.length; i = i.add(1)) {
             depositIdx = depositIdxList[i];
-            depositEntry = userDeposits[user][depositIdx];
+            depositID = depositIdx.add(1);
+            depositEntry = deposits[depositIdx];
 
             require(
-                depositEntry.id == tmpLatestFundedUserDepositID.add(1),
+                depositID == tmpLatestFundedUserDepositID.add(1),
                 "DInterest: Not the latest unfunded deposit"
             );
-            (isNegative, deficit) = surplusOfDeposit(user, depositIdx);
+            (isNegative, deficit) = surplusOfDeposit(depositIdx);
             if (isNegative) {
                 // Add on deficit to total
                 totalDeficit = totalDeficit.add(deficit);
@@ -296,9 +297,7 @@ contract DInterest is ReentrancyGuard {
                 fromDepositID: latestFundedUserDepositID,
                 toDepositID: tmpLatestFundedUserDepositID,
                 recordedFundedDepositAmount: totalDepositToFund,
-                recordedMoneyMarketPrice: moneyMarket.price(),
-                interestReceipient: interestReceipient,
-                owner: msg.sender
+                recordedMoneyMarketPrice: moneyMarket.price()
             })
         );
 
@@ -318,48 +317,12 @@ contract DInterest is ReentrancyGuard {
         stablecoin.safeApprove(address(moneyMarket), totalDeficit);
         moneyMarket.deposit(totalDeficit);
 
+        // Mint fundingNFT
+        fundingNFT.mint(msg.sender, fundingList.length);
+
         // Emit event
         uint256 fundingIdx = fundingList.length.sub(1);
         emit EFund(msg.sender, fundingIdx, totalDeficit);
-        emit EFundingSetOwner(fundingIdx, msg.sender);
-        emit EFundingSetInterestReceipient(fundingIdx, interestReceipient);
-    }
-
-    function fundingSetOwner(uint256 fundingIdx, address newOwner)
-        external
-        updateBlocktime
-        nonReentrant
-    {
-        require(newOwner != address(0), "DInterest: newOwner == 0");
-        Funding storage f = fundingList[fundingIdx];
-        require(f.owner == msg.sender, "DInterest: Not funding owner");
-        f.owner = newOwner;
-        emit EFundingSetOwner(fundingIdx, newOwner);
-    }
-
-    function fundingRenounceOwnership(uint256 fundingIdx)
-        external
-        updateBlocktime
-        nonReentrant
-    {
-        Funding storage f = fundingList[fundingIdx];
-        require(f.owner == msg.sender, "DInterest: Not funding owner");
-        f.owner = address(0);
-        emit EFundingSetOwner(fundingIdx, address(0));
-    }
-
-    function fundingSetInterestReceipient(
-        uint256 fundingIdx,
-        address newInterestReceipient
-    ) external updateBlocktime nonReentrant {
-        require(
-            newInterestReceipient != address(0),
-            "DInterest: newInterestReceipient == 0"
-        );
-        Funding storage f = fundingList[fundingIdx];
-        require(f.owner == msg.sender, "DInterest: Not funding owner");
-        f.interestReceipient = newInterestReceipient;
-        emit EFundingSetInterestReceipient(fundingIdx, newInterestReceipient);
     }
 
     /**
@@ -407,12 +370,12 @@ contract DInterest is ReentrancyGuard {
         }
     }
 
-    function surplusOfDeposit(address user, uint256 depositIdx)
+    function surplusOfDeposit(uint256 depositIdx)
         public
         view
         returns (bool isNegative, uint256 surplusAmount)
     {
-        Deposit storage depositEntry = userDeposits[user][depositIdx];
+        Deposit storage depositEntry = deposits[depositIdx];
         uint256 currentMoneyMarketPrice = moneyMarket.price();
         uint256 currentDepositValue = depositEntry
             .amount
@@ -452,9 +415,6 @@ contract DInterest is ReentrancyGuard {
             "DInterest: Deposit period too short"
         );
 
-        // Transfer `amount` stablecoin from `msg.sender`
-        stablecoin.safeTransferFrom(msg.sender, address(this), amount);
-
         // Update totalDeposit
         totalDeposit = totalDeposit.add(amount);
 
@@ -471,9 +431,8 @@ contract DInterest is ReentrancyGuard {
         uint256 feeAmount = feeModel.getFee(upfrontInterestAmount);
 
         // Record deposit data for `msg.sender`
-        userDeposits[msg.sender].push(
+        deposits.push(
             Deposit({
-                id: id,
                 amount: amount,
                 maturationTimestamp: maturationTimestamp,
                 initialDeficit: upfrontInterestAmount,
@@ -484,6 +443,9 @@ contract DInterest is ReentrancyGuard {
 
         // Deduct `feeAmount` from `upfrontInterestAmount`
         upfrontInterestAmount = upfrontInterestAmount.sub(feeAmount);
+
+        // Transfer `amount` stablecoin from `msg.sender`
+        stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
         // Lend `amount - upfrontInterestAmount` stablecoin to money market
         uint256 principalAmount = amount.sub(upfrontInterestAmount).sub(
@@ -501,10 +463,13 @@ contract DInterest is ReentrancyGuard {
         // Send `upfrontInterestAmount` stablecoin to `msg.sender`
         stablecoin.safeTransfer(msg.sender, upfrontInterestAmount);
 
+        // Mint depositNFT
+        depositNFT.mint(msg.sender, id);
+
         // Emit event
         emit EDeposit(
             msg.sender,
-            userDeposits[msg.sender].length.sub(1),
+            deposits.length.sub(1),
             amount,
             maturationTimestamp,
             upfrontInterestAmount
@@ -512,7 +477,8 @@ contract DInterest is ReentrancyGuard {
     }
 
     function _withdraw(uint256 depositIdx, uint256 fundingIdx) internal {
-        Deposit storage depositEntry = userDeposits[msg.sender][depositIdx];
+        Deposit storage depositEntry = deposits[depositIdx];
+        uint256 depositID = depositIdx.add(1);
 
         // Verify deposit is active and set to inactive
         require(depositEntry.active, "DInterest: Deposit not active");
@@ -524,18 +490,26 @@ contract DInterest is ReentrancyGuard {
             "DInterest: Deposit not mature"
         );
 
+        // Verify msg.sender owns the depositNFT
+        require(
+            depositNFT.ownerOf(depositID) == msg.sender,
+            "DInterest: Sender doesn't own depositNFT"
+        );
+
         // Update totalDeposit
         totalDeposit = totalDeposit.sub(depositEntry.amount);
+
+        // Burn depositNFT
+        depositNFT.burn(depositID);
 
         // Withdraw `depositEntry.amount` stablecoin from money market
         moneyMarket.withdraw(depositEntry.amount);
 
         // If deposit was funded, payout interest to funder
-        if (userDepositIsFunded(depositEntry.id)) {
+        if (userDepositIsFunded(depositID)) {
             Funding storage f = fundingList[fundingIdx];
             require(
-                depositEntry.id > f.fromDepositID &&
-                    depositEntry.id <= f.toDepositID,
+                depositID > f.fromDepositID && depositID <= f.toDepositID,
                 "DInterest: Deposit not funded by fundingIdx"
             );
             uint256 currentMoneyMarketPrice = moneyMarket.price();
@@ -552,7 +526,10 @@ contract DInterest is ReentrancyGuard {
             f.recordedMoneyMarketPrice = currentMoneyMarketPrice;
 
             // Send interest
-            stablecoin.safeTransfer(f.interestReceipient, interestAmount);
+            stablecoin.safeTransfer(
+                fundingNFT.ownerOf(fundingIdx.add(1)),
+                interestAmount
+            );
         }
 
         // Send `depositEntry.amount` stablecoin to `msg.sender`
@@ -563,11 +540,24 @@ contract DInterest is ReentrancyGuard {
     }
 
     function _earlyWithdraw(uint256 depositIdx, uint256 fundingIdx) internal {
-        Deposit storage depositEntry = userDeposits[msg.sender][depositIdx];
+        Deposit storage depositEntry = deposits[depositIdx];
+        uint256 depositID = depositIdx.add(1);
 
         // Verify deposit is active and set to inactive
         require(depositEntry.active, "DInterest: Deposit not active");
         depositEntry.active = false;
+
+        // Verify msg.sender owns the depositNFT
+        require(
+            depositNFT.ownerOf(depositID) == msg.sender,
+            "DInterest: Sender doesn't own depositNFT"
+        );
+
+        // Update totalDeposit
+        totalDeposit = totalDeposit.sub(depositEntry.amount);
+
+        // Burn depositNFT
+        depositNFT.burn(depositID);
 
         // Transfer `depositEntry.initialDeficit` from `msg.sender`
         stablecoin.safeTransferFrom(
@@ -576,20 +566,16 @@ contract DInterest is ReentrancyGuard {
             depositEntry.initialDeficit
         );
 
-        // Update totalDeposit
-        totalDeposit = totalDeposit.sub(depositEntry.amount);
-
         // Withdraw `depositEntry.amount` stablecoin from money market
         moneyMarket.withdraw(
             depositEntry.amount.sub(depositEntry.initialDeficit)
         );
 
         // If deposit was funded, payout initialDeficit + interest to funder
-        if (userDepositIsFunded(depositEntry.id)) {
+        if (userDepositIsFunded(depositID)) {
             Funding storage f = fundingList[fundingIdx];
             require(
-                depositEntry.id > f.fromDepositID &&
-                    depositEntry.id <= f.toDepositID,
+                depositID > f.fromDepositID && depositID <= f.toDepositID,
                 "DInterest: Deposit not funded by fundingIdx"
             );
             uint256 currentMoneyMarketPrice = moneyMarket.price();
@@ -607,7 +593,7 @@ contract DInterest is ReentrancyGuard {
 
             // Send initialDeficit + interest to funder
             stablecoin.safeTransfer(
-                f.interestReceipient,
+                fundingNFT.ownerOf(fundingIdx.add(1)),
                 interestAmount.add(depositEntry.initialDeficit)
             );
         }

@@ -6,6 +6,7 @@ const DInterest = artifacts.require("DInterest");
 const FeeModel = artifacts.require("FeeModel");
 const AaveMarket = artifacts.require("AaveMarket");
 const CompoundERC20Market = artifacts.require("CompoundERC20Market");
+const NFT = artifacts.require("NFT");
 const CERC20Mock = artifacts.require("CERC20Mock");
 const ERC20Mock = artifacts.require("ERC20Mock");
 const ATokenMock = artifacts.require("ATokenMock");
@@ -74,6 +75,8 @@ contract("DInterest: Compound", accounts => {
   let dInterestPool;
   let market;
   let feeModel;
+  let depositNFT;
+  let fundingNFT;
 
   // Constants
   const INIT_EXRATE = 2e26; // 1 cToken = 0.02 stablecoin
@@ -94,12 +97,20 @@ contract("DInterest: Compound", accounts => {
     // Initialize the money market
     market = await CompoundERC20Market.new(cToken.address, stablecoin.address);
 
+    // Initialize the NFTs
+    depositNFT = await NFT.new("88mph Deposit", "88mph-Deposit");
+    fundingNFT = await NFT.new("88mph Funding", "88mph-Funding");
+
     // Initialize the DInterest pool
     feeModel = await FeeModel.new();
-    dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, MaxDepositAmount, market.address, stablecoin.address, feeModel.address);
+    dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, MaxDepositAmount, market.address, stablecoin.address, feeModel.address, depositNFT.address, fundingNFT.address);
 
     // Transfer the ownership of the money market to the DInterest pool
     await market.transferOwnership(dInterestPool.address);
+
+    // Transfer NFT ownerships to the DInterest pool
+    await depositNFT.transferOwnership(dInterestPool.address);
+    await fundingNFT.transferOwnership(dInterestPool.address);
   });
 
   it("deposit()", async function () {
@@ -174,7 +185,7 @@ contract("DInterest: Compound", accounts => {
 
     // acc1 withdraws
     const acc1BeforeBalance = await stablecoin.balanceOf(acc1);
-    await dInterestPool.withdraw(0, 0, { from: acc1 });
+    await dInterestPool.withdraw(1, 0, { from: acc1 });
 
     // Verify withdrawn amount
     const acc1CurrentBalance = await stablecoin.balanceOf(acc1);
@@ -198,7 +209,7 @@ contract("DInterest: Compound", accounts => {
     await dInterestPool.earlyWithdraw(0, 0, { from: acc0 });
 
     // Verify withdrawn amount
-    const initialDeficit = BigNumber((await dInterestPool.userDeposits(acc0, 0)).initialDeficit);
+    const initialDeficit = BigNumber((await dInterestPool.deposits(0)).initialDeficit);
     const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0));
     assert.equal(acc0CurrentBalance.minus(acc0BeforeBalance).toNumber(), BigNumber(depositAmount).minus(initialDeficit).toNumber(), "acc0 didn't withdraw correct amount of stablecoin");
     // Verify totalDeposit
@@ -247,12 +258,20 @@ contract("DInterest: Aave", accounts => {
     // Initialize the money market
     market = await AaveMarket.new(lendingPoolAddressesProvider.address, stablecoin.address);
 
+    // Initialize the NFTs
+    depositNFT = await NFT.new("88mph Deposit", "88mph-Deposit");
+    fundingNFT = await NFT.new("88mph Funding", "88mph-Funding");
+
     // Initialize the DInterest pool
     feeModel = await FeeModel.new();
-    dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, MaxDepositAmount, market.address, stablecoin.address, feeModel.address);
+    dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, MaxDepositAmount, market.address, stablecoin.address, feeModel.address, depositNFT.address, fundingNFT.address);
 
     // Transfer the ownership of the money market to the DInterest pool
     await market.transferOwnership(dInterestPool.address);
+
+    // Transfer NFT ownerships to the DInterest pool
+    await depositNFT.transferOwnership(dInterestPool.address);
+    await fundingNFT.transferOwnership(dInterestPool.address);
   });
 
   it("deposit()", async function () {
@@ -322,7 +341,7 @@ contract("DInterest: Aave", accounts => {
 
     // acc1 withdraws
     const acc1BeforeBalance = await stablecoin.balanceOf(acc1);
-    await dInterestPool.withdraw(0, 0, { from: acc1 });
+    await dInterestPool.withdraw(1, 0, { from: acc1 });
 
     // Verify withdrawn amount
     const acc1CurrentBalance = await stablecoin.balanceOf(acc1);
@@ -346,7 +365,7 @@ contract("DInterest: Aave", accounts => {
     await dInterestPool.earlyWithdraw(0, 0, { from: acc0 });
 
     // Verify withdrawn amount
-    const initialDeficit = BigNumber((await dInterestPool.userDeposits(acc0, 0)).initialDeficit);
+    const initialDeficit = BigNumber((await dInterestPool.deposits(0)).initialDeficit);
     const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0));
     assert.equal(acc0CurrentBalance.minus(acc0BeforeBalance).toNumber(), BigNumber(depositAmount).minus(initialDeficit).toNumber(), "acc0 didn't withdraw correct amount of stablecoin");
     // Verify totalDeposit

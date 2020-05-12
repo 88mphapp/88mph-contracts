@@ -11,6 +11,7 @@ import "./imports/ILendingPool.sol";
 import "./imports/ILendingPoolAddressesProvider.sol";
 import "./imports/ILendingPoolCore.sol";
 
+
 contract AaveMarket is IMoneyMarket, Ownable {
     using SafeMath for uint256;
     using DecMath for uint256;
@@ -59,12 +60,9 @@ contract AaveMarket is IMoneyMarket, Ownable {
         stablecoin.safeTransfer(msg.sender, amountInUnderlying);
     }
 
-    function supplyRatePerSecond(uint256 /*blocktime*/)
-        external
-        view
-        override(IMoneyMarket)
-        returns (uint256)
-    {
+    function supplyRatePerSecond(
+        uint256 /*blocktime*/
+    ) external view override(IMoneyMarket) returns (uint256) {
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
 
         // The annual supply interest rate, scaled by 10^27
@@ -87,7 +85,9 @@ contract AaveMarket is IMoneyMarket, Ownable {
     }
 
     function price() external view override(IMoneyMarket) returns (uint256) {
-        ILendingPoolCore lendingPoolCore = ILendingPoolCore(provider.getLendingPoolCore());
+        ILendingPoolCore lendingPoolCore = ILendingPoolCore(
+            provider.getLendingPoolCore()
+        );
         return lendingPoolCore.getReserveNormalizedIncome(address(stablecoin));
     }
 }

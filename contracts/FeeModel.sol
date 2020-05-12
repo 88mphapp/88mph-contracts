@@ -3,6 +3,7 @@ pragma solidity 0.6.5;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+
 contract FeeModel is Ownable {
     using SafeMath for uint256;
 

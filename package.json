@@ -20,6 +20,6 @@
     "web3": "^1.2.7"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^3.0.1"
+    "@openzeppelin/contracts": "^2.5.1"
   }
 }

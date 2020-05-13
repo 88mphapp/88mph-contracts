@@ -1,4 +1,4 @@
-pragma solidity 0.6.5;
+pragma solidity 0.5.17;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -9,6 +9,7 @@ import "./libs/DecMath.sol";
 import "./moneymarkets/IMoneyMarket.sol";
 import "./FeeModel.sol";
 import "./NFT.sol";
+import "@nomiclabs/buidler/console.sol";
 
 
 // DeLorean Interest -- It's coming back from the future!
@@ -205,21 +206,13 @@ contract DInterest is ReentrancyGuard {
         Deficit funding
      */
 
-    function fundAll(address interestReceipient)
-        external
-        updateBlocktime
-        nonReentrant
-    {
+    function fundAll() external updateBlocktime nonReentrant {
         // Calculate current deficit
         (bool isNegative, uint256 deficit) = surplus();
         require(isNegative, "DInterest: No deficit available");
         require(
-            !userDepositIsFunded(latestUserDepositID),
+            !depositIsFunded(latestUserDepositID),
             "DInterest: All deposits funded"
-        );
-        require(
-            interestReceipient != address(0),
-            "DInterest: interestReceipient == 0"
         );
 
         // Create funding struct
@@ -254,55 +247,56 @@ contract DInterest is ReentrancyGuard {
         emit EFund(msg.sender, fundingIdx, deficit);
     }
 
-    function fundMultiple(
-        uint256[] calldata depositIdxList,
-        address interestReceipient
-    ) external updateBlocktime nonReentrant {
-        // Verify input
-        require(
-            interestReceipient != address(0),
-            "DInterest: interestReceipient == 0"
-        );
+    function fundMultiple(uint256 toDepositID)
+        external
+        updateBlocktime
+        nonReentrant
+    {
+        require(toDepositID > latestFundedUserDepositID, "DInterest: Deposits already funded");
+        require(toDepositID <= deposits.length, "DInterest: Invalid toDepositID");
+
+        (bool isNegative, uint256 deficit) = surplus();
+        require(isNegative, "DInterest: No deficit available");
 
         uint256 totalDeficit = 0;
+        uint256 totalSurplus = 0;
         uint256 totalDepositToFund = 0;
-
-        Deposit storage depositEntry;
-        uint256 depositIdx;
         uint256 depositID;
-        uint256 tmpLatestFundedUserDepositID = latestFundedUserDepositID;
-        bool isNegative;
-        uint256 deficit;
-        for (uint256 i = 0; i < depositIdxList.length; i = i.add(1)) {
-            depositIdx = depositIdxList[i];
-            depositID = depositIdx.add(1);
-            depositEntry = deposits[depositIdx];
+        // Deposits with ID [latestFundedUserDepositID+1, toDepositID] will be funded
+        for (uint256 idx = latestFundedUserDepositID; idx < toDepositID; idx = idx.add(1)) {
+            depositID = idx.add(1);
+            Deposit storage depositEntry = deposits[idx];
 
-            require(
-                depositID == tmpLatestFundedUserDepositID.add(1),
-                "DInterest: Not the latest unfunded deposit"
-            );
-            (isNegative, deficit) = surplusOfDeposit(depositIdx);
+            (isNegative, deficit) = surplusOfDeposit(idx);
             if (isNegative) {
                 // Add on deficit to total
                 totalDeficit = totalDeficit.add(deficit);
+            } else {
+                // Has surplus
+                totalSurplus = totalSurplus.add(deficit);
             }
-            tmpLatestFundedUserDepositID = tmpLatestFundedUserDepositID.add(1);
             totalDepositToFund = totalDepositToFund.add(depositEntry.amount);
+        }
+        if (totalSurplus >= totalDeficit) {
+            // Deposits selected have a surplus as a whole, revert
+            revert("DInterest: Selected deposits in surplus");
+        } else {
+            // Deduct surplus from totalDeficit
+            totalDeficit = totalDeficit.sub(totalSurplus);
         }
 
         // Create funding struct
         fundingList.push(
             Funding({
                 fromDepositID: latestFundedUserDepositID,
-                toDepositID: tmpLatestFundedUserDepositID,
+                toDepositID: toDepositID,
                 recordedFundedDepositAmount: totalDepositToFund,
                 recordedMoneyMarketPrice: moneyMarket.price()
             })
         );
 
         // Update relevant values
-        latestFundedUserDepositID = tmpLatestFundedUserDepositID;
+        latestFundedUserDepositID = toDepositID;
         unfundedUserDepositAmount = unfundedUserDepositAmount.sub(
             totalDepositToFund
         );
@@ -393,8 +387,16 @@ contract DInterest is ReentrancyGuard {
         }
     }
 
-    function userDepositIsFunded(uint256 id) public view returns (bool) {
+    function depositIsFunded(uint256 id) public view returns (bool) {
         return (id <= latestFundedUserDepositID);
+    }
+
+    function depositsLength() external view returns (uint256) {
+        return deposits.length;
+    }
+
+    function fundingListLength() external view returns (uint256) {
+        return fundingList.length;
     }
 
     /**
@@ -506,7 +508,7 @@ contract DInterest is ReentrancyGuard {
         moneyMarket.withdraw(depositEntry.amount);
 
         // If deposit was funded, payout interest to funder
-        if (userDepositIsFunded(depositID)) {
+        if (depositIsFunded(depositID)) {
             Funding storage f = fundingList[fundingIdx];
             require(
                 depositID > f.fromDepositID && depositID <= f.toDepositID,
@@ -524,6 +526,9 @@ contract DInterest is ReentrancyGuard {
                 depositEntry.amount
             );
             f.recordedMoneyMarketPrice = currentMoneyMarketPrice;
+
+            // Withdraw `interestAmount` stablecoin from money market
+            moneyMarket.withdraw(interestAmount);
 
             // Send interest
             stablecoin.safeTransfer(
@@ -572,7 +577,7 @@ contract DInterest is ReentrancyGuard {
         );
 
         // If deposit was funded, payout initialDeficit + interest to funder
-        if (userDepositIsFunded(depositID)) {
+        if (depositIsFunded(depositID)) {
             Funding storage f = fundingList[fundingIdx];
             require(
                 depositID > f.fromDepositID && depositID <= f.toDepositID,
@@ -590,6 +595,9 @@ contract DInterest is ReentrancyGuard {
                 depositEntry.amount
             );
             f.recordedMoneyMarketPrice = currentMoneyMarketPrice;
+
+            // Withdraw `interestAmount` stablecoin from money market
+            moneyMarket.withdraw(interestAmount);
 
             // Send initialDeficit + interest to funder
             stablecoin.safeTransfer(

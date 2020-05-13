@@ -1,7 +1,7 @@
-pragma solidity 0.6.5;
+pragma solidity 0.5.17;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/ownership/Ownable.sol";
 
 
 contract FeeModel is Ownable {

@@ -18,24 +18,23 @@
     limitations under the License.
  */
 
-pragma solidity 0.6.5;
+pragma solidity 0.5.17;
 
 // interfaces
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 
-contract CERC20Mock is ERC20 {
+
+contract CERC20Mock is ERC20, ERC20Detailed {
     address public dai;
 
     uint256 internal _supplyRate;
     uint256 internal _exchangeRate;
 
-    constructor(address _dai)
-        public
-        ERC20("cDAI", "cDAI")
-    {
+    constructor(address _dai) public ERC20Detailed("cDAI", "cDAI", 8) {
         dai = _dai;
-        _exchangeRate = 2 * (10 ** 26); // 1 cDAI = 0.02 DAI
+        _exchangeRate = 2 * (10**26); // 1 cDAI = 0.02 DAI
         _supplyRate = 45290900000; // 10% supply rate per year
     }
 

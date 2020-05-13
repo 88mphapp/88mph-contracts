@@ -1,9 +1,9 @@
-pragma solidity 0.6.5;
+pragma solidity 0.5.17;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
 import "./imports/IAToken.sol";
@@ -28,7 +28,7 @@ contract AaveMarket is IMoneyMarket, Ownable {
         stablecoin = ERC20(_stablecoin);
     }
 
-    function deposit(uint256 amount) external override(IMoneyMarket) onlyOwner {
+    function deposit(uint256 amount) external onlyOwner {
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
         address lendingPoolCore = provider.getLendingPoolCore();
 
@@ -45,7 +45,7 @@ contract AaveMarket is IMoneyMarket, Ownable {
         lendingPool.deposit(address(stablecoin), amount, REFERRALCODE);
     }
 
-    function withdraw(uint256 amountInUnderlying) external override(IMoneyMarket) onlyOwner {
+    function withdraw(uint256 amountInUnderlying) external onlyOwner {
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
 
         // Initialize aToken
@@ -62,7 +62,7 @@ contract AaveMarket is IMoneyMarket, Ownable {
 
     function supplyRatePerSecond(
         uint256 /*blocktime*/
-    ) external view override(IMoneyMarket) returns (uint256) {
+    ) external view returns (uint256) {
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
 
         // The annual supply interest rate, scaled by 10^27
@@ -73,7 +73,7 @@ contract AaveMarket is IMoneyMarket, Ownable {
         return liquidityRate.div(YEAR.mul(10**9));
     }
 
-    function totalValue() external view override(IMoneyMarket) returns (uint256) {
+    function totalValue() external view returns (uint256) {
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
 
         // Initialize aToken
@@ -84,7 +84,7 @@ contract AaveMarket is IMoneyMarket, Ownable {
         return aToken.balanceOf(address(this));
     }
 
-    function price() external view override(IMoneyMarket) returns (uint256) {
+    function price() external view returns (uint256) {
         ILendingPoolCore lendingPoolCore = ILendingPoolCore(
             provider.getLendingPoolCore()
         );

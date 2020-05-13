@@ -1,10 +1,11 @@
-pragma solidity 0.6.5;
+pragma solidity 0.5.17;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../libs/DecMath.sol";
 
-contract ATokenMock is ERC20 {
+contract ATokenMock is ERC20, ERC20Detailed {
     using SafeMath for uint256;
     using DecMath for uint256;
 
@@ -14,10 +15,11 @@ contract ATokenMock is ERC20 {
     uint256 public liquidityRate;
     uint256 public normalizedIncome;
     address[] public users;
+    mapping(address => bool) public isUser;
 
     constructor(address _dai)
         public
-        ERC20("aDAI", "aDAI")
+        ERC20Detailed("aDAI", "aDAI", 18)
     {
         dai = ERC20(_dai);
 
@@ -36,7 +38,10 @@ contract ATokenMock is ERC20 {
 
     function mint(address _user, uint256 _amount) external {
         _mint(_user, _amount);
-        users.push(_user);
+        if (!isUser[_user]) {
+            users.push(_user);
+            isUser[_user] = true;
+        }
     }
 
     function mintInterest(uint256 _seconds) external {
@@ -44,10 +49,10 @@ contract ATokenMock is ERC20 {
         address user;
         for (uint256 i = 0; i < users.length; i++) {
             user = users[i];
-            interest = balanceOf(user).mul(_seconds).decmul(liquidityRate.div(YEAR.mul(10**9)));
+            interest = balanceOf(user).mul(_seconds).mul(liquidityRate).div(YEAR.mul(10**27));
             _mint(user, interest);
         }
-        normalizedIncome = normalizedIncome.mul(_seconds).mul(liquidityRate.div(YEAR.mul(10**9))).div(10**27);
+        normalizedIncome = normalizedIncome.mul(_seconds).mul(liquidityRate).div(YEAR.mul(10**27)).add(normalizedIncome);
     }
 
     function setLiquidityRate(uint256 _liquidityRate) external {

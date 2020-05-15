@@ -62,9 +62,8 @@ contract DInterest is ReentrancyGuard {
         uint256 initialMoneyMarketPrice; // Money market's price at time of deposit
         bool active; // True if not yet withdrawn, false if withdrawn
     }
-    Deposit[] public deposits;
-    uint256 public latestUserDepositID; // the ID of the most recently created deposit
-    uint256 public latestFundedUserDepositID; // the ID of the most recently created deposit that was funded
+    Deposit[] internal deposits;
+    uint256 public latestFundedDepositID; // the ID of the most recently created deposit that was funded
     uint256 public unfundedUserDepositAmount; // the deposited stablecoin amount whose deficit hasn't been funded
 
     // Funding data
@@ -76,7 +75,7 @@ contract DInterest is ReentrancyGuard {
         uint256 recordedFundedDepositAmount;
         uint256 recordedMoneyMarketPrice;
     }
-    Funding[] public fundingList;
+    Funding[] internal fundingList;
 
     // Params
     uint256 public UIRMultiplier; // Upfront interest rate multiplier
@@ -96,15 +95,15 @@ contract DInterest is ReentrancyGuard {
     // Events
     event EDeposit(
         address indexed sender,
-        uint256 depositIdx,
+        uint256 depositID,
         uint256 amount,
         uint256 maturationTimestamp,
         uint256 upfrontInterestAmount
     );
-    event EWithdraw(address indexed sender, uint256 depositIdx, bool early);
+    event EWithdraw(address indexed sender, uint256 depositID, bool early);
     event EFund(
         address indexed sender,
-        uint256 indexed fundingIdx,
+        uint256 indexed fundingID,
         uint256 deficitAmount
     );
 
@@ -147,20 +146,20 @@ contract DInterest is ReentrancyGuard {
         _deposit(amount, maturationTimestamp);
     }
 
-    function withdraw(uint256 depositIdx, uint256 fundingIdx)
+    function withdraw(uint256 depositID, uint256 fundingID)
         external
         updateBlocktime
         nonReentrant
     {
-        _withdraw(depositIdx, fundingIdx);
+        _withdraw(depositID, fundingID);
     }
 
-    function earlyWithdraw(uint256 depositIdx, uint256 fundingIdx)
+    function earlyWithdraw(uint256 depositID, uint256 fundingID)
         external
         updateBlocktime
         nonReentrant
     {
-        _earlyWithdraw(depositIdx, fundingIdx);
+        _earlyWithdraw(depositID, fundingID);
     }
 
     function multiDeposit(
@@ -177,28 +176,28 @@ contract DInterest is ReentrancyGuard {
     }
 
     function multiWithdraw(
-        uint256[] calldata depositIdxList,
-        uint256[] calldata fundingIdxList
+        uint256[] calldata depositIDList,
+        uint256[] calldata fundingIDList
     ) external updateBlocktime nonReentrant {
         require(
-            depositIdxList.length == fundingIdxList.length,
+            depositIDList.length == fundingIDList.length,
             "DInterest: List lengths unequal"
         );
-        for (uint256 i = 0; i < depositIdxList.length; i = i.add(1)) {
-            _withdraw(depositIdxList[i], fundingIdxList[i]);
+        for (uint256 i = 0; i < depositIDList.length; i = i.add(1)) {
+            _withdraw(depositIDList[i], fundingIDList[i]);
         }
     }
 
     function multiEarlyWithdraw(
-        uint256[] calldata depositIdxList,
-        uint256[] calldata fundingIdxList
+        uint256[] calldata depositIDList,
+        uint256[] calldata fundingIDList
     ) external updateBlocktime nonReentrant {
         require(
-            depositIdxList.length == fundingIdxList.length,
+            depositIDList.length == fundingIDList.length,
             "DInterest: List lengths unequal"
         );
-        for (uint256 i = 0; i < depositIdxList.length; i = i.add(1)) {
-            _earlyWithdraw(depositIdxList[i], fundingIdxList[i]);
+        for (uint256 i = 0; i < depositIDList.length; i = i.add(1)) {
+            _earlyWithdraw(depositIDList[i], fundingIDList[i]);
         }
     }
 
@@ -211,22 +210,22 @@ contract DInterest is ReentrancyGuard {
         (bool isNegative, uint256 deficit) = surplus();
         require(isNegative, "DInterest: No deficit available");
         require(
-            !depositIsFunded(latestUserDepositID),
+            !depositIsFunded(deposits.length),
             "DInterest: All deposits funded"
         );
 
         // Create funding struct
         fundingList.push(
             Funding({
-                fromDepositID: latestFundedUserDepositID,
-                toDepositID: latestUserDepositID,
+                fromDepositID: latestFundedDepositID,
+                toDepositID: deposits.length,
                 recordedFundedDepositAmount: unfundedUserDepositAmount,
                 recordedMoneyMarketPrice: moneyMarket.price()
             })
         );
 
         // Update relevant values
-        latestFundedUserDepositID = latestUserDepositID;
+        latestFundedDepositID = deposits.length;
         unfundedUserDepositAmount = 0;
 
         // Transfer `deficit` stablecoins from msg.sender
@@ -243,8 +242,8 @@ contract DInterest is ReentrancyGuard {
         fundingNFT.mint(msg.sender, fundingList.length);
 
         // Emit event
-        uint256 fundingIdx = fundingList.length.sub(1);
-        emit EFund(msg.sender, fundingIdx, deficit);
+        uint256 fundingID = fundingList.length;
+        emit EFund(msg.sender, fundingID, deficit);
     }
 
     function fundMultiple(uint256 toDepositID)
@@ -252,7 +251,7 @@ contract DInterest is ReentrancyGuard {
         updateBlocktime
         nonReentrant
     {
-        require(toDepositID > latestFundedUserDepositID, "DInterest: Deposits already funded");
+        require(toDepositID > latestFundedDepositID, "DInterest: Deposits already funded");
         require(toDepositID <= deposits.length, "DInterest: Invalid toDepositID");
 
         (bool isNegative, uint256 deficit) = surplus();
@@ -261,13 +260,11 @@ contract DInterest is ReentrancyGuard {
         uint256 totalDeficit = 0;
         uint256 totalSurplus = 0;
         uint256 totalDepositToFund = 0;
-        uint256 depositID;
-        // Deposits with ID [latestFundedUserDepositID+1, toDepositID] will be funded
-        for (uint256 idx = latestFundedUserDepositID; idx < toDepositID; idx = idx.add(1)) {
-            depositID = idx.add(1);
-            Deposit storage depositEntry = deposits[idx];
+        // Deposits with ID [latestFundedDepositID+1, toDepositID] will be funded
+        for (uint256 id = latestFundedDepositID.add(1); id <= toDepositID; id = id.add(1)) {
+            Deposit storage depositEntry = _getDeposit(id);
 
-            (isNegative, deficit) = surplusOfDeposit(idx);
+            (isNegative, deficit) = surplusOfDeposit(id);
             if (isNegative) {
                 // Add on deficit to total
                 totalDeficit = totalDeficit.add(deficit);
@@ -288,7 +285,7 @@ contract DInterest is ReentrancyGuard {
         // Create funding struct
         fundingList.push(
             Funding({
-                fromDepositID: latestFundedUserDepositID,
+                fromDepositID: latestFundedDepositID,
                 toDepositID: toDepositID,
                 recordedFundedDepositAmount: totalDepositToFund,
                 recordedMoneyMarketPrice: moneyMarket.price()
@@ -296,7 +293,7 @@ contract DInterest is ReentrancyGuard {
         );
 
         // Update relevant values
-        latestFundedUserDepositID = toDepositID;
+        latestFundedDepositID = toDepositID;
         unfundedUserDepositAmount = unfundedUserDepositAmount.sub(
             totalDepositToFund
         );
@@ -315,8 +312,8 @@ contract DInterest is ReentrancyGuard {
         fundingNFT.mint(msg.sender, fundingList.length);
 
         // Emit event
-        uint256 fundingIdx = fundingList.length.sub(1);
-        emit EFund(msg.sender, fundingIdx, totalDeficit);
+        uint256 fundingID = fundingList.length;
+        emit EFund(msg.sender, fundingID, totalDeficit);
     }
 
     /**
@@ -364,12 +361,12 @@ contract DInterest is ReentrancyGuard {
         }
     }
 
-    function surplusOfDeposit(uint256 depositIdx)
+    function surplusOfDeposit(uint256 depositID)
         public
         view
         returns (bool isNegative, uint256 surplusAmount)
     {
-        Deposit storage depositEntry = deposits[depositIdx];
+        Deposit storage depositEntry = _getDeposit(depositID);
         uint256 currentMoneyMarketPrice = moneyMarket.price();
         uint256 currentDepositValue = depositEntry
             .amount
@@ -388,7 +385,7 @@ contract DInterest is ReentrancyGuard {
     }
 
     function depositIsFunded(uint256 id) public view returns (bool) {
-        return (id <= latestFundedUserDepositID);
+        return (id <= latestFundedDepositID);
     }
 
     function depositsLength() external view returns (uint256) {
@@ -397,6 +394,26 @@ contract DInterest is ReentrancyGuard {
 
     function fundingListLength() external view returns (uint256) {
         return fundingList.length;
+    }
+
+    function getDeposit(uint256 depositID) external view returns (Deposit memory) {
+        return deposits[depositID.sub(1)];
+    }
+
+    function getFunding(uint256 fundingID) external view returns (Funding memory) {
+        return fundingList[fundingID.sub(1)];
+    }
+
+    /**
+        Internal getters
+     */
+
+    function _getDeposit(uint256 depositID) internal view returns (Deposit storage) {
+        return deposits[depositID.sub(1)];
+    }
+
+    function _getFunding(uint256 fundingID) internal view returns (Funding storage) {
+        return fundingList[fundingID.sub(1)];
     }
 
     /**
@@ -421,8 +438,7 @@ contract DInterest is ReentrancyGuard {
         totalDeposit = totalDeposit.add(amount);
 
         // Update funding related data
-        uint256 id = latestUserDepositID.add(1);
-        latestUserDepositID = id;
+        uint256 id = deposits.length.add(1);
         unfundedUserDepositAmount = unfundedUserDepositAmount.add(amount);
 
         // Calculate `upfrontInterestAmount` stablecoin to return to `msg.sender`
@@ -478,9 +494,8 @@ contract DInterest is ReentrancyGuard {
         );
     }
 
-    function _withdraw(uint256 depositIdx, uint256 fundingIdx) internal {
-        Deposit storage depositEntry = deposits[depositIdx];
-        uint256 depositID = depositIdx.add(1);
+    function _withdraw(uint256 depositID, uint256 fundingID) internal {
+        Deposit storage depositEntry = _getDeposit(depositID);
 
         // Verify deposit is active and set to inactive
         require(depositEntry.active, "DInterest: Deposit not active");
@@ -509,10 +524,10 @@ contract DInterest is ReentrancyGuard {
 
         // If deposit was funded, payout interest to funder
         if (depositIsFunded(depositID)) {
-            Funding storage f = fundingList[fundingIdx];
+            Funding storage f = _getFunding(fundingID);
             require(
                 depositID > f.fromDepositID && depositID <= f.toDepositID,
-                "DInterest: Deposit not funded by fundingIdx"
+                "DInterest: Deposit not funded by fundingID"
             );
             uint256 currentMoneyMarketPrice = moneyMarket.price();
             uint256 interestAmount = f
@@ -532,7 +547,7 @@ contract DInterest is ReentrancyGuard {
 
             // Send interest
             stablecoin.safeTransfer(
-                fundingNFT.ownerOf(fundingIdx.add(1)),
+                fundingNFT.ownerOf(fundingID),
                 interestAmount
             );
         }
@@ -541,12 +556,11 @@ contract DInterest is ReentrancyGuard {
         stablecoin.safeTransfer(msg.sender, depositEntry.amount);
 
         // Emit event
-        emit EWithdraw(msg.sender, depositIdx, false);
+        emit EWithdraw(msg.sender, depositID, false);
     }
 
-    function _earlyWithdraw(uint256 depositIdx, uint256 fundingIdx) internal {
-        Deposit storage depositEntry = deposits[depositIdx];
-        uint256 depositID = depositIdx.add(1);
+    function _earlyWithdraw(uint256 depositID, uint256 fundingID) internal {
+        Deposit storage depositEntry = _getDeposit(depositID);
 
         // Verify deposit is active and set to inactive
         require(depositEntry.active, "DInterest: Deposit not active");
@@ -578,10 +592,10 @@ contract DInterest is ReentrancyGuard {
 
         // If deposit was funded, payout initialDeficit + interest to funder
         if (depositIsFunded(depositID)) {
-            Funding storage f = fundingList[fundingIdx];
+            Funding storage f = _getFunding(fundingID);
             require(
                 depositID > f.fromDepositID && depositID <= f.toDepositID,
-                "DInterest: Deposit not funded by fundingIdx"
+                "DInterest: Deposit not funded by fundingID"
             );
             uint256 currentMoneyMarketPrice = moneyMarket.price();
             uint256 interestAmount = f
@@ -601,7 +615,7 @@ contract DInterest is ReentrancyGuard {
 
             // Send initialDeficit + interest to funder
             stablecoin.safeTransfer(
-                fundingNFT.ownerOf(fundingIdx.add(1)),
+                fundingNFT.ownerOf(fundingID),
                 interestAmount.add(depositEntry.initialDeficit)
             );
         }
@@ -610,6 +624,6 @@ contract DInterest is ReentrancyGuard {
         stablecoin.safeTransfer(msg.sender, depositEntry.amount);
 
         // Emit event
-        emit EWithdraw(msg.sender, depositIdx, true);
+        emit EWithdraw(msg.sender, depositID, true);
     }
 }

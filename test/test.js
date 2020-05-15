@@ -164,11 +164,11 @@ contract("DInterest: Compound", accounts => {
 
     // acc0 withdraws
     const acc0BeforeBalance = await stablecoin.balanceOf(acc0);
-    await dInterestPool.withdraw(0, 0, { from: acc0 });
+    await dInterestPool.withdraw(1, 0, { from: acc0 });
 
     // try withdrawing again (should fail)
     try {
-      await dInterestPool.withdraw(0, 0, { from: acc0 });
+      await dInterestPool.withdraw(1, 0, { from: acc0 });
       assert.fail("acc0 withdrew twice");
     } catch (error) { }
 
@@ -188,7 +188,7 @@ contract("DInterest: Compound", accounts => {
 
     // acc1 withdraws
     const acc1BeforeBalance = await stablecoin.balanceOf(acc1);
-    await dInterestPool.withdraw(1, 0, { from: acc1 });
+    await dInterestPool.withdraw(2, 0, { from: acc1 });
 
     // Verify withdrawn amount
     const acc1CurrentBalance = await stablecoin.balanceOf(acc1);
@@ -209,10 +209,10 @@ contract("DInterest: Compound", accounts => {
     // acc0 withdraws early
     const acc0BeforeBalance = BigNumber(await stablecoin.balanceOf(acc0));
     await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 });
-    await dInterestPool.earlyWithdraw(0, 0, { from: acc0 });
+    await dInterestPool.earlyWithdraw(1, 0, { from: acc0 });
 
     // Verify withdrawn amount
-    const initialDeficit = BigNumber((await dInterestPool.deposits(0)).initialDeficit);
+    const initialDeficit = BigNumber((await dInterestPool.getDeposit(1)).initialDeficit);
     const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0));
     assert.equal(acc0CurrentBalance.minus(acc0BeforeBalance).toNumber(), BigNumber(depositAmount).minus(initialDeficit).toNumber(), "acc0 didn't withdraw correct amount of stablecoin");
     // Verify totalDeposit
@@ -255,8 +255,8 @@ contract("DInterest: Compound", accounts => {
 
     // acc0, acc1 withdraw deposits
     const acc2BeforeBalance = BigNumber(await stablecoin.balanceOf(acc2));
-    await dInterestPool.withdraw(0, 0, { from: acc0 });
-    await dInterestPool.withdraw(1, 0, { from: acc1 });
+    await dInterestPool.withdraw(1, 1, { from: acc0 });
+    await dInterestPool.withdraw(2, 1, { from: acc1 });
     const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2));
     assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(rateAfter1y.div(rateAfter3m).minus(1))), "acc2 didn't receive correct interest amount");
   });
@@ -290,7 +290,8 @@ contract("DInterest: Compound", accounts => {
     await dInterestPool.fundMultiple(2, { from: acc2 });
 
     // Check deficit
-    const deposit3SurplusObj = await dInterestPool.surplusOfDeposit(2);
+    // Deficits of deposits 1 & 2 are filled, so the pool's deficit/surplus should equal that of deposit 3
+    const deposit3SurplusObj = await dInterestPool.surplusOfDeposit(3);
     const expectedSurplus = BigNumber(deposit3SurplusObj.surplusAmount).times(-1);
     const surplusObj = await dInterestPool.surplus();
     const actualSurplus = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1);
@@ -304,9 +305,9 @@ contract("DInterest: Compound", accounts => {
 
     // acc0, acc1 withdraw deposits
     const acc2BeforeBalance = BigNumber(await stablecoin.balanceOf(acc2));
-    await dInterestPool.withdraw(0, 0, { from: acc0 });
-    await dInterestPool.withdraw(1, 0, { from: acc1 });
-    await dInterestPool.withdraw(2, 0, { from: acc1 });
+    await dInterestPool.withdraw(1, 1, { from: acc0 });
+    await dInterestPool.withdraw(2, 1, { from: acc1 });
+    await dInterestPool.withdraw(3, 0, { from: acc1 });
     const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2));
     assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(rateAfter1y.div(rateAfter3m).minus(1))), "acc2 didn't receive correct interest amount");
   });
@@ -416,11 +417,11 @@ contract("DInterest: Aave", accounts => {
 
     // acc0 withdraws
     const acc0BeforeBalance = await stablecoin.balanceOf(acc0);
-    await dInterestPool.withdraw(0, 0, { from: acc0 });
+    await dInterestPool.withdraw(1, 0, { from: acc0 });
 
     // try withdrawing again (should fail)
     try {
-      await dInterestPool.withdraw(0, 0, { from: acc0 });
+      await dInterestPool.withdraw(1, 0, { from: acc0 });
       assert.fail("acc0 withdrew twice");
     } catch (error) { }
 
@@ -437,7 +438,7 @@ contract("DInterest: Aave", accounts => {
 
     // acc1 withdraws
     const acc1BeforeBalance = await stablecoin.balanceOf(acc1);
-    await dInterestPool.withdraw(1, 0, { from: acc1 });
+    await dInterestPool.withdraw(2, 0, { from: acc1 });
 
     // Verify withdrawn amount
     const acc1CurrentBalance = await stablecoin.balanceOf(acc1);
@@ -458,10 +459,10 @@ contract("DInterest: Aave", accounts => {
     // acc0 withdraws early
     const acc0BeforeBalance = BigNumber(await stablecoin.balanceOf(acc0));
     await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 });
-    await dInterestPool.earlyWithdraw(0, 0, { from: acc0 });
+    await dInterestPool.earlyWithdraw(1, 0, { from: acc0 });
 
     // Verify withdrawn amount
-    const initialDeficit = BigNumber((await dInterestPool.deposits(0)).initialDeficit);
+    const initialDeficit = BigNumber((await dInterestPool.getDeposit(1)).initialDeficit);
     const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0));
     assert.equal(acc0CurrentBalance.minus(acc0BeforeBalance).toNumber(), BigNumber(depositAmount).minus(initialDeficit).toNumber(), "acc0 didn't withdraw correct amount of stablecoin");
     // Verify totalDeposit
@@ -500,8 +501,8 @@ contract("DInterest: Aave", accounts => {
 
     // acc0, acc1 withdraw deposits
     const acc2BeforeBalance = BigNumber(await stablecoin.balanceOf(acc2));
-    await dInterestPool.withdraw(0, 0, { from: acc0 });
-    await dInterestPool.withdraw(1, 0, { from: acc1 });
+    await dInterestPool.withdraw(1, 1, { from: acc0 });
+    await dInterestPool.withdraw(2, 1, { from: acc1 });
     const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2));
     assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(INIT_INTEREST_RATE).times(0.75)), "acc2 didn't receive correct interest amount");
   });
@@ -531,7 +532,8 @@ contract("DInterest: Aave", accounts => {
     await dInterestPool.fundMultiple(2, { from: acc2 });
 
     // Check deficit
-    const deposit3SurplusObj = await dInterestPool.surplusOfDeposit(2);
+    // Deficits of deposits 1 & 2 are filled, so the pool's deficit/surplus should equal that of deposit 3
+    const deposit3SurplusObj = await dInterestPool.surplusOfDeposit(3);
     const expectedSurplus = BigNumber(deposit3SurplusObj.surplusAmount).times(-1);
     const surplusObj = await dInterestPool.surplus();
     const actualSurplus = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1);
@@ -543,9 +545,9 @@ contract("DInterest: Aave", accounts => {
 
     // acc0, acc1 withdraw deposits
     const acc2BeforeBalance = BigNumber(await stablecoin.balanceOf(acc2));
-    await dInterestPool.withdraw(0, 0, { from: acc0 });
-    await dInterestPool.withdraw(1, 0, { from: acc1 });
-    await dInterestPool.withdraw(2, 0, { from: acc1 });
+    await dInterestPool.withdraw(1, 1, { from: acc0 });
+    await dInterestPool.withdraw(2, 1, { from: acc1 });
+    await dInterestPool.withdraw(3, 0, { from: acc1 });
     const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2));
     assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(INIT_INTEREST_RATE).times(0.75)), "acc2 didn't receive correct interest amount");
   });

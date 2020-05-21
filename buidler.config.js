@@ -1,4 +1,5 @@
 usePlugin("@nomiclabs/buidler-truffle5");
+usePlugin('solidity-coverage');
 
 let secret;
 

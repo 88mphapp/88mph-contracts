@@ -1,3 +1,9 @@
 module.exports = {
-    skipFiles: ['mocks']
+    skipFiles: [
+        'mocks',
+        'moneymarkets/compound/imports',
+        'moneymarkets/aave/imports',
+        'moneymarkets/IMoneyMarket.sol',
+        'NFT.sol'
+    ]
 };

@@ -486,7 +486,7 @@ contract DInterest is ReentrancyGuard {
         // Emit event
         emit EDeposit(
             msg.sender,
-            deposits.length.sub(1),
+            id,
             amount,
             maturationTimestamp,
             upfrontInterestAmount

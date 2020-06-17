@@ -73,7 +73,7 @@ contract AaveMarket is IMoneyMarket, Ownable {
         return liquidityRate.div(YEAR.mul(10**9));
     }
 
-    function totalValue() external view returns (uint256) {
+    function totalValue() external returns (uint256) {
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
 
         // Initialize aToken
@@ -84,7 +84,7 @@ contract AaveMarket is IMoneyMarket, Ownable {
         return aToken.balanceOf(address(this));
     }
 
-    function price() external view returns (uint256) {
+    function price() external returns (uint256) {
         ILendingPoolCore lendingPoolCore = ILendingPoolCore(
             provider.getLendingPoolCore()
         );

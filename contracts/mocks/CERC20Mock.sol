@@ -60,6 +60,10 @@ contract CERC20Mock is ERC20, ERC20Detailed {
         return _exchangeRate;
     }
 
+    function exchangeRateCurrent() external returns (uint256) {
+        return _exchangeRate;
+    }
+
     function _setExchangeRateStored(uint256 _rate) external returns (uint256) {
         _exchangeRate = _rate;
     }

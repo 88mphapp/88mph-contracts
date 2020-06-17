@@ -56,14 +56,14 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
         return cToken.supplyRatePerBlock().decdiv(blocktime);
     }
 
-    function totalValue() external view returns (uint256) {
+    function totalValue() external returns (uint256) {
         uint256 cTokenBalance = cToken.balanceOf(address(this));
         // Amount of stablecoin units that 1 unit of cToken can be exchanged for, scaled by 10^18
-        uint256 cTokenPrice = cToken.exchangeRateStored();
+        uint256 cTokenPrice = cToken.exchangeRateCurrent();
         return cTokenBalance.decmul(cTokenPrice);
     }
 
-    function price() external view returns (uint256) {
-        return cToken.exchangeRateStored();
+    function price() external returns (uint256) {
+        return cToken.exchangeRateCurrent();
     }
 }

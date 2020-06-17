@@ -244,7 +244,7 @@ contract("DInterest: Compound", accounts => {
     await dInterestPool.fundAll({ from: acc2 });
 
     // Check deficit
-    const surplusObj = await dInterestPool.surplus();
+    const surplusObj = await dInterestPool.surplus.call();
     assert(surplusObj.isNegative || (surplusObj.isNegative && epsilonEq(surplusObj.surplusAmount, 0)), "Surplus negative after funding all deposits");
 
     // Wait 9 months
@@ -291,9 +291,9 @@ contract("DInterest: Compound", accounts => {
 
     // Check deficit
     // Deficits of deposits 1 & 2 are filled, so the pool's deficit/surplus should equal that of deposit 3
-    const deposit3SurplusObj = await dInterestPool.surplusOfDeposit(3);
+    const deposit3SurplusObj = await dInterestPool.surplusOfDeposit.call(3);
     const expectedSurplus = BigNumber(deposit3SurplusObj.surplusAmount).times(-1);
-    const surplusObj = await dInterestPool.surplus();
+    const surplusObj = await dInterestPool.surplus.call();
     const actualSurplus = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1);
     assert(epsilonEq(actualSurplus, expectedSurplus), "Incorrect surplus after funding");
 
@@ -492,7 +492,7 @@ contract("DInterest: Aave", accounts => {
     await dInterestPool.fundAll({ from: acc2 });
 
     // Check deficit
-    const surplusObj = await dInterestPool.surplus();
+    const surplusObj = await dInterestPool.surplus.call();
     assert.equal(surplusObj.isNegative, false, "Surplus negative after funding all deposits");
 
     // Wait 9 months
@@ -533,9 +533,9 @@ contract("DInterest: Aave", accounts => {
 
     // Check deficit
     // Deficits of deposits 1 & 2 are filled, so the pool's deficit/surplus should equal that of deposit 3
-    const deposit3SurplusObj = await dInterestPool.surplusOfDeposit(3);
+    const deposit3SurplusObj = await dInterestPool.surplusOfDeposit.call(3);
     const expectedSurplus = BigNumber(deposit3SurplusObj.surplusAmount).times(-1);
-    const surplusObj = await dInterestPool.surplus();
+    const surplusObj = await dInterestPool.surplus.call();
     const actualSurplus = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1);
     assert(epsilonEq(actualSurplus, expectedSurplus), "Incorrect surplus after funding");
 

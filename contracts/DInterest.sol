@@ -345,7 +345,6 @@ contract DInterest is ReentrancyGuard {
 
     function surplus()
         public
-        view
         returns (bool isNegative, uint256 surplusAmount)
     {
         uint256 totalValue = moneyMarket.totalValue();
@@ -362,7 +361,6 @@ contract DInterest is ReentrancyGuard {
 
     function surplusOfDeposit(uint256 depositID)
         public
-        view
         returns (bool isNegative, uint256 surplusAmount)
     {
         Deposit storage depositEntry = _getDeposit(depositID);

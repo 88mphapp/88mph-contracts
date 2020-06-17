@@ -131,6 +131,9 @@ contract DInterest is ReentrancyGuard {
         feeModel = FeeModel(_feeModel);
         depositNFT = NFT(_depositNFT);
         fundingNFT = NFT(_fundingNFT);
+
+        // Ensure moneyMarket uses the same stablecoin
+        require(moneyMarket.stablecoin() == _stablecoin, "DInterest: moneyMarket.stablecoin() != _stablecoin");
     }
 
     /**

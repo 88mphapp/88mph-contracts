@@ -32,10 +32,6 @@ contract ATokenMock is ERC20, ERC20Detailed {
         dai.transfer(msg.sender, _amount);
     }
 
-    function principalBalanceOf(address _user) external view returns (uint256) {
-        return balanceOf(_user); // TODO
-    }
-
     function mint(address _user, uint256 _amount) external {
         _mint(_user, _amount);
         if (!isUser[_user]) {

@@ -2,6 +2,7 @@ pragma solidity 0.5.17;
 
 
 // Compound finance ERC20 market interface
+// Documentation: https://compound.finance/docs/ctokens
 interface ICERC20 {
     function transfer(address dst, uint256 amount) external returns (bool);
 

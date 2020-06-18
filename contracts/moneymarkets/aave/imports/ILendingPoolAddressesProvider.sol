@@ -2,6 +2,7 @@ pragma solidity 0.5.17;
 
 
 // Aave lending pool addresses provider interface
+// Documentation: https://docs.aave.com/developers/developing-on-aave/the-protocol/lendingpooladdressesprovider
 interface ILendingPoolAddressesProvider {
     function getLendingPool() external view returns (address);
 

@@ -14,7 +14,7 @@ interface IMoneyMarket {
 
     function totalValue() external returns (uint256); // The total value locked in the money market, in terms of the underlying stablecoin
 
-    function price() external returns (uint256); // Used for calculating interest generated (e.g. cDai's price for Compound)
+    function incomeIndex() external returns (uint256); // Used for calculating the interest generated (e.g. cDai's price for the Compound market)
 
     function stablecoin() external view returns (address);
 }

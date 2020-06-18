@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../IMoneyMarket.sol";
-import "../../libs/DecMath.sol";
 import "./imports/IAToken.sol";
 import "./imports/ILendingPool.sol";
 import "./imports/ILendingPoolAddressesProvider.sol";
@@ -14,7 +13,6 @@ import "./imports/ILendingPoolCore.sol";
 
 contract AaveMarket is IMoneyMarket, Ownable {
     using SafeMath for uint256;
-    using DecMath for uint256;
     using SafeERC20 for ERC20;
     using Address for address;
 
@@ -96,7 +94,7 @@ contract AaveMarket is IMoneyMarket, Ownable {
         return aToken.balanceOf(address(this));
     }
 
-    function price() external returns (uint256) {
+    function incomeIndex() external returns (uint256) {
         ILendingPoolCore lendingPoolCore = ILendingPoolCore(
             provider.getLendingPoolCore()
         );

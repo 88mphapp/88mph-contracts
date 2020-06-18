@@ -40,6 +40,8 @@ contract AaveMarket is IMoneyMarket, Ownable {
     }
 
     function deposit(uint256 amount) external onlyOwner {
+        require(amount > 0, "AaveMarket: amount is 0");
+
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
         address lendingPoolCore = provider.getLendingPoolCore();
 
@@ -54,6 +56,8 @@ contract AaveMarket is IMoneyMarket, Ownable {
     }
 
     function withdraw(uint256 amountInUnderlying) external onlyOwner {
+        require(amountInUnderlying > 0, "AaveMarket: amountInUnderlying is 0");
+
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
 
         // Initialize aToken

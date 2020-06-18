@@ -437,6 +437,9 @@ contract DInterest is ReentrancyGuard {
      */
 
     function _deposit(uint256 amount, uint256 maturationTimestamp) internal {
+        // Cannot deposit 0
+        require(amount > 0, "DInterest: Deposit amount is 0");
+
         // Ensure deposit amount is not more than maximum
         require(
             amount <= MaxDepositAmount,
@@ -558,14 +561,16 @@ contract DInterest is ReentrancyGuard {
             );
             f.recordedMoneyMarketPrice = currentMoneyMarketPrice;
 
-            // Withdraw `interestAmount` stablecoin from money market
-            moneyMarket.withdraw(interestAmount);
+            if (interestAmount > 0) {
+                // Withdraw `interestAmount` stablecoin from money market
+                moneyMarket.withdraw(interestAmount);
 
-            // Send interest
-            stablecoin.safeTransfer(
-                fundingNFT.ownerOf(fundingID),
-                interestAmount
-            );
+                // Send interest
+                stablecoin.safeTransfer(
+                    fundingNFT.ownerOf(fundingID),
+                    interestAmount
+                );
+            }
         }
 
         // Send `depositEntry.amount` stablecoin to `msg.sender`
@@ -632,8 +637,10 @@ contract DInterest is ReentrancyGuard {
             );
             f.recordedMoneyMarketPrice = currentMoneyMarketPrice;
 
-            // Withdraw `interestAmount` stablecoin from money market
-            moneyMarket.withdraw(interestAmount);
+            if (interestAmount > 0) {
+                // Withdraw `interestAmount` stablecoin from money market
+                moneyMarket.withdraw(interestAmount);
+            }
 
             // Send initialDeficit + interest to funder
             stablecoin.safeTransfer(

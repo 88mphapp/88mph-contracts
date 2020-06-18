@@ -35,6 +35,8 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
     }
 
     function deposit(uint256 amount) external onlyOwner {
+        require(amount > 0, "CompoundERC20Market: amount is 0");
+
         // Transfer `amount` stablecoin from `msg.sender`
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -47,6 +49,8 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
     }
 
     function withdraw(uint256 amountInUnderlying) external onlyOwner {
+        require(amountInUnderlying > 0, "CompoundERC20Market: amountInUnderlying is 0");
+
         // Withdraw `amountInUnderlying` stablecoin from cToken
         require(
             cToken.redeemUnderlying(amountInUnderlying) == ERRCODE_OK,

@@ -137,15 +137,19 @@ contract DInterest is ReentrancyGuard {
         // Ensure moneyMarket uses the same stablecoin
         require(moneyMarket.stablecoin() == _stablecoin, "DInterest: moneyMarket.stablecoin() != _stablecoin");
 
-        _blocktime = 15 * PRECISION; // Default block time is 15 seconds
-        _lastCallBlock = block.number;
-        _lastCallTimestamp = now;
-        _numBlocktimeDatapoints = 10**6; // Start with many datapoints to prevent initial fluctuation
+        // Verify input uint256 parameters
+        require(_UIRMultiplier > 0 && _MinDepositPeriod > 0 && _MaxDepositAmount > 0, "DInterest: An input uint256 is 0");
 
         UIRMultiplier = _UIRMultiplier;
         MinDepositPeriod = _MinDepositPeriod;
         MaxDepositAmount = _MaxDepositAmount;
         totalDeposit = 0;
+
+        // Initialize block time estimation variables
+        _blocktime = 15 * PRECISION; // Default block time is 15 seconds
+        _lastCallBlock = block.number;
+        _lastCallTimestamp = now;
+        _numBlocktimeDatapoints = 10**6; // Start with many datapoints to prevent initial fluctuation
     }
 
     /**

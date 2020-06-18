@@ -480,6 +480,7 @@ contract DInterest is ReentrancyGuard {
 
         // Deduct `feeAmount` from `upfrontInterestAmount`
         upfrontInterestAmount = upfrontInterestAmount.sub(feeAmount);
+        require(upfrontInterestAmount > 0, "DInterest: upfrontInterestAmount == 0");
 
         // Transfer `amount` stablecoin from `msg.sender`
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);

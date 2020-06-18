@@ -247,9 +247,9 @@ contract DInterest is ReentrancyGuard {
 
         // Deposit `deficit` stablecoins into moneyMarket
         if (stablecoin.allowance(address(this), address(moneyMarket)) > 0) {
-            stablecoin.safeApprove(address(moneyMarket), 0);
+            stablecoin.safeIncreaseAllowance(address(moneyMarket), 0);
         }
-        stablecoin.safeApprove(address(moneyMarket), deficit);
+        stablecoin.safeIncreaseAllowance(address(moneyMarket), deficit);
         moneyMarket.deposit(deficit);
 
         // Mint fundingNFT
@@ -317,9 +317,9 @@ contract DInterest is ReentrancyGuard {
 
         // Deposit `totalDeficit` stablecoins into moneyMarket
         if (stablecoin.allowance(address(this), address(moneyMarket)) > 0) {
-            stablecoin.safeApprove(address(moneyMarket), 0);
+            stablecoin.safeIncreaseAllowance(address(moneyMarket), 0);
         }
-        stablecoin.safeApprove(address(moneyMarket), totalDeficit);
+        stablecoin.safeIncreaseAllowance(address(moneyMarket), totalDeficit);
         moneyMarket.deposit(totalDeficit);
 
         // Mint fundingNFT
@@ -482,9 +482,9 @@ contract DInterest is ReentrancyGuard {
             feeAmount
         );
         if (stablecoin.allowance(address(this), address(moneyMarket)) > 0) {
-            stablecoin.safeApprove(address(moneyMarket), 0);
+            stablecoin.safeIncreaseAllowance(address(moneyMarket), 0);
         }
-        stablecoin.safeApprove(address(moneyMarket), principalAmount);
+        stablecoin.safeIncreaseAllowance(address(moneyMarket), principalAmount);
         moneyMarket.deposit(principalAmount);
 
         // Send `feeAmount` stablecoin to `feeModel.beneficiary()`

@@ -39,10 +39,7 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
         // Deposit `amount` stablecoin into cToken
-        if (stablecoin.allowance(address(this), address(cToken)) > 0) {
-            stablecoin.safeApprove(address(cToken), 0);
-        }
-        stablecoin.safeApprove(address(cToken), amount);
+        stablecoin.safeIncreaseAllowance(address(cToken), amount);
         require(
             cToken.mint(amount) == ERRCODE_OK,
             "CompoundERC20Market: Failed to mint cTokens"

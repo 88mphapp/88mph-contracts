@@ -47,10 +47,7 @@ contract AaveMarket is IMoneyMarket, Ownable {
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
         // Approve `amount` stablecoin to lendingPool
-        if (stablecoin.allowance(address(this), lendingPoolCore) > 0) {
-            stablecoin.safeApprove(lendingPoolCore, 0);
-        }
-        stablecoin.safeApprove(lendingPoolCore, amount);
+        stablecoin.safeIncreaseAllowance(lendingPoolCore, amount);
 
         // Deposit `amount` stablecoin to lendingPool
         lendingPool.deposit(address(stablecoin), amount, REFERRALCODE);

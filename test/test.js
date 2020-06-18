@@ -218,6 +218,21 @@ contract("DInterest: Compound", accounts => {
     // Verify totalDeposit
     const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit());
     assert(totalDeposit0.eq(0), "totalDeposit not updated after acc0 withdrawed");
+
+    // acc0 deposits stablecoin into the DInterest pool for 1 year
+    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 });
+    blockNow = await latestBlockTimestamp();
+    await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 });
+
+    // Wait 1 year
+    await timeTravel(1 * YEAR_IN_SEC);
+
+    // acc0 tries to withdraw early but fails
+    try {
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 });
+      await dInterestPool.earlyWithdraw(2, 0, { from: acc0 });
+      assert.fail("Called earlyWithdraw() after maturation without error");
+    } catch(e) {}
   });
 
   it("fundAll()", async function () {
@@ -468,6 +483,21 @@ contract("DInterest: Aave", accounts => {
     // Verify totalDeposit
     const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit());
     assert(totalDeposit0.eq(0), "totalDeposit not updated after acc0 withdrawed");
+
+    // acc0 deposits stablecoin into the DInterest pool for 1 year
+    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 });
+    blockNow = await latestBlockTimestamp();
+    await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 });
+
+    // Wait 1 year
+    await timeTravel(1 * YEAR_IN_SEC);
+
+    // acc0 tries to withdraw early but fails
+    try {
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 });
+      await dInterestPool.earlyWithdraw(2, 0, { from: acc0 });
+      assert.fail("Called earlyWithdraw() after maturation without error");
+    } catch(e) {}
   });
 
   it("fundAll()", async function () {

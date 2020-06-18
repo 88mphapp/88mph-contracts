@@ -562,6 +562,12 @@ contract DInterest is ReentrancyGuard {
     function _earlyWithdraw(uint256 depositID, uint256 fundingID) internal {
         Deposit storage depositEntry = _getDeposit(depositID);
 
+        // Verify `now < depositEntry.maturationTimestamp`
+        require(
+            now < depositEntry.maturationTimestamp,
+            "DInterest: Deposit mature, use withdraw() instead"
+        );
+
         // Verify deposit is active and set to inactive
         require(depositEntry.active, "DInterest: Deposit not active");
         depositEntry.active = false;

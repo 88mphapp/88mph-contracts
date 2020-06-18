@@ -169,7 +169,7 @@ contract DInterest is ReentrancyGuard {
         updateBlocktime
         nonReentrant
     {
-        _withdraw(depositID, fundingID);
+        _withdraw(depositID, fundingID, false);
     }
 
     function earlyWithdraw(uint256 depositID, uint256 fundingID)
@@ -177,7 +177,7 @@ contract DInterest is ReentrancyGuard {
         updateBlocktime
         nonReentrant
     {
-        _earlyWithdraw(depositID, fundingID);
+        _withdraw(depositID, fundingID, true);
     }
 
     function multiDeposit(
@@ -202,7 +202,7 @@ contract DInterest is ReentrancyGuard {
             "DInterest: List lengths unequal"
         );
         for (uint256 i = 0; i < depositIDList.length; i = i.add(1)) {
-            _withdraw(depositIDList[i], fundingIDList[i]);
+            _withdraw(depositIDList[i], fundingIDList[i], false);
         }
     }
 
@@ -215,7 +215,7 @@ contract DInterest is ReentrancyGuard {
             "DInterest: List lengths unequal"
         );
         for (uint256 i = 0; i < depositIDList.length; i = i.add(1)) {
-            _earlyWithdraw(depositIDList[i], fundingIDList[i]);
+            _withdraw(depositIDList[i], fundingIDList[i], true);
         }
     }
 
@@ -246,19 +246,7 @@ contract DInterest is ReentrancyGuard {
         latestFundedDepositID = deposits.length;
         unfundedUserDepositAmount = 0;
 
-        // Transfer `deficit` stablecoins from msg.sender
-        stablecoin.safeTransferFrom(msg.sender, address(this), deficit);
-
-        // Deposit `deficit` stablecoins into moneyMarket
-        stablecoin.safeIncreaseAllowance(address(moneyMarket), deficit);
-        moneyMarket.deposit(deficit);
-
-        // Mint fundingNFT
-        fundingNFT.mint(msg.sender, fundingList.length);
-
-        // Emit event
-        uint256 fundingID = fundingList.length;
-        emit EFund(msg.sender, fundingID, deficit);
+        _fund(deficit);
     }
 
     function fundMultiple(uint256 toDepositID)
@@ -313,19 +301,7 @@ contract DInterest is ReentrancyGuard {
             totalDepositToFund
         );
 
-        // Transfer `totalDeficit` stablecoins from msg.sender
-        stablecoin.safeTransferFrom(msg.sender, address(this), totalDeficit);
-
-        // Deposit `totalDeficit` stablecoins into moneyMarket
-        stablecoin.safeIncreaseAllowance(address(moneyMarket), totalDeficit);
-        moneyMarket.deposit(totalDeficit);
-
-        // Mint fundingNFT
-        fundingNFT.mint(msg.sender, fundingList.length);
-
-        // Emit event
-        uint256 fundingID = fundingList.length;
-        emit EFund(msg.sender, fundingID, totalDeficit);
+        _fund(totalDeficit);
     }
 
     /**
@@ -502,18 +478,26 @@ contract DInterest is ReentrancyGuard {
         );
     }
 
-    function _withdraw(uint256 depositID, uint256 fundingID) internal {
+    function _withdraw(uint256 depositID, uint256 fundingID, bool early) internal {
         Deposit storage depositEntry = _getDeposit(depositID);
 
         // Verify deposit is active and set to inactive
         require(depositEntry.active, "DInterest: Deposit not active");
         depositEntry.active = false;
 
-        // Verify `now >= depositEntry.maturationTimestamp`
-        require(
-            now >= depositEntry.maturationTimestamp,
-            "DInterest: Deposit not mature"
-        );
+        if (early) {
+            // Verify `now < depositEntry.maturationTimestamp`
+            require(
+                now < depositEntry.maturationTimestamp,
+                "DInterest: Deposit mature, use withdraw() instead"
+            );
+        } else {
+            // Verify `now >= depositEntry.maturationTimestamp`
+            require(
+                now >= depositEntry.maturationTimestamp,
+                "DInterest: Deposit not mature"
+            );
+        }
 
         // Verify msg.sender owns the depositNFT
         require(
@@ -527,8 +511,15 @@ contract DInterest is ReentrancyGuard {
         // Burn depositNFT
         depositNFT.burn(depositID);
 
-        // Withdraw `depositEntry.amount` stablecoin from money market
-        moneyMarket.withdraw(depositEntry.amount);
+        uint256 withdrawAmount;
+        if (early) {
+            // Withdraw the principal of the deposit from money market
+            withdrawAmount = depositEntry.amount.sub(depositEntry.initialDeficit);
+        } else {
+            // Withdraw `depositEntry.amount` stablecoin from money market
+            withdrawAmount = depositEntry.amount;
+        }
+        moneyMarket.withdraw(withdrawAmount);
 
         // If deposit was funded, payout interest to funder
         if (depositIsFunded(depositID)) {
@@ -550,98 +541,37 @@ contract DInterest is ReentrancyGuard {
             );
             f.recordedMoneyMarketIncomeIndex = currentmoneyMarketIncomeIndex;
 
-            if (interestAmount > 0) {
-                // Withdraw `interestAmount` stablecoin from money market
-                moneyMarket.withdraw(interestAmount);
-
-                // Send interest
+            // Send interestAmount (and maybe initialDeficit) stablecoin to funder
+            uint256 transferToFunderAmount = early ? interestAmount.add(depositEntry.initialDeficit) : interestAmount;
+            if (transferToFunderAmount > 0) {
+                moneyMarket.withdraw(transferToFunderAmount);
                 stablecoin.safeTransfer(
                     fundingNFT.ownerOf(fundingID),
-                    interestAmount
+                    transferToFunderAmount
                 );
             }
         }
 
-        // Send `depositEntry.amount` stablecoin to `msg.sender`
-        stablecoin.safeTransfer(msg.sender, depositEntry.amount);
+        // Send `withdrawAmount` stablecoin to `msg.sender`
+        stablecoin.safeTransfer(msg.sender, withdrawAmount);
 
         // Emit event
-        emit EWithdraw(msg.sender, depositID, false);
+        emit EWithdraw(msg.sender, depositID, early);
     }
 
-    function _earlyWithdraw(uint256 depositID, uint256 fundingID) internal {
-        Deposit storage depositEntry = _getDeposit(depositID);
+    function _fund(uint256 totalDeficit) internal {
+        // Transfer `totalDeficit` stablecoins from msg.sender
+        stablecoin.safeTransferFrom(msg.sender, address(this), totalDeficit);
 
-        // Verify `now < depositEntry.maturationTimestamp`
-        require(
-            now < depositEntry.maturationTimestamp,
-            "DInterest: Deposit mature, use withdraw() instead"
-        );
+        // Deposit `totalDeficit` stablecoins into moneyMarket
+        stablecoin.safeIncreaseAllowance(address(moneyMarket), totalDeficit);
+        moneyMarket.deposit(totalDeficit);
 
-        // Verify deposit is active and set to inactive
-        require(depositEntry.active, "DInterest: Deposit not active");
-        depositEntry.active = false;
-
-        // Verify msg.sender owns the depositNFT
-        require(
-            depositNFT.ownerOf(depositID) == msg.sender,
-            "DInterest: Sender doesn't own depositNFT"
-        );
-
-        // Update totalDeposit
-        totalDeposit = totalDeposit.sub(depositEntry.amount);
-
-        // Burn depositNFT
-        depositNFT.burn(depositID);
-
-        // Transfer `depositEntry.initialDeficit` from `msg.sender`
-        stablecoin.safeTransferFrom(
-            msg.sender,
-            address(this),
-            depositEntry.initialDeficit
-        );
-
-        // Withdraw `depositEntry.amount` stablecoin from money market
-        moneyMarket.withdraw(
-            depositEntry.amount.sub(depositEntry.initialDeficit)
-        );
-
-        // If deposit was funded, payout initialDeficit + interest to funder
-        if (depositIsFunded(depositID)) {
-            Funding storage f = _getFunding(fundingID);
-            require(
-                depositID > f.fromDepositID && depositID <= f.toDepositID,
-                "DInterest: Deposit not funded by fundingID"
-            );
-            uint256 currentmoneyMarketIncomeIndex = moneyMarket.incomeIndex();
-            uint256 interestAmount = f
-                .recordedFundedDepositAmount
-                .mul(currentmoneyMarketIncomeIndex)
-                .div(f.recordedMoneyMarketIncomeIndex)
-                .sub(f.recordedFundedDepositAmount);
-
-            // Update funding values
-            f.recordedFundedDepositAmount = f.recordedFundedDepositAmount.sub(
-                depositEntry.amount
-            );
-            f.recordedMoneyMarketIncomeIndex = currentmoneyMarketIncomeIndex;
-
-            if (interestAmount > 0) {
-                // Withdraw `interestAmount` stablecoin from money market
-                moneyMarket.withdraw(interestAmount);
-            }
-
-            // Send initialDeficit + interest to funder
-            stablecoin.safeTransfer(
-                fundingNFT.ownerOf(fundingID),
-                interestAmount.add(depositEntry.initialDeficit)
-            );
-        }
-
-        // Send `depositEntry.amount` stablecoin to `msg.sender`
-        stablecoin.safeTransfer(msg.sender, depositEntry.amount);
+        // Mint fundingNFT
+        fundingNFT.mint(msg.sender, fundingList.length);
 
         // Emit event
-        emit EWithdraw(msg.sender, depositID, true);
+        uint256 fundingID = fundingList.length;
+        emit EFund(msg.sender, fundingID, totalDeficit);
     }
 }

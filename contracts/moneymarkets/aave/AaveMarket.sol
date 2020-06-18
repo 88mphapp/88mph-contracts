@@ -4,6 +4,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
 import "./imports/IAToken.sol";
@@ -11,11 +12,11 @@ import "./imports/ILendingPool.sol";
 import "./imports/ILendingPoolAddressesProvider.sol";
 import "./imports/ILendingPoolCore.sol";
 
-
 contract AaveMarket is IMoneyMarket, Ownable {
     using SafeMath for uint256;
     using DecMath for uint256;
     using SafeERC20 for ERC20;
+    using Address for address;
 
     uint256 internal constant YEAR = 31556952; // Number of seconds in one Gregorian calendar year (365.2425 days)
     uint16 internal constant REFERRALCODE = 20; // Aave referral program code
@@ -24,6 +25,16 @@ contract AaveMarket is IMoneyMarket, Ownable {
     ERC20 public stablecoin;
 
     constructor(address _provider, address _stablecoin) public {
+        // Verify input addresses
+        require(
+            _provider != address(0) && _stablecoin != address(0),
+            "AaveMarket: An input address is 0"
+        );
+        require(
+            _provider.isContract() && _stablecoin.isContract(),
+            "AaveMarket: An input address is not a contract"
+        );
+
         provider = ILendingPoolAddressesProvider(_provider);
         stablecoin = ERC20(_stablecoin);
     }

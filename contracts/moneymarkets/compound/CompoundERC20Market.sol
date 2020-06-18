@@ -3,6 +3,7 @@ pragma solidity 0.5.17;
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
 import "./imports/ICERC20.sol";
@@ -11,6 +12,7 @@ import "./imports/ICERC20.sol";
 contract CompoundERC20Market is IMoneyMarket, Ownable {
     using DecMath for uint256;
     using SafeERC20 for ERC20;
+    using Address for address;
 
     uint256 internal constant ERRCODE_OK = 0;
 
@@ -18,6 +20,16 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
     ERC20 public stablecoin;
 
     constructor(address _cToken, address _stablecoin) public {
+        // Verify input addresses
+        require(
+            _cToken != address(0) && _stablecoin != address(0),
+            "CompoundERC20Market: An input address is 0"
+        );
+        require(
+            _cToken.isContract() && _stablecoin.isContract(),
+            "CompoundERC20Market: An input address is not a contract"
+        );
+
         cToken = ICERC20(_cToken);
         stablecoin = ERC20(_stablecoin);
     }

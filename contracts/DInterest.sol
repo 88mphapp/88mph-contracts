@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "./libs/DecMath.sol";
 import "./moneymarkets/IMoneyMarket.sol";
 import "./FeeModel.sol";
@@ -19,6 +20,7 @@ contract DInterest is ReentrancyGuard {
     using SafeMath for uint256;
     using DecMath for uint256;
     using SafeERC20 for ERC20;
+    using Address for address;
 
     // Constants
     uint256 internal constant PRECISION = 10**18;
@@ -116,16 +118,16 @@ contract DInterest is ReentrancyGuard {
         address _depositNFT,
         address _fundingNFT
     ) public {
-        _blocktime = 15 * PRECISION; // Default block time is 15 seconds
-        _lastCallBlock = block.number;
-        _lastCallTimestamp = now;
-        _numBlocktimeDatapoints = 10**6; // Start with many datapoints to prevent initial fluctuation
+        // Verify input addresses
+        require(
+            _moneyMarket != address(0) && _stablecoin != address(0) && _feeModel != address(0) && _depositNFT != address(0) && _fundingNFT != address(0),
+            "DInterest: An input address is 0"
+        );
+        require(
+            _moneyMarket.isContract() && _stablecoin.isContract() && _feeModel.isContract() && _depositNFT.isContract() && _fundingNFT.isContract(),
+            "DInterest: An input address is not a contract"
+        );
 
-        UIRMultiplier = _UIRMultiplier;
-        MinDepositPeriod = _MinDepositPeriod;
-        MaxDepositAmount = _MaxDepositAmount;
-
-        totalDeposit = 0;
         moneyMarket = IMoneyMarket(_moneyMarket);
         stablecoin = ERC20(_stablecoin);
         feeModel = FeeModel(_feeModel);
@@ -134,6 +136,16 @@ contract DInterest is ReentrancyGuard {
 
         // Ensure moneyMarket uses the same stablecoin
         require(moneyMarket.stablecoin() == _stablecoin, "DInterest: moneyMarket.stablecoin() != _stablecoin");
+
+        _blocktime = 15 * PRECISION; // Default block time is 15 seconds
+        _lastCallBlock = block.number;
+        _lastCallTimestamp = now;
+        _numBlocktimeDatapoints = 10**6; // Start with many datapoints to prevent initial fluctuation
+
+        UIRMultiplier = _UIRMultiplier;
+        MinDepositPeriod = _MinDepositPeriod;
+        MaxDepositAmount = _MaxDepositAmount;
+        totalDeposit = 0;
     }
 
     /**

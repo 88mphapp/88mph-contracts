@@ -8,7 +8,6 @@ import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
 import "./imports/ICERC20.sol";
 
-
 contract CompoundERC20Market is IMoneyMarket, Ownable {
     using DecMath for uint256;
     using SafeERC20 for ERC20;

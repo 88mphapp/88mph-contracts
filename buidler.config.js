@@ -31,6 +31,11 @@ module.exports = {
       accounts: {
         mnemonic: secret.mnemonic
       }
+    },
+    buidlerevm: {
+      blockGasLimit: 99500000,
+      gas: "auto",
+      gasPrice: "auto"
     }
   }
 };

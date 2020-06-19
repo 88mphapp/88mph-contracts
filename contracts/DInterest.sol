@@ -109,14 +109,14 @@ contract DInterest is ReentrancyGuard {
     );
 
     constructor(
-        uint256 _UIRMultiplier,
-        uint256 _MinDepositPeriod,
-        uint256 _MaxDepositAmount,
-        address _moneyMarket,
-        address _stablecoin,
-        address _feeModel,
-        address _depositNFT,
-        address _fundingNFT
+        uint256 _UIRMultiplier, // Upfront interest rate multiplier
+        uint256 _MinDepositPeriod, // Minimum deposit period, in seconds
+        uint256 _MaxDepositAmount, // Maximum deposit amount for each deposit, in stablecoins
+        address _moneyMarket, // Address of IMoneyMarket that's used for generating interest (owner must be set to this DInterest contract)
+        address _stablecoin, // Address of the stablecoin used to store funds
+        address _feeModel, // Address of the FeeModel contract that determines how fees are charged
+        address _depositNFT, // Address of the NFT representing ownership of deposits (owner must be set to this DInterest contract)
+        address _fundingNFT // Address of the NFT representing ownership of fundings (owner must be set to this DInterest contract)
     ) public {
         // Verify input addresses
         require(

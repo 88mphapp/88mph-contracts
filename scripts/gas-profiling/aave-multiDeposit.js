@@ -112,7 +112,7 @@ async function main() {
     const depositAmount = PRECISION
     const blockNow = await latestBlockTimestamp()
 
-    const multiDepositInputSize = 32
+    const multiDepositInputSize = 20
     await stablecoin.approve(dInterestPool.address, num2str(depositAmount * multiDepositInputSize), { from: acc0 })
     const multiDepositResult = await dInterestPool.multiDeposit(Array(multiDepositInputSize).fill(num2str(depositAmount)), Array(multiDepositInputSize).fill(blockNow + YEAR_IN_SEC), { from: acc0 })
     const multiDepositGas = multiDepositResult.receipt.cumulativeGasUsed

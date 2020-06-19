@@ -270,6 +270,8 @@ contract('DInterest: Compound', accounts => {
     const acc2BeforeBalance = BigNumber(await stablecoin.balanceOf(acc2))
     await dInterestPool.withdraw(1, 1, { from: acc0 })
     await dInterestPool.withdraw(2, 1, { from: acc1 })
+
+    // Check interest earned by funder
     const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2))
     assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(rateAfter1y.div(rateAfter3m).minus(1))), 'acc2 didn\'t receive correct interest amount')
   })
@@ -321,6 +323,8 @@ contract('DInterest: Compound', accounts => {
     await dInterestPool.withdraw(1, 1, { from: acc0 })
     await dInterestPool.withdraw(2, 1, { from: acc1 })
     await dInterestPool.withdraw(3, 0, { from: acc1 })
+
+    // Check interest earned by funder
     const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2))
     assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(rateAfter1y.div(rateAfter3m).minus(1))), 'acc2 didn\'t receive correct interest amount')
   })
@@ -528,6 +532,8 @@ contract('DInterest: Aave', accounts => {
     const acc2BeforeBalance = BigNumber(await stablecoin.balanceOf(acc2))
     await dInterestPool.withdraw(1, 1, { from: acc0 })
     await dInterestPool.withdraw(2, 1, { from: acc1 })
+
+    // Check interest earned by funder
     const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2))
     assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(INIT_INTEREST_RATE).times(0.75)), 'acc2 didn\'t receive correct interest amount')
   })
@@ -573,6 +579,8 @@ contract('DInterest: Aave', accounts => {
     await dInterestPool.withdraw(1, 1, { from: acc0 })
     await dInterestPool.withdraw(2, 1, { from: acc1 })
     await dInterestPool.withdraw(3, 0, { from: acc1 })
+
+    // Check interest earned by funder
     const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2))
     assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(INIT_INTEREST_RATE).times(0.75)), 'acc2 didn\'t receive correct interest amount')
   })

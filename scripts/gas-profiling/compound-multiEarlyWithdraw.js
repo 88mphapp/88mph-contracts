@@ -90,7 +90,7 @@ async function main() {
     feeModel = await FeeModel.new()
     comp = await ERC20Mock.new()
     comptroller = await ComptrollerMock.new(comp.address)
-    market = await CompoundERC20Market.new(cToken.address, comptroller.address, comp.address, feeModel.address, stablecoin.address)
+    market = await CompoundERC20Market.new(cToken.address, comptroller.address, feeModel.address, stablecoin.address)
 
     // Initialize the NFTs
     depositNFT = await NFT.new('88mph Deposit', '88mph-Deposit')

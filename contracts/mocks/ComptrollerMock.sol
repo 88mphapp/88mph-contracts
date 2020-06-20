@@ -14,4 +14,8 @@ contract ComptrollerMock {
     function claimComp(address holder) external {
         comp.mint(holder, CLAIM_AMOUNT);
     }
+
+    function getCompAddress() external view returns (address) {
+        return address(comp);
+    }
 }

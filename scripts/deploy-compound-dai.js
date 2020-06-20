@@ -9,9 +9,8 @@ async function main() {
   const CompoundERC20Market = env.artifacts.require("CompoundERC20Market");
   const cTokenAddress = "0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643"; // cDAI Mainnet
   const comptrollerAddress = "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b"; // Comptroller Mainnet
-  const compAddress = "0xc00e94cb662c3520282e6f5717214004a7f26888"; // COMP Mainnet
   const stablecoinAddress = "0x6B175474E89094C44Da98b954EedeAC495271d0F"; // DAI Mainnet
-  const market = await CompoundERC20Market.new(cTokenAddress, comptrollerAddress, compAddress, feeModel.address, stablecoinAddress);
+  const market = await CompoundERC20Market.new(cTokenAddress, comptrollerAddress, feeModel.address, stablecoinAddress);
   console.log(`Deployed CompoundERC20Market at address ${market.address}`);
 
   const NFT = env.artifacts.require("NFT");

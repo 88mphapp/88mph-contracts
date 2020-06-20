@@ -5,17 +5,18 @@ async function main() {
     const accounts = await env.web3.eth.getAccounts();
 
     // Contract artifacts
-    const DInterest = env.artifacts.require('DInterest')
-    const FeeModel = env.artifacts.require('FeeModel')
-    const AaveMarket = env.artifacts.require('AaveMarket')
-    const CompoundERC20Market = env.artifacts.require('CompoundERC20Market')
-    const NFT = env.artifacts.require('NFT')
-    const CERC20Mock = env.artifacts.require('CERC20Mock')
-    const ERC20Mock = env.artifacts.require('ERC20Mock')
-    const ATokenMock = env.artifacts.require('ATokenMock')
-    const LendingPoolMock = env.artifacts.require('LendingPoolMock')
-    const LendingPoolCoreMock = env.artifacts.require('LendingPoolCoreMock')
-    const LendingPoolAddressesProviderMock = env.artifacts.require('LendingPoolAddressesProviderMock')
+    const DInterest = artifacts.require('DInterest')
+    const FeeModel = artifacts.require('FeeModel')
+    const AaveMarket = artifacts.require('AaveMarket')
+    const CompoundERC20Market = artifacts.require('CompoundERC20Market')
+    const NFT = artifacts.require('NFT')
+    const CERC20Mock = artifacts.require('CERC20Mock')
+    const ComptrollerMock = artifacts.require('ComptrollerMock')
+    const ERC20Mock = artifacts.require('ERC20Mock')
+    const ATokenMock = artifacts.require('ATokenMock')
+    const LendingPoolMock = artifacts.require('LendingPoolMock')
+    const LendingPoolCoreMock = artifacts.require('LendingPoolCoreMock')
+    const LendingPoolAddressesProviderMock = artifacts.require('LendingPoolAddressesProviderMock')
 
     // Constants
     const PRECISION = 1e18
@@ -63,6 +64,8 @@ async function main() {
     let cToken
     let dInterestPool
     let market
+    let comptroller
+    let comp
     let feeModel
     let depositNFT
     let fundingNFT
@@ -84,14 +87,16 @@ async function main() {
     await stablecoin.mint(acc2, num2str(mintAmount))
 
     // Initialize the money market
-    market = await CompoundERC20Market.new(cToken.address, stablecoin.address)
+    feeModel = await FeeModel.new()
+    comp = await ERC20Mock.new()
+    comptroller = await ComptrollerMock.new(comp.address)
+    market = await CompoundERC20Market.new(cToken.address, comptroller.address, comp.address, feeModel.address, stablecoin.address)
 
     // Initialize the NFTs
     depositNFT = await NFT.new('88mph Deposit', '88mph-Deposit')
     fundingNFT = await NFT.new('88mph Funding', '88mph-Funding')
 
     // Initialize the DInterest pool
-    feeModel = await FeeModel.new()
     dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, MaxDepositAmount, market.address, stablecoin.address, feeModel.address, depositNFT.address, fundingNFT.address)
 
     // Transfer the ownership of the money market to the DInterest pool

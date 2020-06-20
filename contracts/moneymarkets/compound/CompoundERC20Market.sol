@@ -5,8 +5,11 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../IMoneyMarket.sol";
+import "../../FeeModel.sol";
 import "../../libs/DecMath.sol";
 import "./imports/ICERC20.sol";
+import "./imports/IComptroller.sol";
+
 
 contract CompoundERC20Market is IMoneyMarket, Ownable {
     using DecMath for uint256;
@@ -16,20 +19,26 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
     uint256 internal constant ERRCODE_OK = 0;
 
     ICERC20 public cToken;
+    IComptroller public comptroller;
+    ERC20 public comp;
+    FeeModel public feeModel;
     ERC20 public stablecoin;
 
-    constructor(address _cToken, address _stablecoin) public {
+    constructor(address _cToken, address _comptroller, address _comp, address _feeModel, address _stablecoin) public {
         // Verify input addresses
         require(
-            _cToken != address(0) && _stablecoin != address(0),
+            _cToken != address(0) && _comptroller != address(0) && _comp != address(0) && _feeModel != address(0) && _stablecoin != address(0),
             "CompoundERC20Market: An input address is 0"
         );
         require(
-            _cToken.isContract() && _stablecoin.isContract(),
+            _cToken.isContract() && _comptroller.isContract() && _comp.isContract() && _feeModel.isContract() && _stablecoin.isContract(),
             "CompoundERC20Market: An input address is not a contract"
         );
 
         cToken = ICERC20(_cToken);
+        comptroller = IComptroller(_comptroller);
+        comp = ERC20(_comp);
+        feeModel = FeeModel(_feeModel);
         stablecoin = ERC20(_stablecoin);
     }
 
@@ -77,5 +86,10 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
 
     function incomeIndex() external returns (uint256) {
         return cToken.exchangeRateCurrent();
+    }
+
+    function claimComp() external {
+        comptroller.claimComp(address(this));
+        comp.safeTransfer(feeModel.beneficiary(), comp.balanceOf(address(this)));
     }
 }

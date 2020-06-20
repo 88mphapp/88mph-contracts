@@ -8,6 +8,7 @@ const AaveMarket = artifacts.require('AaveMarket')
 const CompoundERC20Market = artifacts.require('CompoundERC20Market')
 const NFT = artifacts.require('NFT')
 const CERC20Mock = artifacts.require('CERC20Mock')
+const ComptrollerMock = artifacts.require('ComptrollerMock')
 const ERC20Mock = artifacts.require('ERC20Mock')
 const ATokenMock = artifacts.require('ATokenMock')
 const LendingPoolMock = artifacts.require('LendingPoolMock')
@@ -76,6 +77,8 @@ contract('DInterest: Compound', accounts => {
   let cToken
   let dInterestPool
   let market
+  let comptroller
+  let comp
   let feeModel
   let depositNFT
   let fundingNFT
@@ -98,14 +101,16 @@ contract('DInterest: Compound', accounts => {
     await stablecoin.mint(acc2, num2str(mintAmount))
 
     // Initialize the money market
-    market = await CompoundERC20Market.new(cToken.address, stablecoin.address)
+    feeModel = await FeeModel.new()
+    comp = await ERC20Mock.new()
+    comptroller = await ComptrollerMock.new(comp.address)
+    market = await CompoundERC20Market.new(cToken.address, comptroller.address, comp.address, feeModel.address, stablecoin.address)
 
     // Initialize the NFTs
     depositNFT = await NFT.new('88mph Deposit', '88mph-Deposit')
     fundingNFT = await NFT.new('88mph Funding', '88mph-Funding')
 
     // Initialize the DInterest pool
-    feeModel = await FeeModel.new()
     dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, MaxDepositAmount, market.address, stablecoin.address, feeModel.address, depositNFT.address, fundingNFT.address)
 
     // Transfer the ownership of the money market to the DInterest pool
@@ -327,6 +332,14 @@ contract('DInterest: Compound', accounts => {
     // Check interest earned by funder
     const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2))
     assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(rateAfter1y.div(rateAfter3m).minus(1))), 'acc2 didn\'t receive correct interest amount')
+  })
+
+  it('claimComp()', async function () {
+    const beneficiary = '0x332D87209f7c8296389C307eAe170c2440830A47'
+    const expectedMintAmount = PRECISION
+    const beforeBalance = await comp.balanceOf(beneficiary)
+    await market.claimComp()
+    assert.equal(expectedMintAmount, BigNumber(await comp.balanceOf(beneficiary)).minus(beforeBalance).toNumber(), 'Claimed COMP amount incorrect');
   })
 })
 

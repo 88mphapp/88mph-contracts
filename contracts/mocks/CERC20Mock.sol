@@ -22,7 +22,6 @@ pragma solidity 0.5.17;
 
 // interfaces
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 
 
@@ -40,7 +39,7 @@ contract CERC20Mock is ERC20, ERC20Detailed {
 
     function mint(uint256 amount) external returns (uint256) {
         require(
-            IERC20(dai).transferFrom(msg.sender, address(this), amount),
+            ERC20(dai).transferFrom(msg.sender, address(this), amount),
             "Error during transferFrom"
         ); // 1 DAI
         _mint(msg.sender, (amount * 10**18) / _exchangeRate);
@@ -50,7 +49,7 @@ contract CERC20Mock is ERC20, ERC20Detailed {
     function redeemUnderlying(uint256 amount) external returns (uint256) {
         _burn(msg.sender, (amount * 10**18) / _exchangeRate);
         require(
-            IERC20(dai).transfer(msg.sender, amount),
+            ERC20(dai).transfer(msg.sender, amount),
             "Error during transfer"
         ); // 1 DAI
         return 0;

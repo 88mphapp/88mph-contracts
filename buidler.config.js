@@ -33,7 +33,7 @@ module.exports = {
       }
     },
     buidlerevm: {
-      blockGasLimit: 99500000,
+      blockGasLimit: 9950000,
       gas: "auto",
       gasPrice: "auto"
     }

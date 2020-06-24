@@ -108,9 +108,9 @@ contract DInterest is ReentrancyGuard {
     );
 
     constructor(
-        uint256 _UIRMultiplier,
-        uint256 _MinDepositPeriod,
-        uint256 _MaxDepositAmount,
+        uint256 _UIRMultiplier, // Upfront interest rate multiplier
+        uint256 _MinDepositPeriod, // Minimum deposit period, in seconds
+        uint256 _MaxDepositAmount, // Maximum deposit amount for each deposit, in stablecoins
         address _moneyMarket, // Address of IMoneyMarket that's used for generating interest (owner must be set to this DInterest contract)
         address _stablecoin, // Address of the stablecoin used to store funds
         address _feeModel, // Address of the FeeModel contract that determines how fees are charged

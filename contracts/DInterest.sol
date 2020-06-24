@@ -11,7 +11,6 @@ import "./moneymarkets/IMoneyMarket.sol";
 import "./FeeModel.sol";
 import "./NFT.sol";
 
-
 // DeLorean Interest -- It's coming back from the future!
 // EL PSY CONGROO
 // Author: Zefram Lou
@@ -109,9 +108,9 @@ contract DInterest is ReentrancyGuard {
     );
 
     constructor(
-        uint256 _UIRMultiplier, // Upfront interest rate multiplier
-        uint256 _MinDepositPeriod, // Minimum deposit period, in seconds
-        uint256 _MaxDepositAmount, // Maximum deposit amount for each deposit, in stablecoins
+        uint256 _UIRMultiplier,
+        uint256 _MinDepositPeriod,
+        uint256 _MaxDepositAmount,
         address _moneyMarket, // Address of IMoneyMarket that's used for generating interest (owner must be set to this DInterest contract)
         address _stablecoin, // Address of the stablecoin used to store funds
         address _feeModel, // Address of the FeeModel contract that determines how fees are charged
@@ -120,11 +119,19 @@ contract DInterest is ReentrancyGuard {
     ) public {
         // Verify input addresses
         require(
-            _moneyMarket != address(0) && _stablecoin != address(0) && _feeModel != address(0) && _depositNFT != address(0) && _fundingNFT != address(0),
+            _moneyMarket != address(0) &&
+                _stablecoin != address(0) &&
+                _feeModel != address(0) &&
+                _depositNFT != address(0) &&
+                _fundingNFT != address(0),
             "DInterest: An input address is 0"
         );
         require(
-            _moneyMarket.isContract() && _stablecoin.isContract() && _feeModel.isContract() && _depositNFT.isContract() && _fundingNFT.isContract(),
+            _moneyMarket.isContract() &&
+                _stablecoin.isContract() &&
+                _feeModel.isContract() &&
+                _depositNFT.isContract() &&
+                _fundingNFT.isContract(),
             "DInterest: An input address is not a contract"
         );
 
@@ -135,10 +142,18 @@ contract DInterest is ReentrancyGuard {
         fundingNFT = NFT(_fundingNFT);
 
         // Ensure moneyMarket uses the same stablecoin
-        require(moneyMarket.stablecoin() == _stablecoin, "DInterest: moneyMarket.stablecoin() != _stablecoin");
+        require(
+            moneyMarket.stablecoin() == _stablecoin,
+            "DInterest: moneyMarket.stablecoin() != _stablecoin"
+        );
 
         // Verify input uint256 parameters
-        require(_UIRMultiplier > 0 && _MinDepositPeriod > 0 && _MaxDepositAmount > 0, "DInterest: An input uint256 is 0");
+        require(
+            _UIRMultiplier > 0 &&
+                _MinDepositPeriod > 0 &&
+                _MaxDepositAmount > 0,
+            "DInterest: An input uint256 is 0"
+        );
 
         UIRMultiplier = _UIRMultiplier;
         MinDepositPeriod = _MinDepositPeriod;
@@ -233,12 +248,14 @@ contract DInterest is ReentrancyGuard {
         );
 
         // Create funding struct
+        uint256 incomeIndex = moneyMarket.incomeIndex();
+        require(incomeIndex > 0, "DInterest: incomeIndex == 0");
         fundingList.push(
             Funding({
                 fromDepositID: latestFundedDepositID,
                 toDepositID: deposits.length,
                 recordedFundedDepositAmount: unfundedUserDepositAmount,
-                recordedMoneyMarketIncomeIndex: moneyMarket.incomeIndex()
+                recordedMoneyMarketIncomeIndex: incomeIndex
             })
         );
 
@@ -254,8 +271,14 @@ contract DInterest is ReentrancyGuard {
         updateBlocktime
         nonReentrant
     {
-        require(toDepositID > latestFundedDepositID, "DInterest: Deposits already funded");
-        require(toDepositID <= deposits.length, "DInterest: Invalid toDepositID");
+        require(
+            toDepositID > latestFundedDepositID,
+            "DInterest: Deposits already funded"
+        );
+        require(
+            toDepositID <= deposits.length,
+            "DInterest: Invalid toDepositID"
+        );
 
         (bool isNegative, uint256 deficit) = surplus();
         require(isNegative, "DInterest: No deficit available");
@@ -264,7 +287,11 @@ contract DInterest is ReentrancyGuard {
         uint256 totalSurplus = 0;
         uint256 totalDepositToFund = 0;
         // Deposits with ID [latestFundedDepositID+1, toDepositID] will be funded
-        for (uint256 id = latestFundedDepositID.add(1); id <= toDepositID; id = id.add(1)) {
+        for (
+            uint256 id = latestFundedDepositID.add(1);
+            id <= toDepositID;
+            id = id.add(1)
+        ) {
             Deposit storage depositEntry = _getDeposit(id);
 
             (isNegative, deficit) = surplusOfDeposit(id);
@@ -286,12 +313,14 @@ contract DInterest is ReentrancyGuard {
         }
 
         // Create funding struct
+        uint256 incomeIndex = moneyMarket.incomeIndex();
+        require(incomeIndex > 0, "DInterest: incomeIndex == 0");
         fundingList.push(
             Funding({
                 fromDepositID: latestFundedDepositID,
                 toDepositID: toDepositID,
                 recordedFundedDepositAmount: totalDepositToFund,
-                recordedMoneyMarketIncomeIndex: moneyMarket.incomeIndex()
+                recordedMoneyMarketIncomeIndex: incomeIndex
             })
         );
 
@@ -332,10 +361,7 @@ contract DInterest is ReentrancyGuard {
         return _blocktime;
     }
 
-    function surplus()
-        public
-        returns (bool isNegative, uint256 surplusAmount)
-    {
+    function surplus() public returns (bool isNegative, uint256 surplusAmount) {
         uint256 totalValue = moneyMarket.totalValue();
         if (totalValue >= totalDeposit) {
             // Locked value more than owed deposits, positive surplus
@@ -353,11 +379,11 @@ contract DInterest is ReentrancyGuard {
         returns (bool isNegative, uint256 surplusAmount)
     {
         Deposit storage depositEntry = _getDeposit(depositID);
-        uint256 currentmoneyMarketIncomeIndex = moneyMarket.incomeIndex();
+        uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
         uint256 currentDepositValue = depositEntry
             .amount
             .sub(depositEntry.initialDeficit)
-            .mul(currentmoneyMarketIncomeIndex)
+            .mul(currentMoneyMarketIncomeIndex)
             .div(depositEntry.initialmoneyMarketIncomeIndex);
         if (currentDepositValue >= depositEntry.amount) {
             // Locked value more than owed deposits, positive surplus
@@ -382,11 +408,19 @@ contract DInterest is ReentrancyGuard {
         return fundingList.length;
     }
 
-    function getDeposit(uint256 depositID) external view returns (Deposit memory) {
+    function getDeposit(uint256 depositID)
+        external
+        view
+        returns (Deposit memory)
+    {
         return deposits[depositID.sub(1)];
     }
 
-    function getFunding(uint256 fundingID) external view returns (Funding memory) {
+    function getFunding(uint256 fundingID)
+        external
+        view
+        returns (Funding memory)
+    {
         return fundingList[fundingID.sub(1)];
     }
 
@@ -394,11 +428,19 @@ contract DInterest is ReentrancyGuard {
         Internal getters
      */
 
-    function _getDeposit(uint256 depositID) internal view returns (Deposit storage) {
+    function _getDeposit(uint256 depositID)
+        internal
+        view
+        returns (Deposit storage)
+    {
         return deposits[depositID.sub(1)];
     }
 
-    function _getFunding(uint256 fundingID) internal view returns (Funding storage) {
+    function _getFunding(uint256 fundingID)
+        internal
+        view
+        returns (Funding storage)
+    {
         return fundingList[fundingID.sub(1)];
     }
 
@@ -450,10 +492,17 @@ contract DInterest is ReentrancyGuard {
 
         // Deduct `feeAmount` from `upfrontInterestAmount`
         upfrontInterestAmount = upfrontInterestAmount.sub(feeAmount);
-        require(upfrontInterestAmount > 0, "DInterest: upfrontInterestAmount == 0");
+        require(
+            upfrontInterestAmount > 0,
+            "DInterest: upfrontInterestAmount == 0"
+        );
 
         // Transfer `amount - upfrontInterestAmount` stablecoin from `msg.sender`
-        stablecoin.safeTransferFrom(msg.sender, address(this), amount.sub(upfrontInterestAmount));
+        stablecoin.safeTransferFrom(
+            msg.sender,
+            address(this),
+            amount.sub(upfrontInterestAmount)
+        );
 
         // Lend `amount - upfrontInterestAmount - feeAmount` stablecoin to money market
         uint256 principalAmount = amount.sub(upfrontInterestAmount).sub(
@@ -478,7 +527,11 @@ contract DInterest is ReentrancyGuard {
         );
     }
 
-    function _withdraw(uint256 depositID, uint256 fundingID, bool early) internal {
+    function _withdraw(
+        uint256 depositID,
+        uint256 fundingID,
+        bool early
+    ) internal {
         Deposit storage depositEntry = _getDeposit(depositID);
 
         // Verify deposit is active and set to inactive
@@ -514,7 +567,9 @@ contract DInterest is ReentrancyGuard {
         uint256 withdrawAmount;
         if (early) {
             // Withdraw the principal of the deposit from money market
-            withdrawAmount = depositEntry.amount.sub(depositEntry.initialDeficit);
+            withdrawAmount = depositEntry.amount.sub(
+                depositEntry.initialDeficit
+            );
         } else {
             // Withdraw `depositEntry.amount` stablecoin from money market
             withdrawAmount = depositEntry.amount;
@@ -528,10 +583,14 @@ contract DInterest is ReentrancyGuard {
                 depositID > f.fromDepositID && depositID <= f.toDepositID,
                 "DInterest: Deposit not funded by fundingID"
             );
-            uint256 currentmoneyMarketIncomeIndex = moneyMarket.incomeIndex();
+            uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
+            require(
+                currentMoneyMarketIncomeIndex > 0,
+                "DInterest: currentMoneyMarketIncomeIndex == 0"
+            );
             uint256 interestAmount = f
                 .recordedFundedDepositAmount
-                .mul(currentmoneyMarketIncomeIndex)
+                .mul(currentMoneyMarketIncomeIndex)
                 .div(f.recordedMoneyMarketIncomeIndex)
                 .sub(f.recordedFundedDepositAmount);
 
@@ -539,10 +598,12 @@ contract DInterest is ReentrancyGuard {
             f.recordedFundedDepositAmount = f.recordedFundedDepositAmount.sub(
                 depositEntry.amount
             );
-            f.recordedMoneyMarketIncomeIndex = currentmoneyMarketIncomeIndex;
+            f.recordedMoneyMarketIncomeIndex = currentMoneyMarketIncomeIndex;
 
             // Send interestAmount (and maybe initialDeficit) stablecoin to funder
-            uint256 transferToFunderAmount = early ? interestAmount.add(depositEntry.initialDeficit) : interestAmount;
+            uint256 transferToFunderAmount = early
+                ? interestAmount.add(depositEntry.initialDeficit)
+                : interestAmount;
             if (transferToFunderAmount > 0) {
                 moneyMarket.withdraw(transferToFunderAmount);
                 stablecoin.safeTransfer(

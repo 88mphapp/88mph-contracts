@@ -61,6 +61,8 @@ contract DInterest is ReentrancyGuard {
         uint256 initialDeficit; // Deficit incurred to the pool at time of deposit
         uint256 initialmoneyMarketIncomeIndex; // Money market's income index at time of deposit
         bool active; // True if not yet withdrawn, false if withdrawn
+        bool finalSurplusIsNegative;
+        uint256 finalSurplusAmount; // Surplus remaining after withdrawal
     }
     Deposit[] internal deposits;
     uint256 public latestFundedDepositID; // the ID of the most recently created deposit that was funded
@@ -280,7 +282,7 @@ contract DInterest is ReentrancyGuard {
             "DInterest: Invalid toDepositID"
         );
 
-        (bool isNegative, uint256 deficit) = surplus();
+        (bool isNegative, uint256 surplus) = surplus();
         require(isNegative, "DInterest: No deficit available");
 
         uint256 totalDeficit = 0;
@@ -293,16 +295,25 @@ contract DInterest is ReentrancyGuard {
             id = id.add(1)
         ) {
             Deposit storage depositEntry = _getDeposit(id);
+            if (depositEntry.active) {
+                // Deposit still active, use current surplus
+                (isNegative, surplus) = surplusOfDeposit(id);
+            } else {
+                // Deposit has been withdrawn, use recorded final surplus
+                (isNegative, surplus) = (depositEntry.finalSurplusIsNegative, depositEntry.finalSurplusAmount);
+            }
 
-            (isNegative, deficit) = surplusOfDeposit(id);
             if (isNegative) {
                 // Add on deficit to total
-                totalDeficit = totalDeficit.add(deficit);
+                totalDeficit = totalDeficit.add(surplus);
             } else {
                 // Has surplus
-                totalSurplus = totalSurplus.add(deficit);
+                totalSurplus = totalSurplus.add(surplus);
             }
-            totalDepositToFund = totalDepositToFund.add(depositEntry.amount);
+
+            if (depositEntry.active) {
+                totalDepositToFund = totalDepositToFund.add(depositEntry.amount);
+            }
         }
         if (totalSurplus >= totalDeficit) {
             // Deposits selected have a surplus as a whole, revert
@@ -486,7 +497,9 @@ contract DInterest is ReentrancyGuard {
                 maturationTimestamp: maturationTimestamp,
                 initialDeficit: upfrontInterestAmount,
                 initialmoneyMarketIncomeIndex: moneyMarket.incomeIndex(),
-                active: true
+                active: true,
+                finalSurplusIsNegative: false,
+                finalSurplusAmount: 0
             })
         );
 
@@ -611,6 +624,14 @@ contract DInterest is ReentrancyGuard {
                     transferToFunderAmount
                 );
             }
+        } else {
+            // Remove deposit from future deficit fundings
+            unfundedUserDepositAmount = unfundedUserDepositAmount.sub(depositEntry.amount);
+
+            // Record remaining surplus
+            (bool isNegative, uint256 surplus) = surplusOfDeposit(depositID);
+            depositEntry.finalSurplusIsNegative = isNegative;
+            depositEntry.finalSurplusAmount = surplus;
         }
 
         // Send `withdrawAmount` stablecoin to `msg.sender`

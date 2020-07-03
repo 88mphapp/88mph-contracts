@@ -1,31 +1,31 @@
-usePlugin("@nomiclabs/buidler-truffle5");
-usePlugin('solidity-coverage');
+usePlugin('@nomiclabs/buidler-truffle5')
+usePlugin('solidity-coverage')
 
-let secret;
+let secret
 
 try {
-  secret = require('./secret.json');
+  secret = require('./secret.json')
 } catch {
   secret = {
-    account: "",
-    mnemonic: ""
-  };
+    account: '',
+    mnemonic: ''
+  }
 }
 
 module.exports = {
   solc: {
-    version: "0.5.17",
+    version: '0.5.17',
     optimizer: {
       enabled: true,
       runs: 200
     }
   },
   paths: {
-    sources: "./contracts",
+    sources: './contracts'
   },
   networks: {
     mainnet: {
-      url: "https://mainnet.infura.io/v3/7a7dd3472294438eab040845d03c215c",
+      url: 'https://mainnet.infura.io/v3/7a7dd3472294438eab040845d03c215c',
       chainId: 1,
       from: secret.account,
       accounts: {
@@ -34,8 +34,8 @@ module.exports = {
     },
     buidlerevm: {
       blockGasLimit: 9950000,
-      gas: "auto",
-      gasPrice: "auto"
+      gas: 'auto',
+      gasPrice: 'auto'
     }
   }
-};
+}

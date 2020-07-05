@@ -97,12 +97,17 @@ contract DInterest is ReentrancyGuard {
     // Events
     event EDeposit(
         address indexed sender,
-        uint256 depositID,
+        uint256 indexed depositID,
         uint256 amount,
         uint256 maturationTimestamp,
         uint256 upfrontInterestAmount
     );
-    event EWithdraw(address indexed sender, uint256 depositID, bool early);
+    event EWithdraw(
+        address indexed sender,
+        uint256 indexed depositID,
+        uint256 indexed fundingID,
+        bool early
+    );
     event EFund(
         address indexed sender,
         uint256 indexed fundingID,
@@ -649,7 +654,7 @@ contract DInterest is ReentrancyGuard {
         stablecoin.safeTransfer(msg.sender, withdrawAmount);
 
         // Emit event
-        emit EWithdraw(msg.sender, depositID, early);
+        emit EWithdraw(msg.sender, depositID, fundingID, early);
     }
 
     function _fund(uint256 totalDeficit) internal {

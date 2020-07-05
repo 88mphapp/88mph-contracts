@@ -300,7 +300,10 @@ contract DInterest is ReentrancyGuard {
                 (isNegative, surplus) = surplusOfDeposit(id);
             } else {
                 // Deposit has been withdrawn, use recorded final surplus
-                (isNegative, surplus) = (depositEntry.finalSurplusIsNegative, depositEntry.finalSurplusAmount);
+                (isNegative, surplus) = (
+                    depositEntry.finalSurplusIsNegative,
+                    depositEntry.finalSurplusAmount
+                );
             }
 
             if (isNegative) {
@@ -312,7 +315,9 @@ contract DInterest is ReentrancyGuard {
             }
 
             if (depositEntry.active) {
-                totalDepositToFund = totalDepositToFund.add(depositEntry.amount);
+                totalDepositToFund = totalDepositToFund.add(
+                    depositEntry.amount
+                );
             }
         }
         if (totalSurplus >= totalDeficit) {
@@ -433,6 +438,10 @@ contract DInterest is ReentrancyGuard {
         returns (Funding memory)
     {
         return fundingList[fundingID.sub(1)];
+    }
+
+    function moneyMarketIncomeIndex() external returns (uint256) {
+        return moneyMarket.incomeIndex();
     }
 
     /**
@@ -626,7 +635,9 @@ contract DInterest is ReentrancyGuard {
             }
         } else {
             // Remove deposit from future deficit fundings
-            unfundedUserDepositAmount = unfundedUserDepositAmount.sub(depositEntry.amount);
+            unfundedUserDepositAmount = unfundedUserDepositAmount.sub(
+                depositEntry.amount
+            );
 
             // Record remaining surplus
             (bool isNegative, uint256 surplus) = surplusOfDeposit(depositID);

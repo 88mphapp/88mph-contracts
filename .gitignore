@@ -4,3 +4,7 @@ artifacts
 
 node_modules
 secret.json
+
+#solidity-coverage files
+coverage
+coverage.json

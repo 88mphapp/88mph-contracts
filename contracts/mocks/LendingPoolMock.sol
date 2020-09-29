@@ -1,4 +1,4 @@
-pragma solidity 0.6.5;
+pragma solidity 0.5.17;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./ATokenMock.sol";

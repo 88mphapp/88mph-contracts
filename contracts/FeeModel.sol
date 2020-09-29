@@ -1,24 +1,23 @@
-pragma solidity 0.6.5;
+pragma solidity 0.5.17;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/ownership/Ownable.sol";
+
 
 contract FeeModel is Ownable {
     using SafeMath for uint256;
 
-    uint256 internal constant PRECISION = 10**18;
-
     address payable public beneficiary = 0x332D87209f7c8296389C307eAe170c2440830A47;
 
     function getFee(uint256 _txAmount)
-        public
+        external
         pure
         returns (uint256 _feeAmount)
     {
-        _feeAmount = _txAmount.div(10);
+        _feeAmount = _txAmount.div(10); // Precision is decreased by 1 decimal place
     }
 
-    function setBeneficiary(address payable _addr) public onlyOwner {
+    function setBeneficiary(address payable _addr) external onlyOwner {
         require(_addr != address(0), "0 address");
         beneficiary = _addr;
     }

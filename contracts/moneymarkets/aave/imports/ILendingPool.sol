@@ -1,9 +1,12 @@
-pragma solidity 0.6.5;
+pragma solidity 0.5.17;
+
 
 // Aave lending pool interface
+// Documentation: https://docs.aave.com/developers/developing-on-aave/the-protocol/lendingpool
 interface ILendingPool {
     function deposit(address _reserve, uint256 _amount, uint16 _referralCode)
         external;
+
     function getReserveData(address _reserve)
         external
         view

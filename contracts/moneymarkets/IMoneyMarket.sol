@@ -8,6 +8,10 @@ interface IMoneyMarket {
 
     function claimRewards() external; // Claims farmed tokens (e.g. COMP, CRV) and sends it to the rewards pool
 
+    function supplyRatePerSecondAfterUpdate(uint256 blocktime)
+        external
+        returns (uint256); // The supply interest rate per second after calling updateSupplyRate(), scaled by 10^18
+
     function totalValue() external returns (uint256); // The total value locked in the money market, in terms of the underlying stablecoin
 
     function incomeIndex() external returns (uint256); // Used for calculating the interest generated (e.g. cDai's price for the Compound market)

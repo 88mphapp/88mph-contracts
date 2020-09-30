@@ -88,4 +88,15 @@ contract AaveMarket is IMoneyMarket, Ownable {
         );
         return lendingPoolCore.getReserveNormalizedIncome(address(stablecoin));
     }
+
+    function _supplyRatePerSecond() internal view returns (uint256) {
+        ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
+
+        // The annual supply interest rate, scaled by 10^27
+        (, , , , uint256 liquidityRate, , , , , , , , ) = lendingPool
+            .getReserveData(address(stablecoin));
+
+        // supplyRatePerSecond = liquidityRate / 10^9 / YEAR = liquidityRate / (YEAR * 10^9)
+        return liquidityRate.div(YEAR.mul(10**9));
+    }
 }

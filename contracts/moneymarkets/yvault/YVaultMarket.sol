@@ -15,11 +15,6 @@ contract YVaultMarket is IMoneyMarket, Ownable {
     using SafeERC20 for ERC20;
     using Address for address;
 
-    uint256 internal constant SUPPLY_RATE_UPDATE_INTERVAL = 12 hours;
-
-    uint256 public lastSupplyRateUpdateTimestamp;
-    uint256 public lastSupplyRate;
-
     Vault public vault;
     ERC20 public stablecoin;
 
@@ -36,8 +31,6 @@ contract YVaultMarket is IMoneyMarket, Ownable {
 
         vault = Vault(_vault);
         stablecoin = ERC20(_stablecoin);
-
-        _updateSupplyRate();
     }
 
     function deposit(uint256 amount) external onlyOwner {
@@ -53,7 +46,11 @@ contract YVaultMarket is IMoneyMarket, Ownable {
         vault.deposit(amount);
     }
 
-    function withdraw(uint256 amountInUnderlying) external onlyOwner {
+    function withdraw(uint256 amountInUnderlying)
+        external
+        onlyOwner
+        returns (uint256 actualAmountWithdrawn)
+    {
         require(
             amountInUnderlying > 0,
             "YVaultMarket: amountInUnderlying is 0"
@@ -64,26 +61,12 @@ contract YVaultMarket is IMoneyMarket, Ownable {
         uint256 amountInShares = amountInUnderlying.decdiv(sharePrice);
         vault.withdraw(amountInShares);
 
-        // Transfer `amountInUnderlying` stablecoin to `msg.sender`
-        stablecoin.safeTransfer(msg.sender, amountInUnderlying);
+        // Transfer stablecoin to `msg.sender`
+        actualAmountWithdrawn = stablecoin.balanceOf(address(this));
+        stablecoin.safeTransfer(msg.sender, actualAmountWithdrawn);
     }
 
-    function updateSupplyRate() external {
-        _updateSupplyRate();
-    }
-
-    function supplyRatePerSecond(
-        uint256 /*blocktime*/
-    ) external view returns (uint256) {
-        return lastSupplyRate;
-    }
-
-    function supplyRatePerSecondAfterUpdate(
-        uint256 /*blocktime*/
-    ) external returns (uint256) {
-        _updateSupplyRate();
-        return lastSupplyRate;
-    }
+    function claimRewards() external {}
 
     function totalValue() external returns (uint256) {
         uint256 sharePrice = vault.getPricePerFullShare();
@@ -92,26 +75,6 @@ contract YVaultMarket is IMoneyMarket, Ownable {
     }
 
     function incomeIndex() external returns (uint256) {
-        return _incomeIndex();
-    }
-
-    function _updateSupplyRate() internal {
-        uint256 secondsSinceLastUpdate = now.sub(lastSupplyRateUpdateTimestamp);
-        if (secondsSinceLastUpdate < SUPPLY_RATE_UPDATE_INTERVAL) {
-            return;
-        }
-        uint256 _lastSupplyRate = lastSupplyRate;
-        uint256 incomeIndexIncreasePercentage = _incomeIndex()
-            .sub(_lastSupplyRate)
-            .decdiv(_lastSupplyRate);
-
-        lastSupplyRate = incomeIndexIncreasePercentage.div(
-            secondsSinceLastUpdate
-        );
-        lastSupplyRateUpdateTimestamp = now;
-    }
-
-    function _incomeIndex() internal view returns (uint256) {
         return vault.getPricePerFullShare();
     }
 }

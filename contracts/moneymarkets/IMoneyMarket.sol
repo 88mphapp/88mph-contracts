@@ -4,13 +4,9 @@ pragma solidity 0.5.17;
 interface IMoneyMarket {
     function deposit(uint256 amount) external;
 
-    function withdraw(uint256 amountInUnderlying) external;
+    function withdraw(uint256 amountInUnderlying) external returns (uint256 actualAmountWithdrawn);
 
     function claimRewards() external; // Claims farmed tokens (e.g. COMP, CRV) and sends it to the rewards pool
-
-    function supplyRatePerSecondAfterUpdate(uint256 blocktime)
-        external
-        returns (uint256); // The supply interest rate per second after calling updateSupplyRate(), scaled by 10^18
 
     function totalValue() external returns (uint256); // The total value locked in the money market, in terms of the underlying stablecoin
 

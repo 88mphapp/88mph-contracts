@@ -24,21 +24,21 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
     constructor(
         address _cToken,
         address _comptroller,
-        address _feeModel,
+        address _rewards,
         address _stablecoin
     ) public {
         // Verify input addresses
         require(
             _cToken != address(0) &&
                 _comptroller != address(0) &&
-                _feeModel != address(0) &&
+                _rewards != address(0) &&
                 _stablecoin != address(0),
             "CompoundERC20Market: An input address is 0"
         );
         require(
             _cToken.isContract() &&
                 _comptroller.isContract() &&
-                _feeModel.isContract() &&
+                _rewards.isContract() &&
                 _stablecoin.isContract(),
             "CompoundERC20Market: An input address is not a contract"
         );
@@ -63,7 +63,11 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
         );
     }
 
-    function withdraw(uint256 amountInUnderlying) external onlyOwner {
+    function withdraw(uint256 amountInUnderlying)
+        external
+        onlyOwner
+        returns (uint256 actualAmountWithdrawn)
+    {
         require(
             amountInUnderlying > 0,
             "CompoundERC20Market: amountInUnderlying is 0"
@@ -77,6 +81,8 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
 
         // Transfer `amountInUnderlying` stablecoin to `msg.sender`
         stablecoin.safeTransfer(msg.sender, amountInUnderlying);
+
+        return amountInUnderlying;
     }
 
     function claimRewards() external {

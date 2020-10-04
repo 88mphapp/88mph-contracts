@@ -21,7 +21,7 @@ const UIRMultiplier = BigNumber(0.75 * 1e18).integerValue().toFixed() // Minimum
 const MinDepositPeriod = 90 * 24 * 60 * 60 // 90 days in seconds
 const MaxDepositAmount = BigNumber(1000 * PRECISION).toFixed() // 1000 stablecoins
 const YEAR_IN_SEC = 31556952 // Number of seconds in a year
-const epsilon = 1e-6
+const epsilon = 1e-4
 const INF = BigNumber(2).pow(256).minus(1).toFixed()
 
 // Utilities
@@ -45,13 +45,16 @@ async function latestBlockTimestamp () {
 }
 
 function calcFeeAmount (interestAmount) {
-  return interestAmount * 0.1
+  return interestAmount.times(0.1)
 }
 
-function calcUpfrontInterestAmount (depositAmount, interestRatePerSecond, depositPeriodInSeconds) {
-  const ONE = BigNumber(1)
-  const interestBeforeFee = BigNumber(depositAmount).times(ONE.minus(ONE.div(ONE.plus(BigNumber(interestRatePerSecond).times(depositPeriodInSeconds).div(PRECISION).times(UIRMultiplier).div(PRECISION)))))
-  return interestBeforeFee.minus(calcFeeAmount(interestBeforeFee))
+function applyFee (interestAmount) {
+  return interestAmount.minus(calcFeeAmount(interestAmount))
+}
+
+function calcInterestAmount (depositAmount, interestRatePerSecond, depositPeriodInSeconds, applyFee) {
+  const interestBeforeFee = BigNumber(depositAmount).times(depositPeriodInSeconds).times(interestRatePerSecond).div(PRECISION).times(UIRMultiplier).div(PRECISION)
+  return applyFee ? interestBeforeFee.minus(calcFeeAmount(interestBeforeFee)) : interestBeforeFee
 }
 
 // Converts a JS number into a string that doesn't use scientific notation
@@ -85,6 +88,7 @@ contract('DInterest: Compound', accounts => {
   const INIT_EXRATE = 2e26 // 1 cToken = 0.02 stablecoin
   const INIT_INTEREST_RATE = 0.1 // 10% APY
   const INIT_INTEREST_RATE_PER_BLOCK = 45290900000
+  const INIT_INTEREST_RATE_PER_SECOND = INIT_INTEREST_RATE_PER_BLOCK / 15
 
   beforeEach(async function () {
     // Initialize mock stablecoin and cToken
@@ -128,18 +132,20 @@ contract('DInterest: Compound', accounts => {
     const acc0BeforeBalance = BigNumber(await stablecoin.balanceOf(acc0))
     await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
 
-    // Verify upfront interest amount
+    // Calculate interest amount
     const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0))
-    const blocktime = BigNumber(await dInterestPool.blocktime()).div(PRECISION)
-    const interestRatePerSecond = BigNumber(INIT_INTEREST_RATE_PER_BLOCK).div(blocktime)
-    const upfrontInterestExpected = calcUpfrontInterestAmount(depositAmount, interestRatePerSecond, num2str(YEAR_IN_SEC)).integerValue()
-    const upfrontInterestActual = acc0CurrentBalance.minus(acc0BeforeBalance).plus(depositAmount)
-    // console.log(upfrontInterestActual.div(depositAmount).toFixed())
-    assert(epsilonEq(upfrontInterestExpected, upfrontInterestActual), 'acc0 didn\'t receive correct amount of upfront interest')
+    const interestExpected = calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, num2str(YEAR_IN_SEC), false).div(PRECISION)
+
+    // Verify stablecoin transfer
+    assert.equal(acc0BeforeBalance.minus(acc0CurrentBalance).toNumber(), depositAmount, 'stablecoin not transferred out of acc0')
 
     // Verify totalDeposit
     const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit())
-    assert(totalDeposit0.eq(depositAmount), 'totalDeposit not updated after acc0 deposited')
+    assert.equal(totalDeposit0.toNumber(), depositAmount, 'totalDeposit not updated after acc0 deposited')
+
+    // Verify totalInterestOwed
+    const totalInterestOwed = BigNumber(await dInterestPool.totalInterestOwed()).div(PRECISION)
+    assert(epsilonEq(totalInterestOwed, interestExpected), 'totalInterestOwed not updated after acc0 deposited')
   })
 
   it('withdraw()', async function () {
@@ -177,7 +183,10 @@ contract('DInterest: Compound', accounts => {
 
     // Verify withdrawn amount
     const acc0CurrentBalance = await stablecoin.balanceOf(acc0)
-    assert.equal(acc0CurrentBalance - acc0BeforeBalance, depositAmount, 'acc0 didn\'t withdraw correct amount of stablecoin')
+    const acc0WithdrawnAmountExpected = applyFee(BigNumber((await dInterestPool.getDeposit(1)).interestOwed)).plus(depositAmount)
+    const acc0WithdrawnAmountActual = BigNumber(acc0CurrentBalance).minus(acc0BeforeBalance)
+    assert(epsilonEq(acc0WithdrawnAmountActual, acc0WithdrawnAmountExpected), 'acc0 didn\'t withdraw correct amount of stablecoin')
+
     // Verify totalDeposit
     const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit())
     assert(totalDeposit0.eq(depositAmount), 'totalDeposit not updated after acc0 withdrawed')
@@ -195,7 +204,10 @@ contract('DInterest: Compound', accounts => {
 
     // Verify withdrawn amount
     const acc1CurrentBalance = await stablecoin.balanceOf(acc1)
-    assert.equal(acc1CurrentBalance - acc1BeforeBalance, depositAmount, 'acc1 didn\'t withdraw correct amount of stablecoin')
+    const acc1WithdrawnAmountExpected = applyFee(BigNumber((await dInterestPool.getDeposit(2)).interestOwed)).plus(depositAmount)
+    const acc1WithdrawnAmountActual = BigNumber(acc1CurrentBalance).minus(acc1BeforeBalance)
+    assert(epsilonEq(acc1WithdrawnAmountActual, acc1WithdrawnAmountExpected), 'acc1 didn\'t withdraw correct amount of stablecoin')
+
     // Verify totalDeposit
     const totalDeposit1 = BigNumber(await dInterestPool.totalDeposit())
     assert(totalDeposit1.eq(0), 'totalDeposit not updated after acc1 withdrawed')
@@ -214,9 +226,9 @@ contract('DInterest: Compound', accounts => {
     await dInterestPool.earlyWithdraw(1, 0, { from: acc0 })
 
     // Verify withdrawn amount
-    const initialDeficit = BigNumber((await dInterestPool.getDeposit(1)).initialDeficit)
     const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0))
-    assert.equal(acc0CurrentBalance.minus(acc0BeforeBalance).toNumber(), BigNumber(depositAmount).minus(initialDeficit).toNumber(), 'acc0 didn\'t withdraw correct amount of stablecoin')
+    assert.equal(acc0CurrentBalance.minus(acc0BeforeBalance).toNumber(), depositAmount, 'acc0 didn\'t withdraw correct amount of stablecoin')
+
     // Verify totalDeposit
     const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit())
     assert(totalDeposit0.eq(0), 'totalDeposit not updated after acc0 withdrawed')
@@ -372,6 +384,8 @@ contract('DInterest: Aave', accounts => {
   let dInterestPool
   let market
   let feeModel
+  let depositNFT
+  let fundingNFT
 
   // Constants
   const INIT_INTEREST_RATE = 0.1 // 10% APY
@@ -423,18 +437,20 @@ contract('DInterest: Aave', accounts => {
     const acc0BeforeBalance = BigNumber(await stablecoin.balanceOf(acc0))
     await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
 
-    // Verify upfront interest amount
+    // Calculate interest amount
     const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0))
-    const interestRatePerSecond = BigNumber(INIT_INTEREST_RATE).times(1e18).div(YEAR_IN_SEC)
-    const upfrontInterestExpected = calcUpfrontInterestAmount(depositAmount, interestRatePerSecond, num2str(YEAR_IN_SEC)).integerValue()
-    const upfrontInterestActual = acc0CurrentBalance.minus(acc0BeforeBalance).plus(depositAmount)
-    // console.log(upfrontInterestExpected.div(depositAmount).toFixed())
-    // console.log(upfrontInterestActual.div(depositAmount).toFixed())
-    assert(epsilonEq(upfrontInterestExpected, upfrontInterestActual), 'acc0 didn\'t receive correct amount of upfront interest')
+    const interestExpected = calcInterestAmount(depositAmount, BigNumber(INIT_INTEREST_RATE).times(PRECISION).div(YEAR_IN_SEC), num2str(YEAR_IN_SEC), false).div(PRECISION)
+
+    // Verify stablecoin transfer
+    assert.equal(acc0BeforeBalance.minus(acc0CurrentBalance).toNumber(), depositAmount, 'stablecoin not transferred out of acc0')
 
     // Verify totalDeposit
     const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit())
-    assert(totalDeposit0.eq(depositAmount), 'totalDeposit not updated after acc0 deposited')
+    assert.equal(totalDeposit0.toNumber(), depositAmount, 'totalDeposit not updated after acc0 deposited')
+
+    // Verify totalInterestOwed
+    const totalInterestOwed = BigNumber(await dInterestPool.totalInterestOwed()).div(PRECISION)
+    assert(epsilonEq(totalInterestOwed, interestExpected), 'totalInterestOwed not updated after acc0 deposited')
   })
 
   it('withdraw()', async function () {
@@ -447,7 +463,6 @@ contract('DInterest: Aave', accounts => {
 
     // Wait 6 months
     await timeTravel(0.5 * YEAR_IN_SEC)
-    await aToken.mintInterest(num2str(0.5 * YEAR_IN_SEC))
 
     // acc1 deposits stablecoin into the DInterest pool for 1 year
     await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })
@@ -470,7 +485,10 @@ contract('DInterest: Aave', accounts => {
 
     // Verify withdrawn amount
     const acc0CurrentBalance = await stablecoin.balanceOf(acc0)
-    assert.equal(acc0CurrentBalance - acc0BeforeBalance, depositAmount, 'acc0 didn\'t withdraw correct amount of stablecoin')
+    const acc0WithdrawnAmountExpected = applyFee(BigNumber((await dInterestPool.getDeposit(1)).interestOwed)).plus(depositAmount)
+    const acc0WithdrawnAmountActual = BigNumber(acc0CurrentBalance).minus(acc0BeforeBalance)
+    assert(epsilonEq(acc0WithdrawnAmountActual, acc0WithdrawnAmountExpected), 'acc0 didn\'t withdraw correct amount of stablecoin')
+
     // Verify totalDeposit
     const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit())
     assert(totalDeposit0.eq(depositAmount), 'totalDeposit not updated after acc0 withdrawed')
@@ -485,7 +503,10 @@ contract('DInterest: Aave', accounts => {
 
     // Verify withdrawn amount
     const acc1CurrentBalance = await stablecoin.balanceOf(acc1)
-    assert.equal(acc1CurrentBalance - acc1BeforeBalance, depositAmount, 'acc1 didn\'t withdraw correct amount of stablecoin')
+    const acc1WithdrawnAmountExpected = applyFee(BigNumber((await dInterestPool.getDeposit(2)).interestOwed)).plus(depositAmount)
+    const acc1WithdrawnAmountActual = BigNumber(acc1CurrentBalance).minus(acc1BeforeBalance)
+    assert(epsilonEq(acc1WithdrawnAmountActual, acc1WithdrawnAmountExpected), 'acc1 didn\'t withdraw correct amount of stablecoin')
+
     // Verify totalDeposit
     const totalDeposit1 = BigNumber(await dInterestPool.totalDeposit())
     assert(totalDeposit1.eq(0), 'totalDeposit not updated after acc1 withdrawed')
@@ -504,9 +525,9 @@ contract('DInterest: Aave', accounts => {
     await dInterestPool.earlyWithdraw(1, 0, { from: acc0 })
 
     // Verify withdrawn amount
-    const initialDeficit = BigNumber((await dInterestPool.getDeposit(1)).initialDeficit)
     const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0))
-    assert.equal(acc0CurrentBalance.minus(acc0BeforeBalance).toNumber(), BigNumber(depositAmount).minus(initialDeficit).toNumber(), 'acc0 didn\'t withdraw correct amount of stablecoin')
+    assert.equal(acc0CurrentBalance.minus(acc0BeforeBalance).toNumber(), depositAmount, 'acc0 didn\'t withdraw correct amount of stablecoin')
+
     // Verify totalDeposit
     const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit())
     assert(totalDeposit0.eq(0), 'totalDeposit not updated after acc0 withdrawed')

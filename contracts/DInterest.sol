@@ -6,16 +6,18 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "./libs/DecMath.sol";
 import "./moneymarkets/IMoneyMarket.sol";
-import "./FeeModel.sol";
+import "./models/fee/IFeeModel.sol";
+import "./models/interest/IInterestModel.sol";
 import "./NFT.sol";
 
 // DeLorean Interest -- It's coming back from the future!
 // EL PSY CONGROO
 // Author: Zefram Lou
 // Contact: zefram@baconlabs.dev
-contract DInterest is ReentrancyGuard {
+contract DInterest is ReentrancyGuard, Ownable {
     using SafeMath for uint256;
     using DecMath for uint256;
     using SafeERC20 for ERC20;
@@ -80,8 +82,9 @@ contract DInterest is ReentrancyGuard {
     Funding[] internal fundingList;
 
     // Params
-    uint256 public UIRMultiplier; // Upfront interest rate multiplier
     uint256 public MinDepositPeriod; // Minimum deposit period, in seconds
+    uint256 public MaxDepositPeriod; // Maximum deposit period, in seconds
+    uint256 public MinDepositAmount; // Minimum deposit amount for each deposit, in stablecoins
     uint256 public MaxDepositAmount; // Maximum deposit amount for each deposit, in stablecoins
 
     // Instance variables
@@ -91,7 +94,8 @@ contract DInterest is ReentrancyGuard {
     // External smart contracts
     IMoneyMarket public moneyMarket;
     ERC20 public stablecoin;
-    FeeModel public feeModel;
+    IFeeModel public feeModel;
+    IInterestModel public interestModel;
     NFT public depositNFT;
     NFT public fundingNFT;
 
@@ -114,14 +118,26 @@ contract DInterest is ReentrancyGuard {
         uint256 indexed fundingID,
         uint256 deficitAmount
     );
+    event ESetParamAddress(
+        address indexed sender,
+        string indexed paramName,
+        address newValue
+    );
+    event ESetParamUint(
+        address indexed sender,
+        string indexed paramName,
+        uint256 newValue
+    );
 
     constructor(
-        uint256 _UIRMultiplier, // Upfront interest rate multiplier
         uint256 _MinDepositPeriod, // Minimum deposit period, in seconds
+        uint256 _MaxDepositPeriod, // Maximum deposit period, in seconds
+        uint256 _MinDepositAmount, // Minimum deposit amount for each deposit, in stablecoins
         uint256 _MaxDepositAmount, // Maximum deposit amount for each deposit, in stablecoins
         address _moneyMarket, // Address of IMoneyMarket that's used for generating interest (owner must be set to this DInterest contract)
         address _stablecoin, // Address of the stablecoin used to store funds
         address _feeModel, // Address of the FeeModel contract that determines how fees are charged
+        address _interestModel, // Address of the InterestModel contract that determines how much interest to offer
         address _depositNFT, // Address of the NFT representing ownership of deposits (owner must be set to this DInterest contract)
         address _fundingNFT // Address of the NFT representing ownership of fundings (owner must be set to this DInterest contract)
     ) public {
@@ -130,6 +146,7 @@ contract DInterest is ReentrancyGuard {
             _moneyMarket != address(0) &&
                 _stablecoin != address(0) &&
                 _feeModel != address(0) &&
+                _interestModel != address(0) &&
                 _depositNFT != address(0) &&
                 _fundingNFT != address(0),
             "DInterest: An input address is 0"
@@ -138,6 +155,7 @@ contract DInterest is ReentrancyGuard {
             _moneyMarket.isContract() &&
                 _stablecoin.isContract() &&
                 _feeModel.isContract() &&
+                _interestModel.isContract() &&
                 _depositNFT.isContract() &&
                 _fundingNFT.isContract(),
             "DInterest: An input address is not a contract"
@@ -145,7 +163,8 @@ contract DInterest is ReentrancyGuard {
 
         moneyMarket = IMoneyMarket(_moneyMarket);
         stablecoin = ERC20(_stablecoin);
-        feeModel = FeeModel(_feeModel);
+        feeModel = IFeeModel(_feeModel);
+        interestModel = IInterestModel(_interestModel);
         depositNFT = NFT(_depositNFT);
         fundingNFT = NFT(_fundingNFT);
 
@@ -157,14 +176,21 @@ contract DInterest is ReentrancyGuard {
 
         // Verify input uint256 parameters
         require(
-            _UIRMultiplier > 0 &&
-                _MinDepositPeriod > 0 &&
-                _MaxDepositAmount > 0,
+            _MaxDepositPeriod > 0 && _MaxDepositAmount > 0,
             "DInterest: An input uint256 is 0"
         );
+        require(
+            _MinDepositPeriod <= _MaxDepositPeriod,
+            "DInterest: Invalid DepositPeriod range"
+        );
+        require(
+            _MinDepositAmount <= _MaxDepositAmount,
+            "DInterest: Invalid DepositAmount range"
+        );
 
-        UIRMultiplier = _UIRMultiplier;
         MinDepositPeriod = _MinDepositPeriod;
+        MaxDepositPeriod = _MaxDepositPeriod;
+        MinDepositAmount = _MinDepositAmount;
         MaxDepositAmount = _MaxDepositAmount;
         totalDeposit = 0;
 
@@ -359,18 +385,23 @@ contract DInterest is ReentrancyGuard {
         Public getters
      */
 
-    function calculateInterestRate(uint256 depositPeriodInSeconds)
-        public
-        view
-        returns (uint256 upfrontInterestRate)
-    {
+    function calculateInterestAmount(
+        uint256 depositAmount,
+        uint256 depositPeriodInSeconds
+    ) public returns (uint256 interestAmount) {
         uint256 moneyMarketInterestRatePerSecond = moneyMarket
             .supplyRatePerSecond(_blocktime);
 
-        // upfrontInterestRate = moneyMarketInterestRatePerSecond * depositPeriodInSeconds * UIRMultiplier
-        upfrontInterestRate = moneyMarketInterestRatePerSecond
-            .mul(depositPeriodInSeconds)
-            .decmul(UIRMultiplier);
+        (bool surplusIsNegative, uint256 surplusAmount) = surplus();
+
+        return
+            interestModel.calculateInterestAmount(
+                depositAmount,
+                depositPeriodInSeconds,
+                moneyMarketInterestRatePerSecond,
+                surplusIsNegative,
+                surplusAmount
+            );
     }
 
     function blocktime() external view returns (uint256) {
@@ -446,6 +477,53 @@ contract DInterest is ReentrancyGuard {
     }
 
     /**
+        Param setters
+     */
+    function setFeeModel(address newValue) external onlyOwner {
+        require(newValue != address(0), "DInterest: 0 address");
+        require(newValue.isContract(), "DInterest: not contract");
+        feeModel = IFeeModel(newValue);
+        emit ESetParamAddress(msg.sender, "feeModel", newValue);
+    }
+
+    function setInterestModel(address newValue) external onlyOwner {
+        require(newValue != address(0), "DInterest: 0 address");
+        require(newValue.isContract(), "DInterest: not contract");
+        interestModel = IInterestModel(newValue);
+        emit ESetParamAddress(msg.sender, "interestModel", newValue);
+    }
+
+    function setMinDepositPeriod(uint256 newValue) external onlyOwner {
+        require(newValue <= MaxDepositPeriod, "DInterest: invalid value");
+        MinDepositPeriod = newValue;
+        emit ESetParamUint(msg.sender, "MinDepositPeriod", newValue);
+    }
+
+    function setMaxDepositPeriod(uint256 newValue) external onlyOwner {
+        require(
+            newValue >= MinDepositPeriod && newValue > 0,
+            "DInterest: invalid value"
+        );
+        MaxDepositPeriod = newValue;
+        emit ESetParamUint(msg.sender, "MaxDepositPeriod", newValue);
+    }
+
+    function setMinDepositAmount(uint256 newValue) external onlyOwner {
+        require(newValue <= MaxDepositAmount, "DInterest: invalid value");
+        MinDepositAmount = newValue;
+        emit ESetParamUint(msg.sender, "MinDepositAmount", newValue);
+    }
+
+    function setMaxDepositAmount(uint256 newValue) external onlyOwner {
+        require(
+            newValue >= MinDepositAmount && newValue > 0,
+            "DInterest: invalid value"
+        );
+        MaxDepositAmount = newValue;
+        emit ESetParamUint(msg.sender, "MaxDepositAmount", newValue);
+    }
+
+    /**
         Internal getters
      */
 
@@ -475,15 +553,16 @@ contract DInterest is ReentrancyGuard {
 
         // Ensure deposit amount is not more than maximum
         require(
-            amount <= MaxDepositAmount,
-            "DInterest: Deposit amount exceeds max"
+            amount >= MinDepositAmount && amount <= MaxDepositAmount,
+            "DInterest: Deposit amount out of range"
         );
 
         // Ensure deposit period is at least MinDepositPeriod
         uint256 depositPeriod = maturationTimestamp.sub(now);
         require(
-            depositPeriod >= MinDepositPeriod,
-            "DInterest: Deposit period too short"
+            depositPeriod >= MinDepositPeriod &&
+                depositPeriod <= MaxDepositPeriod,
+            "DInterest: Deposit period out of range"
         );
 
         // Update totalDeposit
@@ -494,8 +573,7 @@ contract DInterest is ReentrancyGuard {
         unfundedUserDepositAmount = unfundedUserDepositAmount.add(amount);
 
         // Calculate interest
-        uint256 interestRate = calculateInterestRate(depositPeriod);
-        uint256 interestAmount = amount.decmul(interestRate);
+        uint256 interestAmount = calculateInterestAmount(amount, depositPeriod);
         require(interestAmount > 0, "DInterest: interestAmount == 0");
 
         // Update totalInterestOwed

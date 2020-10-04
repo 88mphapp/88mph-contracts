@@ -4,6 +4,7 @@ const BigNumber = require('bignumber.js')
 // Contract artifacts
 const DInterest = artifacts.require('DInterest')
 const FeeModel = artifacts.require('FeeModel')
+const LinearInterestModel = artifacts.require('LinearInterestModel')
 const AaveMarket = artifacts.require('AaveMarket')
 const NFT = artifacts.require('NFT')
 const ERC20Mock = artifacts.require('ERC20Mock')
@@ -14,10 +15,12 @@ const LendingPoolAddressesProviderMock = artifacts.require('LendingPoolAddresses
 
 // Constants
 const PRECISION = 1e18
-const UIRMultiplier = BigNumber(0.75 * 1e18).integerValue().toFixed() // Minimum safe avg interest rate multiplier
-const MinDepositPeriod = 90 * 24 * 60 * 60 // 90 days in seconds
-const MaxDepositAmount = BigNumber(1000 * PRECISION).toFixed() // 1000 stablecoins
 const YEAR_IN_SEC = 31556952 // Number of seconds in a year
+const IRMultiplier = BigNumber(0.75 * 1e18).integerValue().toFixed() // Minimum safe avg interest rate multiplier
+const MinDepositPeriod = 90 * 24 * 60 * 60 // 90 days in seconds
+const MaxDepositPeriod = 3 * YEAR_IN_SEC // 3 years in seconds
+const MinDepositAmount = BigNumber(0 * PRECISION).toFixed() // 1000 stablecoins
+const MaxDepositAmount = BigNumber(1000 * PRECISION).toFixed() // 1000 stablecoins
 const epsilon = 1e-4
 const INF = BigNumber(2).pow(256).minus(1).toFixed()
 
@@ -50,7 +53,7 @@ function applyFee (interestAmount) {
 }
 
 function calcInterestAmount (depositAmount, interestRatePerSecond, depositPeriodInSeconds, applyFee) {
-  const interestBeforeFee = BigNumber(depositAmount).times(depositPeriodInSeconds).times(interestRatePerSecond).div(PRECISION).times(UIRMultiplier).div(PRECISION)
+  const interestBeforeFee = BigNumber(depositAmount).times(depositPeriodInSeconds).times(interestRatePerSecond).div(PRECISION).times(IRMultiplier).div(PRECISION)
   return applyFee ? interestBeforeFee.minus(calcFeeAmount(interestBeforeFee)) : interestBeforeFee
 }
 
@@ -79,6 +82,7 @@ contract('DInterest: Aave', accounts => {
   let dInterestPool
   let market
   let feeModel
+  let interestModel
   let depositNFT
   let fundingNFT
 
@@ -113,7 +117,8 @@ contract('DInterest: Aave', accounts => {
 
     // Initialize the DInterest pool
     feeModel = await FeeModel.new()
-    dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, MaxDepositAmount, market.address, stablecoin.address, feeModel.address, depositNFT.address, fundingNFT.address)
+    interestModel = await LinearInterestModel.new(IRMultiplier)
+    dInterestPool = await DInterest.new(MinDepositPeriod, MaxDepositPeriod, MinDepositAmount, MaxDepositAmount, market.address, stablecoin.address, feeModel.address, interestModel.address, depositNFT.address, fundingNFT.address)
 
     // Transfer the ownership of the money market to the DInterest pool
     await market.transferOwnership(dInterestPool.address)

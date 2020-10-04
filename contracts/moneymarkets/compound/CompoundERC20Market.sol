@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../IMoneyMarket.sol";
-import "../../FeeModel.sol";
+import "../../models/fee/IFeeModel.sol";
 import "../../libs/DecMath.sol";
 import "./imports/ICERC20.sol";
 import "./imports/IComptroller.sol";
@@ -20,7 +20,7 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
 
     ICERC20 public cToken;
     IComptroller public comptroller;
-    FeeModel public feeModel;
+    IFeeModel public feeModel;
     ERC20 public stablecoin;
 
     constructor(address _cToken, address _comptroller, address _feeModel, address _stablecoin) public {
@@ -36,7 +36,7 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
 
         cToken = ICERC20(_cToken);
         comptroller = IComptroller(_comptroller);
-        feeModel = FeeModel(_feeModel);
+        feeModel = IFeeModel(_feeModel);
         stablecoin = ERC20(_stablecoin);
     }
 

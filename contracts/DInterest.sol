@@ -58,8 +58,8 @@ contract DInterest is ReentrancyGuard {
     struct Deposit {
         uint256 amount; // Amount of stablecoin deposited
         uint256 maturationTimestamp; // Unix timestamp after which the deposit may be withdrawn, in seconds
-        uint256 initialDeficit; // Deficit incurred to the pool at time of deposit
-        uint256 initialmoneyMarketIncomeIndex; // Money market's income index at time of deposit
+        uint256 interestOwed; // Deficit incurred to the pool at time of deposit
+        uint256 initialMoneyMarketIncomeIndex; // Money market's income index at time of deposit
         bool active; // True if not yet withdrawn, false if withdrawn
         bool finalSurplusIsNegative;
         uint256 finalSurplusAmount; // Surplus remaining after withdrawal
@@ -86,6 +86,7 @@ contract DInterest is ReentrancyGuard {
 
     // Instance variables
     uint256 public totalDeposit;
+    uint256 public totalInterestOwed;
 
     // External smart contracts
     IMoneyMarket public moneyMarket;
@@ -358,7 +359,7 @@ contract DInterest is ReentrancyGuard {
         Public getters
      */
 
-    function calculateUpfrontInterestRate(uint256 depositPeriodInSeconds)
+    function calculateInterestRate(uint256 depositPeriodInSeconds)
         public
         view
         returns (uint256 upfrontInterestRate)
@@ -366,16 +367,10 @@ contract DInterest is ReentrancyGuard {
         uint256 moneyMarketInterestRatePerSecond = moneyMarket
             .supplyRatePerSecond(_blocktime);
 
-        // upfrontInterestRate = (1 - 1 / (1 + moneyMarketInterestRatePerSecond * depositPeriodInSeconds * UIRMultiplier))
-        upfrontInterestRate = ONE.sub(
-            ONE.decdiv(
-                ONE.add(
-                    moneyMarketInterestRatePerSecond
-                        .mul(depositPeriodInSeconds)
-                        .decmul(UIRMultiplier)
-                )
-            )
-        );
+        // upfrontInterestRate = moneyMarketInterestRatePerSecond * depositPeriodInSeconds * UIRMultiplier
+        upfrontInterestRate = moneyMarketInterestRatePerSecond
+            .mul(depositPeriodInSeconds)
+            .decmul(UIRMultiplier);
     }
 
     function blocktime() external view returns (uint256) {
@@ -384,14 +379,15 @@ contract DInterest is ReentrancyGuard {
 
     function surplus() public returns (bool isNegative, uint256 surplusAmount) {
         uint256 totalValue = moneyMarket.totalValue();
-        if (totalValue >= totalDeposit) {
+        uint256 totalOwed = totalDeposit.add(totalInterestOwed);
+        if (totalValue >= totalOwed) {
             // Locked value more than owed deposits, positive surplus
             isNegative = false;
-            surplusAmount = totalValue.sub(totalDeposit);
+            surplusAmount = totalValue.sub(totalOwed);
         } else {
             // Locked value less than owed deposits, negative surplus
             isNegative = true;
-            surplusAmount = totalDeposit.sub(totalValue);
+            surplusAmount = totalOwed.sub(totalValue);
         }
     }
 
@@ -403,17 +399,17 @@ contract DInterest is ReentrancyGuard {
         uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
         uint256 currentDepositValue = depositEntry
             .amount
-            .sub(depositEntry.initialDeficit)
             .mul(currentMoneyMarketIncomeIndex)
-            .div(depositEntry.initialmoneyMarketIncomeIndex);
-        if (currentDepositValue >= depositEntry.amount) {
+            .div(depositEntry.initialMoneyMarketIncomeIndex);
+        uint256 owed = depositEntry.amount.add(depositEntry.interestOwed);
+        if (currentDepositValue >= owed) {
             // Locked value more than owed deposits, positive surplus
             isNegative = false;
-            surplusAmount = currentDepositValue.sub(depositEntry.amount);
+            surplusAmount = currentDepositValue.sub(owed);
         } else {
             // Locked value less than owed deposits, negative surplus
             isNegative = true;
-            surplusAmount = depositEntry.amount.sub(currentDepositValue);
+            surplusAmount = owed.sub(currentDepositValue);
         }
     }
 
@@ -497,49 +493,33 @@ contract DInterest is ReentrancyGuard {
         uint256 id = deposits.length.add(1);
         unfundedUserDepositAmount = unfundedUserDepositAmount.add(amount);
 
-        // Calculate `upfrontInterestAmount` stablecoin to return to `msg.sender`
-        uint256 upfrontInterestRate = calculateUpfrontInterestRate(
-            depositPeriod
-        );
-        uint256 upfrontInterestAmount = amount.decmul(upfrontInterestRate);
-        uint256 feeAmount = feeModel.getFee(upfrontInterestAmount);
+        // Calculate interest
+        uint256 interestRate = calculateInterestRate(depositPeriod);
+        uint256 interestAmount = amount.decmul(interestRate);
+        require(interestAmount > 0, "DInterest: interestAmount == 0");
+
+        // Update totalInterestOwed
+        totalInterestOwed = totalInterestOwed.add(interestAmount);
 
         // Record deposit data for `msg.sender`
         deposits.push(
             Deposit({
                 amount: amount,
                 maturationTimestamp: maturationTimestamp,
-                initialDeficit: upfrontInterestAmount,
-                initialmoneyMarketIncomeIndex: moneyMarket.incomeIndex(),
+                interestOwed: interestAmount,
+                initialMoneyMarketIncomeIndex: moneyMarket.incomeIndex(),
                 active: true,
                 finalSurplusIsNegative: false,
                 finalSurplusAmount: 0
             })
         );
 
-        // Deduct `feeAmount` from `upfrontInterestAmount`
-        upfrontInterestAmount = upfrontInterestAmount.sub(feeAmount);
-        require(
-            upfrontInterestAmount > 0,
-            "DInterest: upfrontInterestAmount == 0"
-        );
+        // Transfer `amount` stablecoin to DInterest
+        stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
-        // Transfer `amount - upfrontInterestAmount` stablecoin from `msg.sender`
-        stablecoin.safeTransferFrom(
-            msg.sender,
-            address(this),
-            amount.sub(upfrontInterestAmount)
-        );
-
-        // Lend `amount - upfrontInterestAmount - feeAmount` stablecoin to money market
-        uint256 principalAmount = amount.sub(upfrontInterestAmount).sub(
-            feeAmount
-        );
-        stablecoin.safeIncreaseAllowance(address(moneyMarket), principalAmount);
-        moneyMarket.deposit(principalAmount);
-
-        // Send `feeAmount` stablecoin to `feeModel.beneficiary()`
-        stablecoin.safeTransfer(feeModel.beneficiary(), feeAmount);
+        // Lend `amount` stablecoin to money market
+        stablecoin.safeIncreaseAllowance(address(moneyMarket), amount);
+        moneyMarket.deposit(amount);
 
         // Mint depositNFT
         depositNFT.mint(msg.sender, id);
@@ -550,7 +530,7 @@ contract DInterest is ReentrancyGuard {
             id,
             amount,
             maturationTimestamp,
-            upfrontInterestAmount
+            interestAmount
         );
     }
 
@@ -588,20 +568,27 @@ contract DInterest is ReentrancyGuard {
         // Update totalDeposit
         totalDeposit = totalDeposit.sub(depositEntry.amount);
 
+        // Update totalInterestOwed
+        totalInterestOwed = totalInterestOwed.sub(depositEntry.interestOwed);
+
         // Burn depositNFT
         depositNFT.burn(depositID);
 
+        uint256 feeAmount;
         uint256 withdrawAmount;
         if (early) {
             // Withdraw the principal of the deposit from money market
-            withdrawAmount = depositEntry.amount.sub(
-                depositEntry.initialDeficit
-            );
-        } else {
-            // Withdraw `depositEntry.amount` stablecoin from money market
             withdrawAmount = depositEntry.amount;
+        } else {
+            // Withdraw the principal & the interest from money market
+            feeAmount = feeModel.getFee(depositEntry.interestOwed);
+            withdrawAmount = depositEntry.amount.add(depositEntry.interestOwed);
         }
         moneyMarket.withdraw(withdrawAmount);
+
+        (bool depositIsNegative, uint256 depositSurplus) = surplusOfDeposit(
+            depositID
+        );
 
         // If deposit was funded, payout interest to funder
         if (depositIsFunded(depositID)) {
@@ -627,9 +614,9 @@ contract DInterest is ReentrancyGuard {
             );
             f.recordedMoneyMarketIncomeIndex = currentMoneyMarketIncomeIndex;
 
-            // Send interestAmount (and maybe initialDeficit) stablecoin to funder
-            uint256 transferToFunderAmount = early
-                ? interestAmount.add(depositEntry.initialDeficit)
+            // Send interest to funder
+            uint256 transferToFunderAmount = (early && depositIsNegative)
+                ? interestAmount.add(depositSurplus)
                 : interestAmount;
             if (transferToFunderAmount > 0) {
                 moneyMarket.withdraw(transferToFunderAmount);
@@ -645,13 +632,15 @@ contract DInterest is ReentrancyGuard {
             );
 
             // Record remaining surplus
-            (bool isNegative, uint256 surplus) = surplusOfDeposit(depositID);
-            depositEntry.finalSurplusIsNegative = isNegative;
-            depositEntry.finalSurplusAmount = surplus;
+            depositEntry.finalSurplusIsNegative = depositIsNegative;
+            depositEntry.finalSurplusAmount = depositSurplus;
         }
 
-        // Send `withdrawAmount` stablecoin to `msg.sender`
-        stablecoin.safeTransfer(msg.sender, withdrawAmount);
+        // Send `withdrawAmount - feeAmount` stablecoin to `msg.sender`
+        stablecoin.safeTransfer(msg.sender, withdrawAmount.sub(feeAmount));
+
+        // Send `feeAmount` stablecoin to feeModel beneficiary
+        stablecoin.safeTransfer(feeModel.beneficiary(), feeAmount);
 
         // Emit event
         emit EWithdraw(msg.sender, depositID, fundingID, early);

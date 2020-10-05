@@ -3,7 +3,7 @@ const BigNumber = require('bignumber.js')
 
 // Contract artifacts
 const DInterest = artifacts.require('DInterest')
-const FeeModel = artifacts.require('FeeModel')
+const PercentageFeeModel = artifacts.require('PercentageFeeModel')
 const LinearInterestModel = artifacts.require('LinearInterestModel')
 const AaveMarket = artifacts.require('AaveMarket')
 const NFT = artifacts.require('NFT')
@@ -116,7 +116,7 @@ contract('DInterest: Aave', accounts => {
     fundingNFT = await NFT.new('88mph Funding', '88mph-Funding')
 
     // Initialize the DInterest pool
-    feeModel = await FeeModel.new()
+    feeModel = await PercentageFeeModel.new()
     interestModel = await LinearInterestModel.new(IRMultiplier)
     dInterestPool = await DInterest.new(MinDepositPeriod, MaxDepositPeriod, MinDepositAmount, MaxDepositAmount, market.address, stablecoin.address, feeModel.address, interestModel.address, depositNFT.address, fundingNFT.address)
 

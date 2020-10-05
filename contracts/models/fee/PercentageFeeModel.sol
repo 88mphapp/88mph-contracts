@@ -4,7 +4,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "./IFeeModel.sol";
 
-contract FeeModel is Ownable, IFeeModel {
+contract PercentageFeeModel is Ownable, IFeeModel {
     using SafeMath for uint256;
 
     address payable public beneficiary = 0x332D87209f7c8296389C307eAe170c2440830A47;

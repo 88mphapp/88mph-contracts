@@ -3,7 +3,7 @@ const BigNumber = require('bignumber.js')
 
 // Contract artifacts
 const DInterest = artifacts.require('DInterest')
-const FeeModel = artifacts.require('FeeModel')
+const PercentageFeeModel = artifacts.require('PercentageFeeModel')
 const LinearInterestModel = artifacts.require('LinearInterestModel')
 const CompoundERC20Market = artifacts.require('CompoundERC20Market')
 const NFT = artifacts.require('NFT')
@@ -102,7 +102,7 @@ contract('DInterest: Compound', accounts => {
     await stablecoin.mint(acc2, num2str(mintAmount))
 
     // Initialize the money market
-    feeModel = await FeeModel.new()
+    feeModel = await PercentageFeeModel.new()
     comp = await ERC20Mock.new()
     comptroller = await ComptrollerMock.new(comp.address)
     market = await CompoundERC20Market.new(cToken.address, comptroller.address, feeModel.address, stablecoin.address)

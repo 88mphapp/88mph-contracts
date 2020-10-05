@@ -2,8 +2,8 @@ const env = require('@nomiclabs/buidler')
 const BigNumber = require('bignumber.js')
 
 async function main () {
-  const FeeModel = env.artifacts.require('FeeModel')
-  const feeModel = await FeeModel.new()
+  const PercentageFeeModel = env.artifacts.require('PercentageFeeModel')
+  const feeModel = await PercentageFeeModel.new()
   console.log(`Deployed FeeModel at address ${feeModel.address}`)
 
   const CompoundERC20Market = env.artifacts.require('CompoundERC20Market')
@@ -13,6 +13,11 @@ async function main () {
   const market = await CompoundERC20Market.new(cTokenAddress, comptrollerAddress, feeModel.address, stablecoinAddress)
   console.log(`Deployed CompoundERC20Market at address ${market.address}`)
 
+  const LinearInterestModel = env.artifacts.require('LinearInterestModel')
+  const IRMultiplier = BigNumber(0.75 * 1e18).integerValue().toFixed() // Minimum safe avg interest rate multiplier
+  const interestModel = await LinearInterestModel.new(IRMultiplier)
+  console.log(`Deployed LinearInterestModel at ${interestModel.address}`)
+
   const NFT = env.artifacts.require('NFT')
   const depositNFT = await NFT.new('88mph Compound-Pool Deposit', '88mph-Compound-Deposit')
   console.log(`Deployed depositNFT at address ${depositNFT.address}`)
@@ -20,10 +25,12 @@ async function main () {
   console.log(`Deployed fundingNFT at address ${fundingNFT.address}`)
 
   const DInterest = env.artifacts.require('DInterest')
-  const UIRMultiplier = BigNumber(0.75 * 1e18).integerValue().toFixed() // Minimum safe avg interest rate multiplier
+  const YEAR_IN_SEC = 31556952 // Number of seconds in a year
   const MinDepositPeriod = 90 * 24 * 60 * 60 // 90 days in seconds
+  const MaxDepositPeriod = 3 * YEAR_IN_SEC // 3 years in seconds
+  const MinDepositAmount = BigNumber(10 * 1e18).toFixed() // 10 stablecoins
   const MaxDepositAmount = BigNumber(10000 * 1e18).toFixed() // 10000 stablecoins
-  const dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, MaxDepositAmount, market.address, stablecoinAddress, feeModel.address, depositNFT.address, fundingNFT.address)
+  const dInterestPool = await DInterest.new(MinDepositPeriod, MaxDepositPeriod, MinDepositAmount, MaxDepositAmount, market.address, stablecoinAddress, feeModel.address, interestModel.address, depositNFT.address, fundingNFT.address)
   console.log(`Deployed DInterest at address ${dInterestPool.address}`)
 
   await market.transferOwnership(dInterestPool.address)

@@ -9,6 +9,7 @@ const NFT = artifacts.require('NFT')
 const MPHToken = artifacts.require('MPHToken')
 const MPHMinter = artifacts.require('MPHMinter')
 const ERC20Mock = artifacts.require('ERC20Mock')
+const Rewards = artifacts.require('Rewards')
 
 const AaveMarket = artifacts.require('AaveMarket')
 const ATokenMock = artifacts.require('ATokenMock')
@@ -26,6 +27,7 @@ const MinDepositAmount = BigNumber(0 * PRECISION).toFixed() // 1000 stablecoins
 const MaxDepositAmount = BigNumber(1000 * PRECISION).toFixed() // 1000 stablecoins
 const epsilon = 1e-4
 const INF = BigNumber(2).pow(256).minus(1).toFixed()
+const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
 
 // Utilities
 // travel `time` seconds forward in time
@@ -90,6 +92,7 @@ contract('DInterest: Aave', accounts => {
   let fundingNFT
   let mph
   let mphMinter
+  let rewards
 
   // Constants
   const INIT_INTEREST_RATE = 0.1 // 10% APY
@@ -113,17 +116,21 @@ contract('DInterest: Aave', accounts => {
     await stablecoin.mint(acc1, num2str(mintAmount))
     await stablecoin.mint(acc2, num2str(mintAmount))
 
+    // Initialize MPH
+    mph = await MPHToken.new()
+    mphMinter = await MPHMinter.new(mph.address)
+    mph.addMinter(mphMinter.address)
+
+    // Initialize MPH rewards
+    rewards = await Rewards.new(mph.address, stablecoin.address, ZERO_ADDR, Math.floor(Date.now() / 1e3))
+    rewards.setRewardDistribution(acc0)
+
     // Initialize the money market
     market = await AaveMarket.new(lendingPoolAddressesProvider.address, stablecoin.address)
 
     // Initialize the NFTs
     depositNFT = await NFT.new('88mph Deposit', '88mph-Deposit')
     fundingNFT = await NFT.new('88mph Funding', '88mph-Funding')
-
-    // Initialize MPH
-    mph = await MPHToken.new()
-    mphMinter = await MPHMinter.new(mph.address)
-    mph.addMinter(mphMinter.address)
 
     // Initialize the DInterest pool
     feeModel = await PercentageFeeModel.new()

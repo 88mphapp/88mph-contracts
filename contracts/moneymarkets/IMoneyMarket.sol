@@ -1,11 +1,12 @@
 pragma solidity 0.5.17;
 
-
 // Interface for money market protocols (Compound, Aave, bZx, etc.)
 interface IMoneyMarket {
     function deposit(uint256 amount) external;
 
     function withdraw(uint256 amountInUnderlying) external;
+
+    function claimRewards() external; // Claims farmed tokens (e.g. CRV) and sends it to the rewards pool
 
     function supplyRatePerSecond(uint256 blocktime)
         external

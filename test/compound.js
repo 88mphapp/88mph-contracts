@@ -8,6 +8,7 @@ const LinearInterestModel = artifacts.require('LinearInterestModel')
 const NFT = artifacts.require('NFT')
 const MPHToken = artifacts.require('MPHToken')
 const MPHMinter = artifacts.require('MPHMinter')
+const Rewards = artifacts.require('Rewards')
 
 const CompoundERC20Market = artifacts.require('CompoundERC20Market')
 const CERC20Mock = artifacts.require('CERC20Mock')
@@ -24,6 +25,7 @@ const MinDepositAmount = BigNumber(0 * PRECISION).toFixed() // 1000 stablecoins
 const MaxDepositAmount = BigNumber(1000 * PRECISION).toFixed() // 1000 stablecoins
 const epsilon = 1e-4
 const INF = BigNumber(2).pow(256).minus(1).toFixed()
+const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
 
 // Utilities
 // travel `time` seconds forward in time
@@ -87,6 +89,7 @@ contract('DInterest: Compound', accounts => {
   let fundingNFT
   let mph
   let mphMinter
+  let rewards
 
   // Constants
   const INIT_EXRATE = 2e26 // 1 cToken = 0.02 stablecoin
@@ -106,20 +109,24 @@ contract('DInterest: Compound', accounts => {
     await stablecoin.mint(acc1, num2str(mintAmount))
     await stablecoin.mint(acc2, num2str(mintAmount))
 
-    // Initialize the money market
-    feeModel = await PercentageFeeModel.new()
-    comp = await ERC20Mock.new()
-    comptroller = await ComptrollerMock.new(comp.address)
-    market = await CompoundERC20Market.new(cToken.address, comptroller.address, feeModel.address, stablecoin.address)
-
-    // Initialize the NFTs
-    depositNFT = await NFT.new('88mph Deposit', '88mph-Deposit')
-    fundingNFT = await NFT.new('88mph Funding', '88mph-Funding')
-
     // Initialize MPH
     mph = await MPHToken.new()
     mphMinter = await MPHMinter.new(mph.address)
     mph.addMinter(mphMinter.address)
+
+    // Initialize MPH rewards
+    rewards = await Rewards.new(mph.address, stablecoin.address, ZERO_ADDR, Math.floor(Date.now() / 1e3))
+    rewards.setRewardDistribution(acc0)
+
+    // Initialize the money market
+    feeModel = await PercentageFeeModel.new()
+    comp = await ERC20Mock.new()
+    comptroller = await ComptrollerMock.new(comp.address)
+    market = await CompoundERC20Market.new(cToken.address, comptroller.address, rewards.address, stablecoin.address)
+
+    // Initialize the NFTs
+    depositNFT = await NFT.new('88mph Deposit', '88mph-Deposit')
+    fundingNFT = await NFT.new('88mph Funding', '88mph-Funding')
 
     // Initialize the DInterest pool
     interestModel = await LinearInterestModel.new(IRMultiplier)
@@ -385,11 +392,10 @@ contract('DInterest: Compound', accounts => {
     assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(rateAfter1y.div(rateAfter3m).minus(1))), 'acc2 didn\'t receive correct interest amount')
   })
 
-  it('claimComp()', async function () {
-    const beneficiary = '0x332D87209f7c8296389C307eAe170c2440830A47'
+  it('claimRewards()', async function () {
     const expectedMintAmount = PRECISION
-    const beforeBalance = await comp.balanceOf(beneficiary)
-    await market.claimComp()
-    assert.equal(expectedMintAmount, BigNumber(await comp.balanceOf(beneficiary)).minus(beforeBalance).toNumber(), 'Claimed COMP amount incorrect')
+    const beforeBalance = await comp.balanceOf(rewards.address)
+    await market.claimRewards()
+    assert.equal(expectedMintAmount, BigNumber(await comp.balanceOf(rewards.address)).minus(beforeBalance).toNumber(), 'Claimed COMP amount incorrect')
   })
 })

@@ -70,6 +70,8 @@ contract AaveMarket is IMoneyMarket, Ownable {
         stablecoin.safeTransfer(msg.sender, amountInUnderlying);
     }
 
+    function claimRewards() external {}
+
     function supplyRatePerSecond(
         uint256 /*blocktime*/
     ) external view returns (uint256) {

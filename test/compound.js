@@ -5,8 +5,11 @@ const BigNumber = require('bignumber.js')
 const DInterest = artifacts.require('DInterest')
 const PercentageFeeModel = artifacts.require('PercentageFeeModel')
 const LinearInterestModel = artifacts.require('LinearInterestModel')
-const CompoundERC20Market = artifacts.require('CompoundERC20Market')
 const NFT = artifacts.require('NFT')
+const MPHToken = artifacts.require('MPHToken')
+const MPHMinter = artifacts.require('MPHMinter')
+
+const CompoundERC20Market = artifacts.require('CompoundERC20Market')
 const CERC20Mock = artifacts.require('CERC20Mock')
 const ComptrollerMock = artifacts.require('ComptrollerMock')
 const ERC20Mock = artifacts.require('ERC20Mock')
@@ -82,6 +85,8 @@ contract('DInterest: Compound', accounts => {
   let interestModel
   let depositNFT
   let fundingNFT
+  let mph
+  let mphMinter
 
   // Constants
   const INIT_EXRATE = 2e26 // 1 cToken = 0.02 stablecoin
@@ -111,9 +116,29 @@ contract('DInterest: Compound', accounts => {
     depositNFT = await NFT.new('88mph Deposit', '88mph-Deposit')
     fundingNFT = await NFT.new('88mph Funding', '88mph-Funding')
 
+    // Initialize MPH
+    mph = await MPHToken.new()
+    mphMinter = await MPHMinter.new(mph.address)
+    mph.addMinter(mphMinter.address)
+
     // Initialize the DInterest pool
     interestModel = await LinearInterestModel.new(IRMultiplier)
-    dInterestPool = await DInterest.new(MinDepositPeriod, MaxDepositPeriod, MinDepositAmount, MaxDepositAmount, market.address, stablecoin.address, feeModel.address, interestModel.address, depositNFT.address, fundingNFT.address)
+    dInterestPool = await DInterest.new(
+      MinDepositPeriod,
+      MaxDepositPeriod,
+      MinDepositAmount,
+      MaxDepositAmount,
+      market.address,
+      stablecoin.address,
+      feeModel.address,
+      interestModel.address,
+      depositNFT.address,
+      fundingNFT.address,
+      mphMinter.address
+    )
+
+    // Set MPH minting multiplier for DInterest pool
+    await mphMinter.setPoolMintingMultiplier(dInterestPool.address, num2str(PRECISION))
 
     // Transfer the ownership of the money market to the DInterest pool
     await market.transferOwnership(dInterestPool.address)

@@ -5,9 +5,12 @@ const BigNumber = require('bignumber.js')
 const DInterest = artifacts.require('DInterest')
 const PercentageFeeModel = artifacts.require('PercentageFeeModel')
 const LinearInterestModel = artifacts.require('LinearInterestModel')
-const AaveMarket = artifacts.require('AaveMarket')
 const NFT = artifacts.require('NFT')
+const MPHToken = artifacts.require('MPHToken')
+const MPHMinter = artifacts.require('MPHMinter')
 const ERC20Mock = artifacts.require('ERC20Mock')
+
+const AaveMarket = artifacts.require('AaveMarket')
 const ATokenMock = artifacts.require('ATokenMock')
 const LendingPoolMock = artifacts.require('LendingPoolMock')
 const LendingPoolCoreMock = artifacts.require('LendingPoolCoreMock')
@@ -85,6 +88,8 @@ contract('DInterest: Aave', accounts => {
   let interestModel
   let depositNFT
   let fundingNFT
+  let mph
+  let mphMinter
 
   // Constants
   const INIT_INTEREST_RATE = 0.1 // 10% APY
@@ -115,10 +120,30 @@ contract('DInterest: Aave', accounts => {
     depositNFT = await NFT.new('88mph Deposit', '88mph-Deposit')
     fundingNFT = await NFT.new('88mph Funding', '88mph-Funding')
 
+    // Initialize MPH
+    mph = await MPHToken.new()
+    mphMinter = await MPHMinter.new(mph.address)
+    mph.addMinter(mphMinter.address)
+
     // Initialize the DInterest pool
     feeModel = await PercentageFeeModel.new()
     interestModel = await LinearInterestModel.new(IRMultiplier)
-    dInterestPool = await DInterest.new(MinDepositPeriod, MaxDepositPeriod, MinDepositAmount, MaxDepositAmount, market.address, stablecoin.address, feeModel.address, interestModel.address, depositNFT.address, fundingNFT.address)
+    dInterestPool = await DInterest.new(
+      MinDepositPeriod,
+      MaxDepositPeriod,
+      MinDepositAmount,
+      MaxDepositAmount,
+      market.address,
+      stablecoin.address,
+      feeModel.address,
+      interestModel.address,
+      depositNFT.address,
+      fundingNFT.address,
+      mphMinter.address
+    )
+
+    // Set MPH minting multiplier for DInterest pool
+    await mphMinter.setPoolMintingMultiplier(dInterestPool.address, num2str(PRECISION))
 
     // Transfer the ownership of the money market to the DInterest pool
     await market.transferOwnership(dInterestPool.address)

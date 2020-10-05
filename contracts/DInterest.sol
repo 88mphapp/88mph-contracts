@@ -12,6 +12,7 @@ import "./moneymarkets/IMoneyMarket.sol";
 import "./models/fee/IFeeModel.sol";
 import "./models/interest/IInterestModel.sol";
 import "./NFT.sol";
+import "./rewards/MPHMinter.sol";
 
 // DeLorean Interest -- It's coming back from the future!
 // EL PSY CONGROO
@@ -98,6 +99,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     IInterestModel public interestModel;
     NFT public depositNFT;
     NFT public fundingNFT;
+    MPHMinter public mphMinter;
 
     // Events
     event EDeposit(
@@ -139,25 +141,18 @@ contract DInterest is ReentrancyGuard, Ownable {
         address _feeModel, // Address of the FeeModel contract that determines how fees are charged
         address _interestModel, // Address of the InterestModel contract that determines how much interest to offer
         address _depositNFT, // Address of the NFT representing ownership of deposits (owner must be set to this DInterest contract)
-        address _fundingNFT // Address of the NFT representing ownership of fundings (owner must be set to this DInterest contract)
+        address _fundingNFT, // Address of the NFT representing ownership of fundings (owner must be set to this DInterest contract)
+        address _mphMinter // Address of the contract for handling minting MPH to users
     ) public {
         // Verify input addresses
-        require(
-            _moneyMarket != address(0) &&
-                _stablecoin != address(0) &&
-                _feeModel != address(0) &&
-                _interestModel != address(0) &&
-                _depositNFT != address(0) &&
-                _fundingNFT != address(0),
-            "DInterest: An input address is 0"
-        );
         require(
             _moneyMarket.isContract() &&
                 _stablecoin.isContract() &&
                 _feeModel.isContract() &&
                 _interestModel.isContract() &&
                 _depositNFT.isContract() &&
-                _fundingNFT.isContract(),
+                _fundingNFT.isContract() &&
+                _mphMinter.isContract(),
             "DInterest: An input address is not a contract"
         );
 
@@ -167,6 +162,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         interestModel = IInterestModel(_interestModel);
         depositNFT = NFT(_depositNFT);
         fundingNFT = NFT(_fundingNFT);
+        mphMinter = MPHMinter(_mphMinter);
 
         // Ensure moneyMarket uses the same stablecoin
         require(
@@ -480,14 +476,12 @@ contract DInterest is ReentrancyGuard, Ownable {
         Param setters
      */
     function setFeeModel(address newValue) external onlyOwner {
-        require(newValue != address(0), "DInterest: 0 address");
         require(newValue.isContract(), "DInterest: not contract");
         feeModel = IFeeModel(newValue);
         emit ESetParamAddress(msg.sender, "feeModel", newValue);
     }
 
     function setInterestModel(address newValue) external onlyOwner {
-        require(newValue != address(0), "DInterest: 0 address");
         require(newValue.isContract(), "DInterest: not contract");
         interestModel = IInterestModel(newValue);
         emit ESetParamAddress(msg.sender, "interestModel", newValue);
@@ -601,6 +595,9 @@ contract DInterest is ReentrancyGuard, Ownable {
 
         // Mint depositNFT
         depositNFT.mint(msg.sender, id);
+
+        // Mint MPH for msg.sender
+        mphMinter.mintMPHForInterest(msg.sender, interestAmount);
 
         // Emit event
         emit EDeposit(
@@ -734,6 +731,9 @@ contract DInterest is ReentrancyGuard, Ownable {
 
         // Mint fundingNFT
         fundingNFT.mint(msg.sender, fundingList.length);
+
+        // Mint MPH for msg.sender
+        mphMinter.mintMPHForInterest(msg.sender, totalDeficit);
 
         // Emit event
         uint256 fundingID = fundingList.length;

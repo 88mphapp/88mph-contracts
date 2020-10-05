@@ -119,7 +119,6 @@ contract('DInterest: Compound', accounts => {
     rewards.setRewardDistribution(acc0)
 
     // Initialize the money market
-    feeModel = await PercentageFeeModel.new()
     comp = await ERC20Mock.new()
     comptroller = await ComptrollerMock.new(comp.address)
     market = await CompoundERC20Market.new(cToken.address, comptroller.address, rewards.address, stablecoin.address)
@@ -129,6 +128,7 @@ contract('DInterest: Compound', accounts => {
     fundingNFT = await NFT.new('88mph Funding', '88mph-Funding')
 
     // Initialize the DInterest pool
+    feeModel = await PercentageFeeModel.new(rewards.address)
     interestModel = await LinearInterestModel.new(IRMultiplier)
     dInterestPool = await DInterest.new(
       MinDepositPeriod,

@@ -7,6 +7,4 @@ interface IFeeModel {
         external
         pure
         returns (uint256 _feeAmount);
-
-    function setBeneficiary(address payable _addr) external;
 }

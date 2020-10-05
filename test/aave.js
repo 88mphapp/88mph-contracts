@@ -133,7 +133,7 @@ contract('DInterest: Aave', accounts => {
     fundingNFT = await NFT.new('88mph Funding', '88mph-Funding')
 
     // Initialize the DInterest pool
-    feeModel = await PercentageFeeModel.new()
+    feeModel = await PercentageFeeModel.new(rewards.address)
     interestModel = await LinearInterestModel.new(IRMultiplier)
     dInterestPool = await DInterest.new(
       MinDepositPeriod,

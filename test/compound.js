@@ -21,8 +21,11 @@ const YEAR_IN_SEC = 31556952 // Number of seconds in a year
 const IRMultiplier = BigNumber(0.75 * 1e18).integerValue().toFixed() // Minimum safe avg interest rate multiplier
 const MinDepositPeriod = 90 * 24 * 60 * 60 // 90 days in seconds
 const MaxDepositPeriod = 3 * YEAR_IN_SEC // 3 years in seconds
-const MinDepositAmount = BigNumber(0 * PRECISION).toFixed() // 1000 stablecoins
+const MinDepositAmount = BigNumber(0 * PRECISION).toFixed() // 0 stablecoins
 const MaxDepositAmount = BigNumber(1000 * PRECISION).toFixed() // 1000 stablecoins
+const PoolMintingMultiplier = BigNumber(1 * PRECISION).toFixed()
+const PoolDepositorRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
+const PoolFunderRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
 const epsilon = 1e-4
 const INF = BigNumber(2).pow(256).minus(1).toFixed()
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
@@ -75,6 +78,7 @@ contract('DInterest: Compound', accounts => {
   const acc0 = accounts[0]
   const acc1 = accounts[1]
   const acc2 = accounts[2]
+  const govTreasury = accounts[3]
 
   // Contract instances
   let stablecoin
@@ -111,8 +115,8 @@ contract('DInterest: Compound', accounts => {
 
     // Initialize MPH
     mph = await MPHToken.new()
-    mphMinter = await MPHMinter.new(mph.address)
-    mph.addMinter(mphMinter.address)
+    mphMinter = await MPHMinter.new(mph.address, govTreasury)
+    mph.transferOwnership(mphMinter.address)
 
     // Initialize MPH rewards
     rewards = await Rewards.new(mph.address, stablecoin.address, ZERO_ADDR, Math.floor(Date.now() / 1e3))
@@ -145,7 +149,9 @@ contract('DInterest: Compound', accounts => {
     )
 
     // Set MPH minting multiplier for DInterest pool
-    await mphMinter.setPoolMintingMultiplier(dInterestPool.address, num2str(PRECISION))
+    await mphMinter.setPoolMintingMultiplier(dInterestPool.address, PoolMintingMultiplier)
+    await mphMinter.setPoolDepositorRewardMultiplier(dInterestPool.address, PoolDepositorRewardMultiplier)
+    await mphMinter.setPoolFunderRewardMultiplier(dInterestPool.address, PoolFunderRewardMultiplier)
 
     // Transfer the ownership of the money market to the DInterest pool
     await market.transferOwnership(dInterestPool.address)

@@ -597,7 +597,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         depositNFT.mint(msg.sender, id);
 
         // Mint MPH for msg.sender
-        mphMinter.mintMPHForInterest(msg.sender, interestAmount);
+        mphMinter.mintDepositorReward(msg.sender, interestAmount);
 
         // Emit event
         emit EDeposit(
@@ -639,6 +639,9 @@ contract DInterest is ReentrancyGuard, Ownable {
             depositNFT.ownerOf(depositID) == msg.sender,
             "DInterest: Sender doesn't own depositNFT"
         );
+
+        // Take back MPH
+        mphMinter.takeBackDepositorReward(msg.sender, depositEntry.interestOwed);
 
         // Update totalDeposit
         totalDeposit = totalDeposit.sub(depositEntry.amount);
@@ -733,7 +736,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         fundingNFT.mint(msg.sender, fundingList.length);
 
         // Mint MPH for msg.sender
-        mphMinter.mintMPHForInterest(msg.sender, totalDeficit);
+        mphMinter.mintFunderReward(msg.sender, totalDeficit);
 
         // Emit event
         uint256 fundingID = fundingList.length;

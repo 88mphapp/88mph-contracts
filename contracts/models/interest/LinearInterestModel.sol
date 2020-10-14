@@ -17,7 +17,7 @@ contract LinearInterestModel {
         uint256 depositAmount,
         uint256 depositPeriodInSeconds,
         uint256 moneyMarketInterestRatePerSecond,
-        bool /*surplusIsNegative*/,
+        bool, /*surplusIsNegative*/
         uint256 /*surplusAmount*/
     ) external view returns (uint256 interestAmount) {
         // interestAmount = depositAmount * moneyMarketInterestRatePerSecond * IRMultiplier * depositPeriodInSeconds

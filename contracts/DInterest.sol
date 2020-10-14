@@ -66,6 +66,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         bool active; // True if not yet withdrawn, false if withdrawn
         bool finalSurplusIsNegative;
         uint256 finalSurplusAmount; // Surplus remaining after withdrawal
+        uint256 mintMPHAmount; // Amount of MPH minted to user
     }
     Deposit[] internal deposits;
     uint256 public latestFundedDepositID; // the ID of the most recently created deposit that was funded
@@ -573,6 +574,12 @@ contract DInterest is ReentrancyGuard, Ownable {
         // Update totalInterestOwed
         totalInterestOwed = totalInterestOwed.add(interestAmount);
 
+        // Mint MPH for msg.sender
+        uint256 mintMPHAmount = mphMinter.mintDepositorReward(
+            msg.sender,
+            interestAmount
+        );
+
         // Record deposit data for `msg.sender`
         deposits.push(
             Deposit({
@@ -582,7 +589,8 @@ contract DInterest is ReentrancyGuard, Ownable {
                 initialMoneyMarketIncomeIndex: moneyMarket.incomeIndex(),
                 active: true,
                 finalSurplusIsNegative: false,
-                finalSurplusAmount: 0
+                finalSurplusAmount: 0,
+                mintMPHAmount: mintMPHAmount
             })
         );
 
@@ -595,9 +603,6 @@ contract DInterest is ReentrancyGuard, Ownable {
 
         // Mint depositNFT
         depositNFT.mint(msg.sender, id);
-
-        // Mint MPH for msg.sender
-        mphMinter.mintDepositorReward(msg.sender, interestAmount);
 
         // Emit event
         emit EDeposit(
@@ -641,7 +646,11 @@ contract DInterest is ReentrancyGuard, Ownable {
         );
 
         // Take back MPH
-        mphMinter.takeBackDepositorReward(msg.sender, depositEntry.interestOwed);
+        mphMinter.takeBackDepositorReward(
+            msg.sender,
+            depositEntry.mintMPHAmount,
+            early
+        );
 
         // Update totalDeposit
         totalDeposit = totalDeposit.sub(depositEntry.amount);

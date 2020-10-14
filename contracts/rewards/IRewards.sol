@@ -2,5 +2,5 @@
 pragma solidity 0.5.17;
 
 interface IRewards {
-  function notifyRewardAmount(uint256 reward) external;
+    function notifyRewardAmount(uint256 reward) external;
 }

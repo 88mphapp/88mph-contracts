@@ -50,22 +50,22 @@ contract MPHMinter is Ownable {
 
     function mintDepositorReward(address to, uint256 interestAmount)
         external
-        returns (bool)
+        returns (uint256)
     {
         uint256 multiplier = poolMintingMultiplier[msg.sender];
         uint256 mintAmount = interestAmount.decmul(multiplier);
         if (mintAmount == 0) {
             // sender is not a pool/has been deactivated
-            return false;
+            return 0;
         }
 
         mph.ownerMint(to, mintAmount);
-        return true;
+        return mintAmount;
     }
 
     function mintFunderReward(address to, uint256 interestAmount)
         external
-        returns (bool)
+        returns (uint256)
     {
         uint256 multiplier = poolMintingMultiplier[msg.sender].decmul(
             poolFunderRewardMultiplier[msg.sender]
@@ -73,28 +73,30 @@ contract MPHMinter is Ownable {
         uint256 mintAmount = interestAmount.decmul(multiplier);
         if (mintAmount == 0) {
             // sender is not a pool/has been deactivated
-            return false;
+            return 0;
         }
 
         mph.ownerMint(to, mintAmount);
-        return true;
+        return mintAmount;
     }
 
-    function takeBackDepositorReward(address from, uint256 interestAmount)
-        external
-        returns (bool)
-    {
-        uint256 multiplier = poolMintingMultiplier[msg.sender].decmul(
-            PRECISION.sub(poolDepositorRewardMultiplier[msg.sender])
-        );
-        uint256 takeBackAmount = interestAmount.decmul(multiplier);
+    function takeBackDepositorReward(
+        address from,
+        uint256 mintMPHAmount,
+        bool early
+    ) external returns (uint256) {
+        uint256 takeBackAmount = early
+            ? mintMPHAmount
+            : mintMPHAmount.decmul(
+                PRECISION.sub(poolDepositorRewardMultiplier[msg.sender])
+            );
         if (takeBackAmount == 0) {
             // sender is not a pool/has been deactivated
-            return false;
+            return 0;
         }
 
         mph.ownerTransfer(from, govTreasury, takeBackAmount);
-        return true;
+        return takeBackAmount;
     }
 
     /**

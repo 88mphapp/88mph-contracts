@@ -172,11 +172,7 @@ contract Rewards is LPTokenWrapper, IRewardDistributionRecipient {
     }
 
     // stake visibility is public as overriding LPTokenWrapper's stake() function
-    function stake(uint256 amount)
-        public
-        updateReward(msg.sender)
-        checkStart
-    {
+    function stake(uint256 amount) public updateReward(msg.sender) checkStart {
         require(amount > 0, "Rewards: cannot stake 0");
         super.stake(amount);
         emit Staked(msg.sender, amount);

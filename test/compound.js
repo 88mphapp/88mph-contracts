@@ -26,6 +26,7 @@ const MaxDepositAmount = BigNumber(1000 * PRECISION).toFixed() // 1000 stablecoi
 const PoolMintingMultiplier = BigNumber(1 * PRECISION).toFixed()
 const PoolDepositorRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
 const PoolFunderRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
+const DevRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
 const epsilon = 1e-4
 const INF = BigNumber(2).pow(256).minus(1).toFixed()
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
@@ -79,6 +80,7 @@ contract('DInterest: Compound', accounts => {
   const acc1 = accounts[1]
   const acc2 = accounts[2]
   const govTreasury = accounts[3]
+  const devWallet = accounts[4]
 
   // Contract instances
   let stablecoin
@@ -115,7 +117,7 @@ contract('DInterest: Compound', accounts => {
 
     // Initialize MPH
     mph = await MPHToken.new()
-    mphMinter = await MPHMinter.new(mph.address, govTreasury)
+    mphMinter = await MPHMinter.new(mph.address, govTreasury, devWallet, DevRewardMultiplier)
     mph.transferOwnership(mphMinter.address)
 
     // Initialize MPH rewards

@@ -21,6 +21,11 @@ module.exports = {
       runs: 200
     }
   },
+  namedAccounts: {
+    deployer: {
+      default: 0
+    }
+  },
   paths: {
     sources: './contracts'
   },

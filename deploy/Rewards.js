@@ -17,10 +17,10 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
   if (deployResult.newlyDeployed) {
     log(`Rewards deployed at ${deployResult.address}`)
 
-    const Rewards = artifacts.require('MPHToken')
+    const Rewards = artifacts.require('Rewards')
     const rewardsContract = await Rewards.at(deployResult.address)
     await rewardsContract.setRewardDistribution(config.rewardDistribution, { from: deployer })
   }
 }
-module.exports.tags = ['MPHRewards', 'Rewards']
+module.exports.tags = ['Rewards', 'MPHRewards']
 module.exports.dependencies = ['MPHToken']

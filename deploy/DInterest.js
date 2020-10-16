@@ -1,3 +1,4 @@
+const BigNumber = require('bignumber.js')
 const poolConfig = require('../deploy-configs/pool.json')
 
 module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artifacts }) => {
@@ -15,10 +16,10 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
     from: deployer,
     contract: 'DInterest',
     args: [
-      poolConfig.MinDepositPeriod,
-      poolConfig.MaxDepositPeriod,
-      poolConfig.MinDepositAmount,
-      poolConfig.MaxDepositAmount,
+      BigNumber(poolConfig.MinDepositPeriod).toFixed(),
+      BigNumber(poolConfig.MaxDepositPeriod).toFixed(),
+      BigNumber(poolConfig.MinDepositAmount).toFixed(),
+      BigNumber(poolConfig.MaxDepositAmount).toFixed(),
       moneyMarketDeployment.address,
       poolConfig.stablecoin,
       feeModelDeployment.address,
@@ -34,9 +35,9 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
     // Set MPH minting multiplier for DInterest pool
     const MPHMinter = artifacts.require('MPHMinter')
     const mphMinterContract = await MPHMinter.at(mphMinterDeployment.address)
-    await mphMinterContract.setPoolMintingMultiplier(deployResult.address, poolConfig.PoolMintingMultiplier)
-    await mphMinterContract.setPoolDepositorRewardMultiplier(deployResult.address, poolConfig.PoolDepositorRewardMultiplier)
-    await mphMinterContract.setPoolFunderRewardMultiplier(deployResult.address, poolConfig.PoolFunderRewardMultiplier)
+    await mphMinterContract.setPoolMintingMultiplier(deployResult.address, BigNumber(poolConfig.PoolMintingMultiplier).toFixed())
+    await mphMinterContract.setPoolDepositorRewardMultiplier(deployResult.address, BigNumber(poolConfig.PoolDepositorRewardMultiplier).toFixed())
+    await mphMinterContract.setPoolFunderRewardMultiplier(deployResult.address, BigNumber(poolConfig.PoolFunderRewardMultiplier).toFixed())
 
     // Transfer the ownership of the money market to the DInterest pool
     const MoneyMarket = artifacts.require(poolConfig.moneyMarket)

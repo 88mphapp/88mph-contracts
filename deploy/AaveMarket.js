@@ -15,5 +15,5 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
     log(`AaveMarket deployed at ${deployResult.address}`)
   }
 }
-module.exports.tags = ['AaveMarket', 'DInterestPool']
+module.exports.tags = ['AaveMarket']
 module.exports.dependencies = []

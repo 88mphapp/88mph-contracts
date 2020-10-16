@@ -42,6 +42,11 @@ module.exports = {
       blockGasLimit: 9950000,
       gas: 'auto',
       gasPrice: 'auto'
+    },
+    ganache: {
+      url: 'http://localhost:8545',
+      gasLimit: 1e7,
+      gasPrice: 1e11
     }
   }
 }

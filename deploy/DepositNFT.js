@@ -19,5 +19,5 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
     log(`${nftName} deployed at ${deployResult.address}`)
   }
 }
-module.exports.tags = [nftName, 'DInterestPool']
+module.exports.tags = [nftName]
 module.exports.dependencies = []

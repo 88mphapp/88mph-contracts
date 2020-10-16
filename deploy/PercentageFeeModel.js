@@ -11,8 +11,8 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
     ]
   })
   if (deployResult.newlyDeployed) {
-    log(`Rewards deployed at ${deployResult.address}`)
+    log(`PercentageFeeModel deployed at ${deployResult.address}`)
   }
 }
-module.exports.tags = ['PercentageFeeModel', 'DInterestPool']
+module.exports.tags = ['PercentageFeeModel']
 module.exports.dependencies = ['Rewards']

@@ -1,3 +1,5 @@
+const BigNumber = require('bignumber.js')
+
 module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artifacts }) => {
   const { deploy, log, get } = deployments
   const { deployer } = await getNamedAccounts()
@@ -11,7 +13,7 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
       mphTokenDeployment.address,
       config.govTreasury,
       config.devWallet,
-      config.devRewardMultiplier
+      BigNumber(config.devRewardMultiplier).toFixed()
     ]
   })
   if (deployResult.newlyDeployed) {

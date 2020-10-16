@@ -19,5 +19,5 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
     log(`CompoundERC20Market deployed at ${deployResult.address}`)
   }
 }
-module.exports.tags = ['CompoundERC20Market', 'DInterestPool']
+module.exports.tags = ['CompoundERC20Market']
 module.exports.dependencies = ['Rewards']

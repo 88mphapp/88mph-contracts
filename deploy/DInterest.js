@@ -52,5 +52,5 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
     await fundingNFTContract.transferOwnership(deployResult.address)
   }
 }
-module.exports.tags = [poolConfig.name, 'DInterestPool']
+module.exports.tags = [poolConfig.name, 'DInterest']
 module.exports.dependencies = [poolConfig.moneyMarket, poolConfig.feeModel, poolConfig.interestModel, `${poolConfig.nftNamePrefix}Deposit`, `${poolConfig.nftNamePrefix}Funding`, 'MPHRewards']

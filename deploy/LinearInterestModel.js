@@ -3,12 +3,12 @@ const BigNumber = require('bignumber.js')
 module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artifacts }) => {
   const { deploy, log } = deployments
   const { deployer } = await getNamedAccounts()
-  const config = require('../deploy-configs/get-config')
+  const poolConfig = require('../deploy-configs/pool.json')
 
   const deployResult = await deploy('LinearInterestModel', {
     from: deployer,
     args: [
-      BigNumber(config.IRMultiplier).toFixed()
+      BigNumber(poolConfig.IRMultiplier).toFixed()
     ]
   })
   if (deployResult.newlyDeployed) {

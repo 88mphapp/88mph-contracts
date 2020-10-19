@@ -108,18 +108,21 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 indexed depositID,
         uint256 amount,
         uint256 maturationTimestamp,
-        uint256 upfrontInterestAmount
+        uint256 interestAmount,
+        uint256 mintMPHAmount
     );
     event EWithdraw(
         address indexed sender,
         uint256 indexed depositID,
         uint256 indexed fundingID,
-        bool early
+        bool early,
+        uint256 takeBackMPHAmount
     );
     event EFund(
         address indexed sender,
         uint256 indexed fundingID,
-        uint256 deficitAmount
+        uint256 deficitAmount,
+        uint256 mintMPHAmount
     );
     event ESetParamAddress(
         address indexed sender,
@@ -610,7 +613,8 @@ contract DInterest is ReentrancyGuard, Ownable {
             id,
             amount,
             maturationTimestamp,
-            interestAmount
+            interestAmount,
+            mintMPHAmount
         );
     }
 
@@ -646,7 +650,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         );
 
         // Take back MPH
-        mphMinter.takeBackDepositorReward(
+        uint256 takeBackMPHAmount = mphMinter.takeBackDepositorReward(
             msg.sender,
             depositEntry.mintMPHAmount,
             early
@@ -730,7 +734,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         stablecoin.safeTransfer(feeModel.beneficiary(), feeAmount);
 
         // Emit event
-        emit EWithdraw(msg.sender, depositID, fundingID, early);
+        emit EWithdraw(msg.sender, depositID, fundingID, early, takeBackMPHAmount);
     }
 
     function _fund(uint256 totalDeficit) internal {
@@ -745,10 +749,10 @@ contract DInterest is ReentrancyGuard, Ownable {
         fundingNFT.mint(msg.sender, fundingList.length);
 
         // Mint MPH for msg.sender
-        mphMinter.mintFunderReward(msg.sender, totalDeficit);
+        uint256 mintMPHAmount = mphMinter.mintFunderReward(msg.sender, totalDeficit);
 
         // Emit event
         uint256 fundingID = fundingList.length;
-        emit EFund(msg.sender, fundingID, totalDeficit);
+        emit EFund(msg.sender, fundingID, totalDeficit, mintMPHAmount);
     }
 }

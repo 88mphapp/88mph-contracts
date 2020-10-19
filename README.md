@@ -23,10 +23,4 @@ npx buidler coverage
 
 ## Deploying
 
-After cloning the repo, in the project root directory, run the following to deploy a version of 88mph to the Buidler test blockchain (the Aave-Dai pool is used in this example):
-
-```
-npm install
-npx buidler compile
-npx buidler run scripts/deploy-aave-dai.js --network buidlerevm
-```
+Read [DEPLOY_README.md](DEPLOY_README.md)

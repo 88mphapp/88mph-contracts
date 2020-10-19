@@ -1,5 +1,6 @@
 usePlugin('@nomiclabs/buidler-truffle5')
 usePlugin('solidity-coverage')
+usePlugin('buidler-deploy')
 
 let secret
 
@@ -20,6 +21,11 @@ module.exports = {
       runs: 200
     }
   },
+  namedAccounts: {
+    deployer: {
+      default: 0
+    }
+  },
   paths: {
     sources: './contracts'
   },
@@ -36,6 +42,11 @@ module.exports = {
       blockGasLimit: 9950000,
       gas: 'auto',
       gasPrice: 'auto'
+    },
+    ganache: {
+      url: 'http://localhost:8545',
+      gasLimit: 1e7,
+      gasPrice: 1e11
     }
   }
 }

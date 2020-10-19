@@ -3,10 +3,15 @@ const BigNumber = require('bignumber.js')
 
 // Contract artifacts
 const DInterest = artifacts.require('DInterest')
-const FeeModel = artifacts.require('FeeModel')
-const AaveMarket = artifacts.require('AaveMarket')
+const PercentageFeeModel = artifacts.require('PercentageFeeModel')
+const LinearInterestModel = artifacts.require('LinearInterestModel')
 const NFT = artifacts.require('NFT')
+const MPHToken = artifacts.require('MPHToken')
+const MPHMinter = artifacts.require('MPHMinter')
 const ERC20Mock = artifacts.require('ERC20Mock')
+const Rewards = artifacts.require('Rewards')
+
+const AaveMarket = artifacts.require('AaveMarket')
 const ATokenMock = artifacts.require('ATokenMock')
 const LendingPoolMock = artifacts.require('LendingPoolMock')
 const LendingPoolCoreMock = artifacts.require('LendingPoolCoreMock')
@@ -14,12 +19,19 @@ const LendingPoolAddressesProviderMock = artifacts.require('LendingPoolAddresses
 
 // Constants
 const PRECISION = 1e18
-const UIRMultiplier = BigNumber(0.75 * 1e18).integerValue().toFixed() // Minimum safe avg interest rate multiplier
-const MinDepositPeriod = 90 * 24 * 60 * 60 // 90 days in seconds
-const MaxDepositAmount = BigNumber(1000 * PRECISION).toFixed() // 1000 stablecoins
 const YEAR_IN_SEC = 31556952 // Number of seconds in a year
+const IRMultiplier = BigNumber(0.75 * 1e18).integerValue().toFixed() // Minimum safe avg interest rate multiplier
+const MinDepositPeriod = 90 * 24 * 60 * 60 // 90 days in seconds
+const MaxDepositPeriod = 3 * YEAR_IN_SEC // 3 years in seconds
+const MinDepositAmount = BigNumber(0 * PRECISION).toFixed() // 0 stablecoins
+const MaxDepositAmount = BigNumber(1000 * PRECISION).toFixed() // 1000 stablecoins
+const PoolMintingMultiplier = BigNumber(1 * PRECISION).toFixed()
+const PoolDepositorRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
+const PoolFunderRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
+const DevRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
 const epsilon = 1e-4
 const INF = BigNumber(2).pow(256).minus(1).toFixed()
+const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
 
 // Utilities
 // travel `time` seconds forward in time
@@ -50,7 +62,7 @@ function applyFee (interestAmount) {
 }
 
 function calcInterestAmount (depositAmount, interestRatePerSecond, depositPeriodInSeconds, applyFee) {
-  const interestBeforeFee = BigNumber(depositAmount).times(depositPeriodInSeconds).times(interestRatePerSecond).div(PRECISION).times(UIRMultiplier).div(PRECISION)
+  const interestBeforeFee = BigNumber(depositAmount).times(depositPeriodInSeconds).times(interestRatePerSecond).div(PRECISION).times(IRMultiplier).div(PRECISION)
   return applyFee ? interestBeforeFee.minus(calcFeeAmount(interestBeforeFee)) : interestBeforeFee
 }
 
@@ -69,6 +81,8 @@ contract('DInterest: Aave', accounts => {
   const acc0 = accounts[0]
   const acc1 = accounts[1]
   const acc2 = accounts[2]
+  const govTreasury = accounts[3]
+  const devWallet = accounts[4]
 
   // Contract instances
   let stablecoin
@@ -79,8 +93,12 @@ contract('DInterest: Aave', accounts => {
   let dInterestPool
   let market
   let feeModel
+  let interestModel
   let depositNFT
   let fundingNFT
+  let mph
+  let mphMinter
+  let rewards
 
   // Constants
   const INIT_INTEREST_RATE = 0.1 // 10% APY
@@ -104,6 +122,15 @@ contract('DInterest: Aave', accounts => {
     await stablecoin.mint(acc1, num2str(mintAmount))
     await stablecoin.mint(acc2, num2str(mintAmount))
 
+    // Initialize MPH
+    mph = await MPHToken.new()
+    mphMinter = await MPHMinter.new(mph.address, govTreasury, devWallet, DevRewardMultiplier)
+    mph.transferOwnership(mphMinter.address)
+
+    // Initialize MPH rewards
+    rewards = await Rewards.new(mph.address, stablecoin.address, ZERO_ADDR, Math.floor(Date.now() / 1e3))
+    rewards.setRewardDistribution(acc0)
+
     // Initialize the money market
     market = await AaveMarket.new(lendingPoolAddressesProvider.address, stablecoin.address)
 
@@ -112,8 +139,26 @@ contract('DInterest: Aave', accounts => {
     fundingNFT = await NFT.new('88mph Funding', '88mph-Funding')
 
     // Initialize the DInterest pool
-    feeModel = await FeeModel.new()
-    dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, MaxDepositAmount, market.address, stablecoin.address, feeModel.address, depositNFT.address, fundingNFT.address)
+    feeModel = await PercentageFeeModel.new(rewards.address)
+    interestModel = await LinearInterestModel.new(IRMultiplier)
+    dInterestPool = await DInterest.new(
+      MinDepositPeriod,
+      MaxDepositPeriod,
+      MinDepositAmount,
+      MaxDepositAmount,
+      market.address,
+      stablecoin.address,
+      feeModel.address,
+      interestModel.address,
+      depositNFT.address,
+      fundingNFT.address,
+      mphMinter.address
+    )
+
+    // Set MPH minting multiplier for DInterest pool
+    await mphMinter.setPoolMintingMultiplier(dInterestPool.address, PoolMintingMultiplier)
+    await mphMinter.setPoolDepositorRewardMultiplier(dInterestPool.address, PoolDepositorRewardMultiplier)
+    await mphMinter.setPoolFunderRewardMultiplier(dInterestPool.address, PoolFunderRewardMultiplier)
 
     // Transfer the ownership of the money market to the DInterest pool
     await market.transferOwnership(dInterestPool.address)

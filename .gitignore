@@ -8,3 +8,5 @@ secret.json
 #solidity-coverage files
 coverage
 coverage.json
+
+deployments

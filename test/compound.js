@@ -3,21 +3,33 @@ const BigNumber = require('bignumber.js')
 
 // Contract artifacts
 const DInterest = artifacts.require('DInterest')
-const FeeModel = artifacts.require('FeeModel')
-const CompoundERC20Market = artifacts.require('CompoundERC20Market')
+const PercentageFeeModel = artifacts.require('PercentageFeeModel')
+const LinearInterestModel = artifacts.require('LinearInterestModel')
 const NFT = artifacts.require('NFT')
+const MPHToken = artifacts.require('MPHToken')
+const MPHMinter = artifacts.require('MPHMinter')
+const Rewards = artifacts.require('Rewards')
+
+const CompoundERC20Market = artifacts.require('CompoundERC20Market')
 const CERC20Mock = artifacts.require('CERC20Mock')
 const ComptrollerMock = artifacts.require('ComptrollerMock')
 const ERC20Mock = artifacts.require('ERC20Mock')
 
 // Constants
 const PRECISION = 1e18
-const UIRMultiplier = BigNumber(0.75 * 1e18).integerValue().toFixed() // Minimum safe avg interest rate multiplier
-const MinDepositPeriod = 90 * 24 * 60 * 60 // 90 days in seconds
-const MaxDepositAmount = BigNumber(1000 * PRECISION).toFixed() // 1000 stablecoins
 const YEAR_IN_SEC = 31556952 // Number of seconds in a year
+const IRMultiplier = BigNumber(0.75 * 1e18).integerValue().toFixed() // Minimum safe avg interest rate multiplier
+const MinDepositPeriod = 90 * 24 * 60 * 60 // 90 days in seconds
+const MaxDepositPeriod = 3 * YEAR_IN_SEC // 3 years in seconds
+const MinDepositAmount = BigNumber(0 * PRECISION).toFixed() // 0 stablecoins
+const MaxDepositAmount = BigNumber(1000 * PRECISION).toFixed() // 1000 stablecoins
+const PoolMintingMultiplier = BigNumber(1 * PRECISION).toFixed()
+const PoolDepositorRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
+const PoolFunderRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
+const DevRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
 const epsilon = 1e-4
 const INF = BigNumber(2).pow(256).minus(1).toFixed()
+const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
 
 // Utilities
 // travel `time` seconds forward in time
@@ -48,7 +60,7 @@ function applyFee (interestAmount) {
 }
 
 function calcInterestAmount (depositAmount, interestRatePerSecond, depositPeriodInSeconds, applyFee) {
-  const interestBeforeFee = BigNumber(depositAmount).times(depositPeriodInSeconds).times(interestRatePerSecond).div(PRECISION).times(UIRMultiplier).div(PRECISION)
+  const interestBeforeFee = BigNumber(depositAmount).times(depositPeriodInSeconds).times(interestRatePerSecond).div(PRECISION).times(IRMultiplier).div(PRECISION)
   return applyFee ? interestBeforeFee.minus(calcFeeAmount(interestBeforeFee)) : interestBeforeFee
 }
 
@@ -67,6 +79,8 @@ contract('DInterest: Compound', accounts => {
   const acc0 = accounts[0]
   const acc1 = accounts[1]
   const acc2 = accounts[2]
+  const govTreasury = accounts[3]
+  const devWallet = accounts[4]
 
   // Contract instances
   let stablecoin
@@ -76,8 +90,12 @@ contract('DInterest: Compound', accounts => {
   let comptroller
   let comp
   let feeModel
+  let interestModel
   let depositNFT
   let fundingNFT
+  let mph
+  let mphMinter
+  let rewards
 
   // Constants
   const INIT_EXRATE = 2e26 // 1 cToken = 0.02 stablecoin
@@ -97,18 +115,45 @@ contract('DInterest: Compound', accounts => {
     await stablecoin.mint(acc1, num2str(mintAmount))
     await stablecoin.mint(acc2, num2str(mintAmount))
 
+    // Initialize MPH
+    mph = await MPHToken.new()
+    mphMinter = await MPHMinter.new(mph.address, govTreasury, devWallet, DevRewardMultiplier)
+    mph.transferOwnership(mphMinter.address)
+
+    // Initialize MPH rewards
+    rewards = await Rewards.new(mph.address, stablecoin.address, ZERO_ADDR, Math.floor(Date.now() / 1e3))
+    rewards.setRewardDistribution(acc0)
+
     // Initialize the money market
-    feeModel = await FeeModel.new()
     comp = await ERC20Mock.new()
     comptroller = await ComptrollerMock.new(comp.address)
-    market = await CompoundERC20Market.new(cToken.address, comptroller.address, feeModel.address, stablecoin.address)
+    market = await CompoundERC20Market.new(cToken.address, comptroller.address, rewards.address, stablecoin.address)
 
     // Initialize the NFTs
     depositNFT = await NFT.new('88mph Deposit', '88mph-Deposit')
     fundingNFT = await NFT.new('88mph Funding', '88mph-Funding')
 
     // Initialize the DInterest pool
-    dInterestPool = await DInterest.new(UIRMultiplier, MinDepositPeriod, MaxDepositAmount, market.address, stablecoin.address, feeModel.address, depositNFT.address, fundingNFT.address)
+    feeModel = await PercentageFeeModel.new(rewards.address)
+    interestModel = await LinearInterestModel.new(IRMultiplier)
+    dInterestPool = await DInterest.new(
+      MinDepositPeriod,
+      MaxDepositPeriod,
+      MinDepositAmount,
+      MaxDepositAmount,
+      market.address,
+      stablecoin.address,
+      feeModel.address,
+      interestModel.address,
+      depositNFT.address,
+      fundingNFT.address,
+      mphMinter.address
+    )
+
+    // Set MPH minting multiplier for DInterest pool
+    await mphMinter.setPoolMintingMultiplier(dInterestPool.address, PoolMintingMultiplier)
+    await mphMinter.setPoolDepositorRewardMultiplier(dInterestPool.address, PoolDepositorRewardMultiplier)
+    await mphMinter.setPoolFunderRewardMultiplier(dInterestPool.address, PoolFunderRewardMultiplier)
 
     // Transfer the ownership of the money market to the DInterest pool
     await market.transferOwnership(dInterestPool.address)
@@ -355,11 +400,10 @@ contract('DInterest: Compound', accounts => {
     assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(rateAfter1y.div(rateAfter3m).minus(1))), 'acc2 didn\'t receive correct interest amount')
   })
 
-  it('claimComp()', async function () {
-    const beneficiary = '0x332D87209f7c8296389C307eAe170c2440830A47'
+  it('claimRewards()', async function () {
     const expectedMintAmount = PRECISION
-    const beforeBalance = await comp.balanceOf(beneficiary)
-    await market.claimComp()
-    assert.equal(expectedMintAmount, BigNumber(await comp.balanceOf(beneficiary)).minus(beforeBalance).toNumber(), 'Claimed COMP amount incorrect')
+    const beforeBalance = await comp.balanceOf(rewards.address)
+    await market.claimRewards()
+    assert.equal(expectedMintAmount, BigNumber(await comp.balanceOf(rewards.address)).minus(beforeBalance).toNumber(), 'Claimed COMP amount incorrect')
   })
 })

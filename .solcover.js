@@ -5,6 +5,7 @@ module.exports = {
         'moneymarkets/aave/imports',
         'moneymarkets/IMoneyMarket.sol',
         'NFT.sol',
-        'FeeModel.sol'
+        'rewards/MPHToken.sol',
+        'rewards/Rewards.sol'
     ]
 };

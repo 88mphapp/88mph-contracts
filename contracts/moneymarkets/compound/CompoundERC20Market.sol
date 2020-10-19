@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../IMoneyMarket.sol";
-import "../../FeeModel.sol";
 import "../../libs/DecMath.sol";
 import "./imports/ICERC20.sol";
 import "./imports/IComptroller.sol";
@@ -20,23 +19,23 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
 
     ICERC20 public cToken;
     IComptroller public comptroller;
-    FeeModel public feeModel;
+    address public rewards;
     ERC20 public stablecoin;
 
-    constructor(address _cToken, address _comptroller, address _feeModel, address _stablecoin) public {
+    constructor(address _cToken, address _comptroller, address _rewards, address _stablecoin) public {
         // Verify input addresses
         require(
-            _cToken != address(0) && _comptroller != address(0) && _feeModel != address(0) && _stablecoin != address(0),
+            _cToken != address(0) && _comptroller != address(0) && _rewards != address(0) && _stablecoin != address(0),
             "CompoundERC20Market: An input address is 0"
         );
         require(
-            _cToken.isContract() && _comptroller.isContract() && _feeModel.isContract() && _stablecoin.isContract(),
+            _cToken.isContract() && _comptroller.isContract() && _rewards.isContract() && _stablecoin.isContract(),
             "CompoundERC20Market: An input address is not a contract"
         );
 
         cToken = ICERC20(_cToken);
         comptroller = IComptroller(_comptroller);
-        feeModel = FeeModel(_feeModel);
+        rewards = _rewards;
         stablecoin = ERC20(_stablecoin);
     }
 
@@ -67,6 +66,12 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
         stablecoin.safeTransfer(msg.sender, amountInUnderlying);
     }
 
+    function claimRewards() external {
+        comptroller.claimComp(address(this));
+        ERC20 comp = ERC20(comptroller.getCompAddress());
+        comp.safeTransfer(rewards, comp.balanceOf(address(this)));
+    }
+
     function supplyRatePerSecond(uint256 blocktime)
         external
         view
@@ -84,11 +89,5 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
 
     function incomeIndex() external returns (uint256) {
         return cToken.exchangeRateCurrent();
-    }
-
-    function claimComp() external {
-        comptroller.claimComp(address(this));
-        ERC20 comp = ERC20(comptroller.getCompAddress());
-        comp.safeTransfer(feeModel.beneficiary(), comp.balanceOf(address(this)));
     }
 }

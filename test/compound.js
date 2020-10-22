@@ -9,6 +9,7 @@ const NFT = artifacts.require('NFT')
 const MPHToken = artifacts.require('MPHToken')
 const MPHMinter = artifacts.require('MPHMinter')
 const Rewards = artifacts.require('Rewards')
+const EMAOracle = artifacts.require('EMAOracle')
 
 const CompoundERC20Market = artifacts.require('CompoundERC20Market')
 const CERC20Mock = artifacts.require('CERC20Mock')
@@ -27,6 +28,10 @@ const PoolMintingMultiplier = BigNumber(1 * PRECISION).toFixed()
 const PoolDepositorRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
 const PoolFunderRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
 const DevRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
+const EMAUpdateInterval = 24 * 60 * 60
+const EMASmoothingFactor = BigNumber(2 * PRECISION).toFixed()
+const EMAAverageWindowInIntervals = 30
+
 const epsilon = 1e-4
 const INF = BigNumber(2).pow(256).minus(1).toFixed()
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
@@ -91,6 +96,7 @@ contract('DInterest: Compound', accounts => {
   let comp
   let feeModel
   let interestModel
+  let interestOracle
   let depositNFT
   let fundingNFT
   let mph
@@ -100,8 +106,7 @@ contract('DInterest: Compound', accounts => {
   // Constants
   const INIT_EXRATE = 2e26 // 1 cToken = 0.02 stablecoin
   const INIT_INTEREST_RATE = 0.1 // 10% APY
-  const INIT_INTEREST_RATE_PER_BLOCK = 45290900000
-  const INIT_INTEREST_RATE_PER_SECOND = INIT_INTEREST_RATE_PER_BLOCK / 15
+  const INIT_INTEREST_RATE_PER_SECOND = num2str(INIT_INTEREST_RATE * PRECISION / YEAR_IN_SEC)
 
   beforeEach(async function () {
     // Initialize mock stablecoin and cToken
@@ -133,18 +138,24 @@ contract('DInterest: Compound', accounts => {
     depositNFT = await NFT.new('88mph Deposit', '88mph-Deposit')
     fundingNFT = await NFT.new('88mph Funding', '88mph-Funding')
 
+    // Initialize the interest oracle
+    interestOracle = await EMAOracle.new(num2str(INIT_INTEREST_RATE * PRECISION / YEAR_IN_SEC), EMAUpdateInterval, EMASmoothingFactor, EMAAverageWindowInIntervals, market.address)
+
     // Initialize the DInterest pool
     feeModel = await PercentageFeeModel.new(rewards.address)
     interestModel = await LinearInterestModel.new(IRMultiplier)
     dInterestPool = await DInterest.new(
-      MinDepositPeriod,
-      MaxDepositPeriod,
-      MinDepositAmount,
-      MaxDepositAmount,
+      {
+        MinDepositPeriod,
+        MaxDepositPeriod,
+        MinDepositAmount,
+        MaxDepositAmount
+      },
       market.address,
       stablecoin.address,
       feeModel.address,
       interestModel.address,
+      interestOracle.address,
       depositNFT.address,
       fundingNFT.address,
       mphMinter.address

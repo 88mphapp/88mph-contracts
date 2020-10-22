@@ -25,6 +25,9 @@ contract EMAOracle is IInterestOracle {
     uint256 public lastIncomeIndex;
     uint256 public lastUpdateTimestamp;
 
+    /**
+        External contracts
+     */
     IMoneyMarket public moneyMarket;
 
     constructor(
@@ -38,7 +41,7 @@ contract EMAOracle is IInterestOracle {
         UPDATE_INTERVAL = _updateInterval;
         lastUpdateTimestamp = now;
 
-        uint256 updateMultiplier = _smoothingFactor.decdiv(PRECISION.add(_averageWindowInIntervals));
+        uint256 updateMultiplier = _smoothingFactor.div(_averageWindowInIntervals.add(1));
         UPDATE_MULTIPLIER = updateMultiplier;
         ONE_MINUS_UPDATE_MULTIPLIER = PRECISION.sub(updateMultiplier);
 
@@ -60,8 +63,10 @@ contract EMAOracle is IInterestOracle {
         uint256 incomingValue = newIncomeIndex.sub(_lastIncomeIndex).decdiv(_lastIncomeIndex).div(timeElapsed);
 
         updated = true;
-        value = incomingValue.mul(UPDATE_MULTIPLIER).add(_emaStored.mul(ONE_MINUS_UPDATE_MULTIPLIER));
+        value = incomingValue.decmul(UPDATE_MULTIPLIER).add(_emaStored.decmul(ONE_MINUS_UPDATE_MULTIPLIER));
         emaStored = value;
+        lastIncomeIndex = newIncomeIndex;
+        lastUpdateTimestamp = now;
     }
 
     function query() public view returns (uint256 value) {

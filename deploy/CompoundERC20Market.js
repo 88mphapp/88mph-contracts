@@ -9,7 +9,7 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
   const deployResult = await deploy('CompoundERC20Market', {
     from: deployer,
     args: [
-      compoundConfig.cToken,
+      poolConfig.moneyMarketParams.cToken,
       compoundConfig.comptroller,
       rewardsDeployment.address,
       poolConfig.stablecoin

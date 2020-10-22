@@ -13,6 +13,7 @@ import "./models/fee/IFeeModel.sol";
 import "./models/interest/IInterestModel.sol";
 import "./NFT.sol";
 import "./rewards/MPHMinter.sol";
+import "./models/interest-oracle/IInterestOracle.sol";
 
 // DeLorean Interest -- It's coming back from the future!
 // EL PSY CONGROO
@@ -27,34 +28,6 @@ contract DInterest is ReentrancyGuard, Ownable {
     // Constants
     uint256 internal constant PRECISION = 10**18;
     uint256 internal constant ONE = 10**18;
-
-    // Used for maintaining an accurate average block time
-    uint256 internal _blocktime; // Number of seconds needed to generate each block, decimal
-    uint256 internal _lastCallBlock; // Last block when the contract was called
-    uint256 internal _lastCallTimestamp; // Last timestamp when the contract was called
-    uint256 internal _numBlocktimeDatapoints; // Number of block time datapoints collected
-    modifier updateBlocktime {
-        if (block.number > _lastCallBlock) {
-            uint256 blocksSinceLastCall = block.number.sub(_lastCallBlock);
-            // newBlockTime = (now - _lastCallTimestamp) / (block.number - _lastCallBlock)
-            // decimal
-            uint256 newBlocktime = now.sub(_lastCallTimestamp).decdiv(
-                blocksSinceLastCall
-            );
-            // _blocktime = (blocksSinceLastCall * newBlocktime + _numBlocktimeDatapoints * _blocktime) / (_numBlocktimeDatapoints + blocksSinceLastCall)
-            // decimal
-            _blocktime = _blocktime
-                .mul(_numBlocktimeDatapoints)
-                .add(newBlocktime.mul(blocksSinceLastCall))
-                .div(_numBlocktimeDatapoints.add(blocksSinceLastCall));
-            _lastCallBlock = block.number;
-            _lastCallTimestamp = now;
-            _numBlocktimeDatapoints = _numBlocktimeDatapoints.add(
-                blocksSinceLastCall
-            );
-        }
-        _;
-    }
 
     // User deposit data
     // Each deposit has an ID used in the depositNFT, which is equal to its index in `deposits` plus 1
@@ -98,6 +71,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     ERC20 public stablecoin;
     IFeeModel public feeModel;
     IInterestModel public interestModel;
+    IInterestOracle public interestOracle;
     NFT public depositNFT;
     NFT public fundingNFT;
     MPHMinter public mphMinter;
@@ -135,15 +109,20 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 newValue
     );
 
+    struct DepositLimit {
+        uint256 MinDepositPeriod;
+        uint256 MaxDepositPeriod;
+        uint256 MinDepositAmount;
+        uint256 MaxDepositAmount;
+    }
+
     constructor(
-        uint256 _MinDepositPeriod, // Minimum deposit period, in seconds
-        uint256 _MaxDepositPeriod, // Maximum deposit period, in seconds
-        uint256 _MinDepositAmount, // Minimum deposit amount for each deposit, in stablecoins
-        uint256 _MaxDepositAmount, // Maximum deposit amount for each deposit, in stablecoins
+        DepositLimit memory _depositLimit,
         address _moneyMarket, // Address of IMoneyMarket that's used for generating interest (owner must be set to this DInterest contract)
         address _stablecoin, // Address of the stablecoin used to store funds
         address _feeModel, // Address of the FeeModel contract that determines how fees are charged
         address _interestModel, // Address of the InterestModel contract that determines how much interest to offer
+        address _interestOracle, // Address of the InterestOracle contract that provides the average interest rate
         address _depositNFT, // Address of the NFT representing ownership of deposits (owner must be set to this DInterest contract)
         address _fundingNFT, // Address of the NFT representing ownership of fundings (owner must be set to this DInterest contract)
         address _mphMinter // Address of the contract for handling minting MPH to users
@@ -154,6 +133,7 @@ contract DInterest is ReentrancyGuard, Ownable {
                 _stablecoin.isContract() &&
                 _feeModel.isContract() &&
                 _interestModel.isContract() &&
+                _interestOracle.isContract() &&
                 _depositNFT.isContract() &&
                 _fundingNFT.isContract() &&
                 _mphMinter.isContract(),
@@ -164,6 +144,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         stablecoin = ERC20(_stablecoin);
         feeModel = IFeeModel(_feeModel);
         interestModel = IInterestModel(_interestModel);
+        interestOracle = IInterestOracle(_interestOracle);
         depositNFT = NFT(_depositNFT);
         fundingNFT = NFT(_fundingNFT);
         mphMinter = MPHMinter(_mphMinter);
@@ -174,31 +155,31 @@ contract DInterest is ReentrancyGuard, Ownable {
             "DInterest: moneyMarket.stablecoin() != _stablecoin"
         );
 
+        // Ensure interestOracle uses the same moneyMarket
+        require(
+            interestOracle.moneyMarket() == _moneyMarket,
+            "DInterest: interestOracle.moneyMarket() != _moneyMarket"
+        );
+
         // Verify input uint256 parameters
         require(
-            _MaxDepositPeriod > 0 && _MaxDepositAmount > 0,
+            _depositLimit.MaxDepositPeriod > 0 && _depositLimit.MaxDepositAmount > 0,
             "DInterest: An input uint256 is 0"
         );
         require(
-            _MinDepositPeriod <= _MaxDepositPeriod,
+            _depositLimit.MinDepositPeriod <= _depositLimit.MaxDepositPeriod,
             "DInterest: Invalid DepositPeriod range"
         );
         require(
-            _MinDepositAmount <= _MaxDepositAmount,
+            _depositLimit.MinDepositAmount <= _depositLimit.MaxDepositAmount,
             "DInterest: Invalid DepositAmount range"
         );
 
-        MinDepositPeriod = _MinDepositPeriod;
-        MaxDepositPeriod = _MaxDepositPeriod;
-        MinDepositAmount = _MinDepositAmount;
-        MaxDepositAmount = _MaxDepositAmount;
+        MinDepositPeriod = _depositLimit.MinDepositPeriod;
+        MaxDepositPeriod = _depositLimit.MaxDepositPeriod;
+        MinDepositAmount = _depositLimit.MinDepositAmount;
+        MaxDepositAmount = _depositLimit.MaxDepositAmount;
         totalDeposit = 0;
-
-        // Initialize block time estimation variables
-        _blocktime = 15 * PRECISION; // Default block time is 15 seconds
-        _lastCallBlock = block.number;
-        _lastCallTimestamp = now;
-        _numBlocktimeDatapoints = 10**6; // Start with a large number of datapoints to decrease the magnitude of the initial fluctuation
     }
 
     /**
@@ -207,7 +188,6 @@ contract DInterest is ReentrancyGuard, Ownable {
 
     function deposit(uint256 amount, uint256 maturationTimestamp)
         external
-        updateBlocktime
         nonReentrant
     {
         _deposit(amount, maturationTimestamp);
@@ -215,7 +195,6 @@ contract DInterest is ReentrancyGuard, Ownable {
 
     function withdraw(uint256 depositID, uint256 fundingID)
         external
-        updateBlocktime
         nonReentrant
     {
         _withdraw(depositID, fundingID, false);
@@ -223,7 +202,6 @@ contract DInterest is ReentrancyGuard, Ownable {
 
     function earlyWithdraw(uint256 depositID, uint256 fundingID)
         external
-        updateBlocktime
         nonReentrant
     {
         _withdraw(depositID, fundingID, true);
@@ -232,7 +210,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     function multiDeposit(
         uint256[] calldata amountList,
         uint256[] calldata maturationTimestampList
-    ) external updateBlocktime nonReentrant {
+    ) external nonReentrant {
         require(
             amountList.length == maturationTimestampList.length,
             "DInterest: List lengths unequal"
@@ -245,7 +223,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     function multiWithdraw(
         uint256[] calldata depositIDList,
         uint256[] calldata fundingIDList
-    ) external updateBlocktime nonReentrant {
+    ) external nonReentrant {
         require(
             depositIDList.length == fundingIDList.length,
             "DInterest: List lengths unequal"
@@ -258,7 +236,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     function multiEarlyWithdraw(
         uint256[] calldata depositIDList,
         uint256[] calldata fundingIDList
-    ) external updateBlocktime nonReentrant {
+    ) external nonReentrant {
         require(
             depositIDList.length == fundingIDList.length,
             "DInterest: List lengths unequal"
@@ -272,7 +250,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         Deficit funding
      */
 
-    function fundAll() external updateBlocktime nonReentrant {
+    function fundAll() external nonReentrant {
         // Calculate current deficit
         (bool isNegative, uint256 deficit) = surplus();
         require(isNegative, "DInterest: No deficit available");
@@ -300,11 +278,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         _fund(deficit);
     }
 
-    function fundMultiple(uint256 toDepositID)
-        external
-        updateBlocktime
-        nonReentrant
-    {
+    function fundMultiple(uint256 toDepositID) external nonReentrant {
         require(
             toDepositID > latestFundedDepositID,
             "DInterest: Deposits already funded"
@@ -389,9 +363,8 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 depositAmount,
         uint256 depositPeriodInSeconds
     ) public returns (uint256 interestAmount) {
-        uint256 moneyMarketInterestRatePerSecond = moneyMarket
-            .supplyRatePerSecond(_blocktime);
-
+        (, uint256 moneyMarketInterestRatePerSecond) = interestOracle
+            .updateAndQuery();
         (bool surplusIsNegative, uint256 surplusAmount) = surplus();
 
         return
@@ -402,10 +375,6 @@ contract DInterest is ReentrancyGuard, Ownable {
                 surplusIsNegative,
                 surplusAmount
             );
-    }
-
-    function blocktime() external view returns (uint256) {
-        return _blocktime;
     }
 
     function surplus() public returns (bool isNegative, uint256 surplusAmount) {
@@ -489,6 +458,12 @@ contract DInterest is ReentrancyGuard, Ownable {
         require(newValue.isContract(), "DInterest: not contract");
         interestModel = IInterestModel(newValue);
         emit ESetParamAddress(msg.sender, "interestModel", newValue);
+    }
+
+    function setInterestOracle(address newValue) external onlyOwner {
+        require(newValue.isContract(), "DInterest: not contract");
+        interestOracle = IInterestOracle(newValue);
+        emit ESetParamAddress(msg.sender, "interestOracle", newValue);
     }
 
     function setMinDepositPeriod(uint256 newValue) external onlyOwner {
@@ -734,7 +709,13 @@ contract DInterest is ReentrancyGuard, Ownable {
         stablecoin.safeTransfer(feeModel.beneficiary(), feeAmount);
 
         // Emit event
-        emit EWithdraw(msg.sender, depositID, fundingID, early, takeBackMPHAmount);
+        emit EWithdraw(
+            msg.sender,
+            depositID,
+            fundingID,
+            early,
+            takeBackMPHAmount
+        );
     }
 
     function _fund(uint256 totalDeficit) internal {
@@ -749,7 +730,10 @@ contract DInterest is ReentrancyGuard, Ownable {
         fundingNFT.mint(msg.sender, fundingList.length);
 
         // Mint MPH for msg.sender
-        uint256 mintMPHAmount = mphMinter.mintFunderReward(msg.sender, totalDeficit);
+        uint256 mintMPHAmount = mphMinter.mintFunderReward(
+            msg.sender,
+            totalDeficit
+        );
 
         // Emit event
         uint256 fundingID = fundingList.length;

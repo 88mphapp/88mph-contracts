@@ -1,5 +1,5 @@
 const BigNumber = require('bignumber.js')
-const poolConfig = require('../deploy-configs/pool.json')
+const poolConfig = require('../deploy-configs/get-pool-config')
 
 module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artifacts }) => {
   const { deploy, log, get } = deployments
@@ -8,6 +8,7 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
   const moneyMarketDeployment = await get(poolConfig.moneyMarket)
   const feeModelDeployment = await get(poolConfig.feeModel)
   const interestModelDeployment = await get(poolConfig.interestModel)
+  const interestOracleDeployment = await get(poolConfig.interestOracle)
   const depositNFTDeployment = await get(`${poolConfig.nftNamePrefix}Deposit`)
   const fundingNFTDeployment = await get(`${poolConfig.nftNamePrefix}Funding`)
   const mphMinterDeployment = await get('MPHMinter')
@@ -16,14 +17,17 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
     from: deployer,
     contract: 'DInterest',
     args: [
-      BigNumber(poolConfig.MinDepositPeriod).toFixed(),
-      BigNumber(poolConfig.MaxDepositPeriod).toFixed(),
-      BigNumber(poolConfig.MinDepositAmount).toFixed(),
-      BigNumber(poolConfig.MaxDepositAmount).toFixed(),
+      {
+        MinDepositPeriod: BigNumber(poolConfig.MinDepositPeriod).toFixed(),
+        MaxDepositPeriod: BigNumber(poolConfig.MaxDepositPeriod).toFixed(),
+        MinDepositAmount: BigNumber(poolConfig.MinDepositAmount).toFixed(),
+        MaxDepositAmount: BigNumber(poolConfig.MaxDepositAmount).toFixed()
+      },
       moneyMarketDeployment.address,
       poolConfig.stablecoin,
       feeModelDeployment.address,
       interestModelDeployment.address,
+      interestOracleDeployment.address,
       depositNFTDeployment.address,
       fundingNFTDeployment.address,
       mphMinterDeployment.address
@@ -53,4 +57,4 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
   }
 }
 module.exports.tags = [poolConfig.name, 'DInterest']
-module.exports.dependencies = [poolConfig.moneyMarket, poolConfig.feeModel, poolConfig.interestModel, `${poolConfig.nftNamePrefix}Deposit`, `${poolConfig.nftNamePrefix}Funding`, 'MPHRewards']
+module.exports.dependencies = [poolConfig.moneyMarket, poolConfig.feeModel, poolConfig.interestModel, poolConfig.interestOracle, `${poolConfig.nftNamePrefix}Deposit`, `${poolConfig.nftNamePrefix}Funding`, 'MPHRewards']

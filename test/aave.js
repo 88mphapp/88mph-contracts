@@ -10,6 +10,7 @@ const MPHToken = artifacts.require('MPHToken')
 const MPHMinter = artifacts.require('MPHMinter')
 const ERC20Mock = artifacts.require('ERC20Mock')
 const Rewards = artifacts.require('Rewards')
+const EMAOracle = artifacts.require('EMAOracle')
 
 const AaveMarket = artifacts.require('AaveMarket')
 const ATokenMock = artifacts.require('ATokenMock')
@@ -29,6 +30,10 @@ const PoolMintingMultiplier = BigNumber(1 * PRECISION).toFixed()
 const PoolDepositorRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
 const PoolFunderRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
 const DevRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
+const EMAUpdateInterval = 24 * 60 * 60
+const EMASmoothingFactor = BigNumber(2 * PRECISION).toFixed()
+const EMAAverageWindowInIntervals = 30
+
 const epsilon = 1e-4
 const INF = BigNumber(2).pow(256).minus(1).toFixed()
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
@@ -94,6 +99,7 @@ contract('DInterest: Aave', accounts => {
   let market
   let feeModel
   let interestModel
+  let interestOracle
   let depositNFT
   let fundingNFT
   let mph
@@ -138,18 +144,24 @@ contract('DInterest: Aave', accounts => {
     depositNFT = await NFT.new('88mph Deposit', '88mph-Deposit')
     fundingNFT = await NFT.new('88mph Funding', '88mph-Funding')
 
+    // Initialize the interest oracle
+    interestOracle = await EMAOracle.new(num2str(INIT_INTEREST_RATE * PRECISION / YEAR_IN_SEC), EMAUpdateInterval, EMASmoothingFactor, EMAAverageWindowInIntervals, market.address)
+
     // Initialize the DInterest pool
     feeModel = await PercentageFeeModel.new(rewards.address)
     interestModel = await LinearInterestModel.new(IRMultiplier)
     dInterestPool = await DInterest.new(
-      MinDepositPeriod,
-      MaxDepositPeriod,
-      MinDepositAmount,
-      MaxDepositAmount,
+      {
+        MinDepositPeriod,
+        MaxDepositPeriod,
+        MinDepositAmount,
+        MaxDepositAmount
+      },
       market.address,
       stablecoin.address,
       feeModel.address,
       interestModel.address,
+      interestOracle.address,
       depositNFT.address,
       fundingNFT.address,
       mphMinter.address
@@ -203,6 +215,7 @@ contract('DInterest: Aave', accounts => {
 
     // Wait 6 months
     await timeTravel(0.5 * YEAR_IN_SEC)
+    await aToken.mintInterest(num2str(0.5 * YEAR_IN_SEC))
 
     // acc1 deposits stablecoin into the DInterest pool for 1 year
     await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })

@@ -16,7 +16,6 @@ contract AaveMarket is IMoneyMarket, Ownable {
     using SafeERC20 for ERC20;
     using Address for address;
 
-    uint256 internal constant YEAR = 31556952; // Number of seconds in one Gregorian calendar year (365.2425 days)
     uint16 internal constant REFERRALCODE = 20; // Aave referral program code
 
     ILendingPoolAddressesProvider public provider; // Used for fetching the current address of LendingPool
@@ -71,19 +70,6 @@ contract AaveMarket is IMoneyMarket, Ownable {
     }
 
     function claimRewards() external {}
-
-    function supplyRatePerSecond(
-        uint256 /*blocktime*/
-    ) external view returns (uint256) {
-        ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
-
-        // The annual supply interest rate, scaled by 10^27
-        (, , , , uint256 liquidityRate, , , , , , , , ) = lendingPool
-            .getReserveData(address(stablecoin));
-
-        // supplyRatePerSecond = liquidityRate / 10^9 / YEAR = liquidityRate / (YEAR * 10^9)
-        return liquidityRate.div(YEAR.mul(10**9));
-    }
 
     function totalValue() external returns (uint256) {
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());

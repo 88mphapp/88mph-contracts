@@ -3,7 +3,7 @@ const BigNumber = require('bignumber.js')
 module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artifacts }) => {
   const { deploy, log, get } = deployments
   const { deployer } = await getNamedAccounts()
-  const config = require('../deploy-configs/get-config')
+  const config = require('../deploy-configs/get-network-config')
 
   const mphTokenDeployment = await get('MPHToken')
 

@@ -1,8 +1,8 @@
 module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artifacts }) => {
   const { deploy, log, get } = deployments
   const { deployer } = await getNamedAccounts()
-  const poolConfig = require('../deploy-configs/pool.json')
-  const compoundConfig = require('../deploy-configs/compound.json')
+  const poolConfig = require('../deploy-configs/get-pool-config')
+  const compoundConfig = require('../deploy-configs/protocols/compound.json')
 
   const rewardsDeployment = await get('Rewards')
 

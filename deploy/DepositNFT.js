@@ -1,4 +1,4 @@
-const poolConfig = require('../deploy-configs/pool.json')
+const poolConfig = require('../deploy-configs/get-pool-config')
 
 const nftName = `${poolConfig.nftNamePrefix}Deposit`
 const nftSymbol = `${poolConfig.nftSymbolPrefix}Deposit`

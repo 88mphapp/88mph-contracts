@@ -1,8 +1,8 @@
 {
-  "name": "88mph cUNI Pool",
-  "nftNamePrefix": "88mph cUNI Pool ",
-  "nftSymbolPrefix": "88mph-cUNI-",
-  "moneyMarket": "CompoundERC20Market",
+  "name": "88mph crvSBTC Pool",
+  "nftNamePrefix": "88mph crvSBTC Pool ",
+  "nftSymbolPrefix": "88mph-crvSBTC-",
+  "moneyMarket": "YVaultMarket",
   "interestModel": "LinearInterestModel",
   "interestOracle": "EMAOracle",
   "feeModel": "PercentageFeeModel",
@@ -10,16 +10,16 @@
   "MaxDepositPeriod": 94670856,
   "MinDepositAmount": 100e18,
   "MaxDepositAmount": 10000e18,
-  "stablecoin": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
-  "PoolMintingMultiplier": 4e18,
+  "stablecoin": "0x075b1bb99792c9E1041bA13afEf80C91a1e70fB3",
+  "PoolMintingMultiplier": 10000e18,
   "PoolDepositorRewardMultiplier": 0.1e18,
   "PoolFunderRewardMultiplier": 0.1e18,
   "IRMultiplier": 0.75e18,
-  "EMAInitial": 1.27e9,
-  "EMAUpdateInverval": 86400,
+  "EMAInitial": 6.5e8,
+  "EMAUpdateInverval": 604800,
   "EMASmoothingFactor": 2e18,
-  "EMAAverageWindowInIntervals": 30,
+  "EMAAverageWindowInIntervals": 4,
   "moneyMarketParams": {
-    "cToken": "0x35a18000230da775cac24873d00ff85bccded550"
+    "vault": "0x7Ff566E1d69DEfF32a7b244aE7276b9f90e9D0f6"
   }
 }

@@ -52,7 +52,11 @@ contract AaveMarket is IMoneyMarket, Ownable {
         lendingPool.deposit(address(stablecoin), amount, REFERRALCODE);
     }
 
-    function withdraw(uint256 amountInUnderlying) external onlyOwner {
+    function withdraw(uint256 amountInUnderlying)
+        external
+        onlyOwner
+        returns (uint256 actualAmountWithdrawn)
+    {
         require(amountInUnderlying > 0, "AaveMarket: amountInUnderlying is 0");
 
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
@@ -67,6 +71,8 @@ contract AaveMarket is IMoneyMarket, Ownable {
 
         // Transfer `amountInUnderlying` stablecoin to `msg.sender`
         stablecoin.safeTransfer(msg.sender, amountInUnderlying);
+
+        return amountInUnderlying;
     }
 
     function claimRewards() external {}

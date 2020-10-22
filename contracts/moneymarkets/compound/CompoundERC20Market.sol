@@ -9,7 +9,6 @@ import "../../libs/DecMath.sol";
 import "./imports/ICERC20.sol";
 import "./imports/IComptroller.sol";
 
-
 contract CompoundERC20Market is IMoneyMarket, Ownable {
     using DecMath for uint256;
     using SafeERC20 for ERC20;
@@ -22,14 +21,25 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
     address public rewards;
     ERC20 public stablecoin;
 
-    constructor(address _cToken, address _comptroller, address _rewards, address _stablecoin) public {
+    constructor(
+        address _cToken,
+        address _comptroller,
+        address _rewards,
+        address _stablecoin
+    ) public {
         // Verify input addresses
         require(
-            _cToken != address(0) && _comptroller != address(0) && _rewards != address(0) && _stablecoin != address(0),
+            _cToken != address(0) &&
+                _comptroller != address(0) &&
+                _rewards != address(0) &&
+                _stablecoin != address(0),
             "CompoundERC20Market: An input address is 0"
         );
         require(
-            _cToken.isContract() && _comptroller.isContract() && _rewards.isContract() && _stablecoin.isContract(),
+            _cToken.isContract() &&
+                _comptroller.isContract() &&
+                _rewards.isContract() &&
+                _stablecoin.isContract(),
             "CompoundERC20Market: An input address is not a contract"
         );
 
@@ -53,8 +63,15 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
         );
     }
 
-    function withdraw(uint256 amountInUnderlying) external onlyOwner {
-        require(amountInUnderlying > 0, "CompoundERC20Market: amountInUnderlying is 0");
+    function withdraw(uint256 amountInUnderlying)
+        external
+        onlyOwner
+        returns (uint256 actualAmountWithdrawn)
+    {
+        require(
+            amountInUnderlying > 0,
+            "CompoundERC20Market: amountInUnderlying is 0"
+        );
 
         // Withdraw `amountInUnderlying` stablecoin from cToken
         require(
@@ -64,6 +81,8 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
 
         // Transfer `amountInUnderlying` stablecoin to `msg.sender`
         stablecoin.safeTransfer(msg.sender, amountInUnderlying);
+
+        return amountInUnderlying;
     }
 
     function claimRewards() external {

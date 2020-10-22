@@ -108,6 +108,13 @@ contract('DInterest: Compound', accounts => {
   const INIT_INTEREST_RATE = 0.1 // 10% APY
   const INIT_INTEREST_RATE_PER_SECOND = num2str(INIT_INTEREST_RATE * PRECISION / YEAR_IN_SEC)
 
+  const timePass = async (timeInYears) => {
+    await timeTravel(timeInYears * YEAR_IN_SEC)
+    const currentExRate = BigNumber(await cToken.exchangeRateStored())
+    const rateAfterTimePasses = BigNumber(currentExRate).times(1 + timeInYears * INIT_INTEREST_RATE)
+    await cToken._setExchangeRateStored(num2str(rateAfterTimePasses))
+  }
+
   beforeEach(async function () {
     // Initialize mock stablecoin and cToken
     stablecoin = await ERC20Mock.new()
@@ -185,7 +192,7 @@ contract('DInterest: Compound', accounts => {
 
     // Calculate interest amount
     const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0))
-    const interestExpected = calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, num2str(YEAR_IN_SEC), false).div(PRECISION)
+    const interestExpected = calcInterestAmount(depositAmount, BigNumber(INIT_INTEREST_RATE).times(PRECISION).div(YEAR_IN_SEC), num2str(YEAR_IN_SEC), false).div(PRECISION)
 
     // Verify stablecoin transfer
     assert.equal(acc0BeforeBalance.minus(acc0CurrentBalance).toNumber(), depositAmount, 'stablecoin not transferred out of acc0')
@@ -208,7 +215,7 @@ contract('DInterest: Compound', accounts => {
     await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
 
     // Wait 6 months
-    await timeTravel(0.5 * YEAR_IN_SEC)
+    await timePass(0.5)
 
     // acc1 deposits stablecoin into the DInterest pool for 1 year
     await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })
@@ -216,11 +223,7 @@ contract('DInterest: Compound', accounts => {
     await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc1 })
 
     // Wait 6 months
-    await timeTravel(0.5 * YEAR_IN_SEC)
-
-    // Raise cToken exchange rate
-    const rateAfter1y = INIT_EXRATE * (1 + INIT_INTEREST_RATE)
-    await cToken._setExchangeRateStored(num2str(rateAfter1y))
+    await timePass(0.5)
 
     // acc0 withdraws
     const acc0BeforeBalance = await stablecoin.balanceOf(acc0)
@@ -243,11 +246,7 @@ contract('DInterest: Compound', accounts => {
     assert(totalDeposit0.eq(depositAmount), 'totalDeposit not updated after acc0 withdrawed')
 
     // Wait 6 months
-    await timeTravel(0.5 * YEAR_IN_SEC)
-
-    // Raise cToken exchange rate
-    const rateAfter1y6m = INIT_EXRATE * (1 + 1.5 * INIT_INTEREST_RATE)
-    await cToken._setExchangeRateStored(num2str(rateAfter1y6m))
+    await timePass(0.5)
 
     // acc1 withdraws
     const acc1BeforeBalance = await stablecoin.balanceOf(acc1)
@@ -290,7 +289,7 @@ contract('DInterest: Compound', accounts => {
     await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
 
     // Wait 1 year
-    await timeTravel(1 * YEAR_IN_SEC)
+    await timePass(1)
 
     // acc0 tries to withdraw early but fails
     try {
@@ -318,10 +317,7 @@ contract('DInterest: Compound', accounts => {
     await dInterestPool.deposit(num2str(depositAmount), blockNow + 0.25 * YEAR_IN_SEC, { from: acc1 })
 
     // Wait 3 months
-    await timeTravel(0.25 * YEAR_IN_SEC)
-    // Raise cToken exchange rate
-    const rateAfter3m = BigNumber(INIT_EXRATE).times(1 + 0.25 * INIT_INTEREST_RATE)
-    await cToken._setExchangeRateStored(num2str(rateAfter3m))
+    await timePass(0.25)
 
     // Withdraw deposit 3
     await dInterestPool.withdraw(3, 0, { from: acc1 })
@@ -332,13 +328,10 @@ contract('DInterest: Compound', accounts => {
 
     // Check deficit
     const surplusObj = await dInterestPool.surplus.call()
-    assert(surplusObj.isNegative || (surplusObj.isNegative && epsilonEq(surplusObj.surplusAmount, 0)), 'Surplus negative after funding all deposits')
+    assert(!surplusObj.isNegative || (surplusObj.isNegative && BigNumber(surplusObj.surplusAmount).div(PRECISION).lt(epsilon)), 'Surplus negative after funding all deposits')
 
     // Wait 9 months
-    await timeTravel(0.75 * YEAR_IN_SEC)
-    // Raise cToken exchange rate
-    const rateAfter1y = BigNumber(INIT_EXRATE).times(1 + 1 * INIT_INTEREST_RATE)
-    await cToken._setExchangeRateStored(num2str(rateAfter1y))
+    await timePass(0.75)
 
     // acc0, acc1 withdraw deposits
     const acc2BeforeBalance = BigNumber(await stablecoin.balanceOf(acc2))
@@ -347,7 +340,7 @@ contract('DInterest: Compound', accounts => {
 
     // Check interest earned by funder
     const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2))
-    assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(rateAfter1y.div(rateAfter3m).minus(1))), 'acc2 didn\'t receive correct interest amount')
+    assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(INIT_INTEREST_RATE).times(0.75)), 'acc2 didn\'t receive correct interest amount')
   })
 
   it('fundMultiple()', async function () {
@@ -374,10 +367,7 @@ contract('DInterest: Compound', accounts => {
     await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc1 })
 
     // Wait 3 months
-    await timeTravel(0.25 * YEAR_IN_SEC)
-    // Raise cToken exchange rate
-    const rateAfter3m = BigNumber(INIT_EXRATE).times(1 + 0.25 * INIT_INTEREST_RATE)
-    await cToken._setExchangeRateStored(num2str(rateAfter3m))
+    await timePass(0.25)
 
     // Withdraw deposit 2
     await dInterestPool.withdraw(2, 0, { from: acc1 })
@@ -395,10 +385,7 @@ contract('DInterest: Compound', accounts => {
     assert(epsilonEq(actualSurplus, expectedSurplus), 'Incorrect surplus after funding')
 
     // Wait 9 months
-    await timeTravel(0.75 * YEAR_IN_SEC)
-    // Raise cToken exchange rate
-    const rateAfter1y = BigNumber(INIT_EXRATE).times(1 + 1 * INIT_INTEREST_RATE)
-    await cToken._setExchangeRateStored(num2str(rateAfter1y))
+    await timePass(0.75)
 
     // acc0, acc1 withdraw deposits
     const acc2BeforeBalance = BigNumber(await stablecoin.balanceOf(acc2))
@@ -408,7 +395,7 @@ contract('DInterest: Compound', accounts => {
 
     // Check interest earned by funder
     const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2))
-    assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(rateAfter1y.div(rateAfter3m).minus(1))), 'acc2 didn\'t receive correct interest amount')
+    assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(INIT_INTEREST_RATE).times(0.75)), 'acc2 didn\'t receive correct interest amount')
   })
 
   it('claimRewards()', async function () {

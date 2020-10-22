@@ -12,11 +12,8 @@ const ERC20Mock = artifacts.require('ERC20Mock')
 const Rewards = artifacts.require('Rewards')
 const EMAOracle = artifacts.require('EMAOracle')
 
-const AaveMarket = artifacts.require('AaveMarket')
-const ATokenMock = artifacts.require('ATokenMock')
-const LendingPoolMock = artifacts.require('LendingPoolMock')
-const LendingPoolCoreMock = artifacts.require('LendingPoolCoreMock')
-const LendingPoolAddressesProviderMock = artifacts.require('LendingPoolAddressesProviderMock')
+const VaultMock = artifacts.require('VaultMock')
+const YVaultMarket = artifacts.require('YVaultMarket')
 
 // Constants
 const PRECISION = 1e18
@@ -81,7 +78,7 @@ function epsilonEq (curr, prev) {
 }
 
 // Tests
-contract('DInterest: Aave', accounts => {
+contract('DInterest: YVault', accounts => {
   // Accounts
   const acc0 = accounts[0]
   const acc1 = accounts[1]
@@ -91,10 +88,7 @@ contract('DInterest: Aave', accounts => {
 
   // Contract instances
   let stablecoin
-  let aToken
-  let lendingPoolCore
-  let lendingPool
-  let lendingPoolAddressesProvider
+  let vault
   let dInterestPool
   let market
   let feeModel
@@ -111,24 +105,16 @@ contract('DInterest: Aave', accounts => {
 
   const timePass = async (timeInYears) => {
     await timeTravel(timeInYears * YEAR_IN_SEC)
-    await aToken.mintInterest(num2str(timeInYears * YEAR_IN_SEC))
+    await stablecoin.mint(vault.address, num2str(BigNumber(await stablecoin.balanceOf(vault.address)).times(INIT_INTEREST_RATE).times(timeInYears)))
   }
 
   beforeEach(async function () {
     // Initialize mock stablecoin and Aave
     stablecoin = await ERC20Mock.new()
-    aToken = await ATokenMock.new(stablecoin.address)
-    lendingPoolCore = await LendingPoolCoreMock.new()
-    lendingPool = await LendingPoolMock.new(lendingPoolCore.address)
-    await lendingPoolCore.setLendingPool(lendingPool.address)
-    await lendingPool.setReserveAToken(stablecoin.address, aToken.address)
-    lendingPoolAddressesProvider = await LendingPoolAddressesProviderMock.new()
-    await lendingPoolAddressesProvider.setLendingPoolImpl(lendingPool.address)
-    await lendingPoolAddressesProvider.setLendingPoolCoreImpl(lendingPoolCore.address)
+    vault = await VaultMock.new(stablecoin.address)
 
     // Mint stablecoin
     const mintAmount = 1000 * PRECISION
-    await stablecoin.mint(aToken.address, num2str(mintAmount))
     await stablecoin.mint(acc0, num2str(mintAmount))
     await stablecoin.mint(acc1, num2str(mintAmount))
     await stablecoin.mint(acc2, num2str(mintAmount))
@@ -143,7 +129,7 @@ contract('DInterest: Aave', accounts => {
     rewards.setRewardDistribution(acc0)
 
     // Initialize the money market
-    market = await AaveMarket.new(lendingPoolAddressesProvider.address, stablecoin.address)
+    market = await YVaultMarket.new(vault.address, stablecoin.address)
 
     // Initialize the NFTs
     depositNFT = await NFT.new('88mph Deposit', '88mph-Deposit')
@@ -293,7 +279,7 @@ contract('DInterest: Aave', accounts => {
     await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
 
     // Wait 1 year
-    await timePass(1)
+    await timeTravel(1 * YEAR_IN_SEC)
 
     // acc0 tries to withdraw early but fails
     try {

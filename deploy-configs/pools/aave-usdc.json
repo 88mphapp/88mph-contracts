@@ -18,5 +18,6 @@
   "EMAInitial": 6e8,
   "EMAUpdateInverval": 86400,
   "EMASmoothingFactor": 2e18,
-  "EMAAverageWindowInIntervals": 30
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {}
 }

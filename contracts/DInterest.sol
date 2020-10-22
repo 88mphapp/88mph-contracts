@@ -163,7 +163,8 @@ contract DInterest is ReentrancyGuard, Ownable {
 
         // Verify input uint256 parameters
         require(
-            _depositLimit.MaxDepositPeriod > 0 && _depositLimit.MaxDepositAmount > 0,
+            _depositLimit.MaxDepositPeriod > 0 &&
+                _depositLimit.MaxDepositAmount > 0,
             "DInterest: An input uint256 is 0"
         );
         require(
@@ -650,7 +651,7 @@ contract DInterest is ReentrancyGuard, Ownable {
             feeAmount = feeModel.getFee(depositEntry.interestOwed);
             withdrawAmount = depositEntry.amount.add(depositEntry.interestOwed);
         }
-        moneyMarket.withdraw(withdrawAmount);
+        withdrawAmount = moneyMarket.withdraw(withdrawAmount);
 
         (bool depositIsNegative, uint256 depositSurplus) = surplusOfDeposit(
             depositID
@@ -685,7 +686,9 @@ contract DInterest is ReentrancyGuard, Ownable {
                 ? interestAmount.add(depositSurplus)
                 : interestAmount;
             if (transferToFunderAmount > 0) {
-                moneyMarket.withdraw(transferToFunderAmount);
+                transferToFunderAmount = moneyMarket.withdraw(
+                    transferToFunderAmount
+                );
                 stablecoin.safeTransfer(
                     fundingNFT.ownerOf(fundingID),
                     transferToFunderAmount

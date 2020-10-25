@@ -467,6 +467,12 @@ contract DInterest is ReentrancyGuard, Ownable {
         emit ESetParamAddress(msg.sender, "interestOracle", newValue);
     }
 
+    function setRewards(address newValue) external onlyOwner {
+        require(newValue.isContract(), "DInterest: not contract");
+        moneyMarket.setRewards(newValue);
+        emit ESetParamAddress(msg.sender, "moneyMarket.rewards", newValue);
+    }
+
     function setMinDepositPeriod(uint256 newValue) external onlyOwner {
         require(newValue <= MaxDepositPeriod, "DInterest: invalid value");
         MinDepositPeriod = newValue;

@@ -77,4 +77,6 @@ contract YVaultMarket is IMoneyMarket, Ownable {
     function incomeIndex() external returns (uint256) {
         return vault.getPricePerFullShare();
     }
+
+    function setRewards(address newValue) external {}
 }

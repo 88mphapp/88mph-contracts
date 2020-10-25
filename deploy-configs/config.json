@@ -1,4 +1,4 @@
 {
-  "network": "mainnet-fork",
+  "network": "mainnet",
   "pool": "yvault-crvsbtc"
 }

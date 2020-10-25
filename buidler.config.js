@@ -36,7 +36,9 @@ module.exports = {
       from: secret.account,
       accounts: {
         mnemonic: secret.mnemonic
-      }
+      },
+      gas: 'auto',
+      gasPrice: 19e9
     },
     buidlerevm: {
       blockGasLimit: 9950000,

@@ -94,4 +94,6 @@ contract AaveMarket is IMoneyMarket, Ownable {
         );
         return lendingPoolCore.getReserveNormalizedIncome(address(stablecoin));
     }
+
+    function setRewards(address newValue) external {}
 }

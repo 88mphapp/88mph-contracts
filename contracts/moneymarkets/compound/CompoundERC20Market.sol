@@ -101,4 +101,13 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
     function incomeIndex() external returns (uint256) {
         return cToken.exchangeRateCurrent();
     }
+
+    /**
+        Param setters
+     */
+    function setRewards(address newValue) external onlyOwner {
+        require(newValue.isContract(), "CompoundERC20Market: not contract");
+        rewards = newValue;
+        emit ESetParamAddress(msg.sender, "rewards", newValue);
+    }
 }

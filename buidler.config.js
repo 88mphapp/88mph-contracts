@@ -23,7 +23,7 @@ module.exports = {
   },
   namedAccounts: {
     deployer: {
-      default: 0
+      default: 1
     }
   },
   paths: {
@@ -38,7 +38,7 @@ module.exports = {
         mnemonic: secret.mnemonic
       },
       gas: 'auto',
-      gasPrice: 19e9
+      gasPrice: 18.00001e9
     },
     buidlerevm: {
       blockGasLimit: 9950000,

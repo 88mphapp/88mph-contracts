@@ -15,7 +15,7 @@
   "PoolDepositorRewardMultiplier": 0.1e18,
   "PoolFunderRewardMultiplier": 0.1e18,
   "IRMultiplier": 0.75e18,
-  "EMAInitial": 1.27e9,
+  "EMAInitial": 1.1e9,
   "EMAUpdateInverval": 86400,
   "EMASmoothingFactor": 2e18,
   "EMAAverageWindowInIntervals": 30,

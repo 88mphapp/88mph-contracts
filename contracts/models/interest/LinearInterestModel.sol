@@ -7,6 +7,7 @@ contract LinearInterestModel {
     using SafeMath for uint256;
     using DecMath for uint256;
 
+    uint256 public constant PRECISION = 10**18;
     uint256 public IRMultiplier;
 
     constructor(uint256 _IRMultiplier) public {
@@ -22,8 +23,10 @@ contract LinearInterestModel {
     ) external view returns (uint256 interestAmount) {
         // interestAmount = depositAmount * moneyMarketInterestRatePerSecond * IRMultiplier * depositPeriodInSeconds
         interestAmount = depositAmount
+            .mul(PRECISION)
             .decmul(moneyMarketInterestRatePerSecond)
             .decmul(IRMultiplier)
-            .mul(depositPeriodInSeconds);
+            .mul(depositPeriodInSeconds)
+            .div(PRECISION);
     }
 }

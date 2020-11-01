@@ -503,6 +503,42 @@ contract DInterest is ReentrancyGuard, Ownable {
         emit ESetParamUint(msg.sender, "MaxDepositAmount", newValue);
     }
 
+    function setDepositNFTTokenURI(uint256 tokenId, string calldata newURI)
+        external
+        onlyOwner
+    {
+        depositNFT.setTokenURI(tokenId, newURI);
+    }
+
+    function setDepositNFTBaseURI(string calldata newURI) external onlyOwner {
+        depositNFT.setBaseURI(newURI);
+    }
+
+    function setDepositNFTContractURI(string calldata newURI)
+        external
+        onlyOwner
+    {
+        depositNFT.setContractURI(newURI);
+    }
+
+    function setFundingNFTTokenURI(uint256 tokenId, string calldata newURI)
+        external
+        onlyOwner
+    {
+        depositNFT.setTokenURI(tokenId, newURI);
+    }
+
+    function setFundingNFTBaseURI(string calldata newURI) external onlyOwner {
+        depositNFT.setBaseURI(newURI);
+    }
+
+    function setFundingNFTContractURI(string calldata newURI)
+        external
+        onlyOwner
+    {
+        depositNFT.setContractURI(newURI);
+    }
+
     /**
         Internal getters
      */

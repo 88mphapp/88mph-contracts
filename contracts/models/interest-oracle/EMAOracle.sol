@@ -63,7 +63,7 @@ contract EMAOracle is IInterestOracle {
         uint256 incomingValue = newIncomeIndex.sub(_lastIncomeIndex).decdiv(_lastIncomeIndex).div(timeElapsed);
 
         updated = true;
-        value = incomingValue.decmul(UPDATE_MULTIPLIER).add(_emaStored.decmul(ONE_MINUS_UPDATE_MULTIPLIER));
+        value = incomingValue.mul(UPDATE_MULTIPLIER).add(_emaStored.mul(ONE_MINUS_UPDATE_MULTIPLIER)).div(PRECISION);
         emaStored = value;
         lastIncomeIndex = newIncomeIndex;
         lastUpdateTimestamp = now;

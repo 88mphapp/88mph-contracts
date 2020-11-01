@@ -18,13 +18,14 @@ const ERC20Mock = artifacts.require('ERC20Mock')
 
 // Constants
 const PRECISION = 1e18
+const STABLECOIN_PRECISION = 1e6
 const YEAR_IN_SEC = 31556952 // Number of seconds in a year
 const IRMultiplier = BigNumber(0.75 * 1e18).integerValue().toFixed() // Minimum safe avg interest rate multiplier
 const MinDepositPeriod = 90 * 24 * 60 * 60 // 90 days in seconds
 const MaxDepositPeriod = 3 * YEAR_IN_SEC // 3 years in seconds
 const MinDepositAmount = BigNumber(0 * PRECISION).toFixed() // 0 stablecoins
 const MaxDepositAmount = BigNumber(1000 * PRECISION).toFixed() // 1000 stablecoins
-const PoolMintingMultiplier = BigNumber(1 * PRECISION).toFixed()
+const PoolMintingMultiplier = BigNumber(1 * PRECISION * (PRECISION / STABLECOIN_PRECISION)).toFixed()
 const PoolDepositorRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
 const PoolFunderRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
 const DevRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
@@ -104,7 +105,7 @@ contract('DInterest: Compound', accounts => {
   let rewards
 
   // Constants
-  const INIT_EXRATE = 2e26 // 1 cToken = 0.02 stablecoin
+  const INIT_EXRATE = 2e8 * STABLECOIN_PRECISION // 1 cToken = 0.02 stablecoin
   const INIT_INTEREST_RATE = 0.1 // 10% APY
   const INIT_INTEREST_RATE_PER_SECOND = num2str(INIT_INTEREST_RATE * PRECISION / YEAR_IN_SEC)
 
@@ -121,7 +122,7 @@ contract('DInterest: Compound', accounts => {
     cToken = await CERC20Mock.new(stablecoin.address)
 
     // Mint stablecoin
-    const mintAmount = 1000 * PRECISION
+    const mintAmount = 1000 * STABLECOIN_PRECISION
     await stablecoin.mint(cToken.address, num2str(mintAmount))
     await stablecoin.mint(acc0, num2str(mintAmount))
     await stablecoin.mint(acc1, num2str(mintAmount))
@@ -182,7 +183,7 @@ contract('DInterest: Compound', accounts => {
   })
 
   it('deposit()', async function () {
-    const depositAmount = 100 * PRECISION
+    const depositAmount = 100 * STABLECOIN_PRECISION
 
     // acc0 deposits stablecoin into the DInterest pool for 1 year
     await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
@@ -192,7 +193,7 @@ contract('DInterest: Compound', accounts => {
 
     // Calculate interest amount
     const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0))
-    const interestExpected = calcInterestAmount(depositAmount, BigNumber(INIT_INTEREST_RATE).times(PRECISION).div(YEAR_IN_SEC), num2str(YEAR_IN_SEC), false).div(PRECISION)
+    const interestExpected = calcInterestAmount(depositAmount, BigNumber(INIT_INTEREST_RATE).times(PRECISION).div(YEAR_IN_SEC), num2str(YEAR_IN_SEC), false).div(STABLECOIN_PRECISION)
 
     // Verify stablecoin transfer
     assert.equal(acc0BeforeBalance.minus(acc0CurrentBalance).toNumber(), depositAmount, 'stablecoin not transferred out of acc0')
@@ -202,12 +203,12 @@ contract('DInterest: Compound', accounts => {
     assert.equal(totalDeposit0.toNumber(), depositAmount, 'totalDeposit not updated after acc0 deposited')
 
     // Verify totalInterestOwed
-    const totalInterestOwed = BigNumber(await dInterestPool.totalInterestOwed()).div(PRECISION)
+    const totalInterestOwed = BigNumber(await dInterestPool.totalInterestOwed()).div(STABLECOIN_PRECISION)
     assert(epsilonEq(totalInterestOwed, interestExpected), 'totalInterestOwed not updated after acc0 deposited')
   })
 
   it('withdraw()', async function () {
-    const depositAmount = 10 * PRECISION
+    const depositAmount = 10 * STABLECOIN_PRECISION
 
     // acc0 deposits stablecoin into the DInterest pool for 1 year
     await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
@@ -264,7 +265,7 @@ contract('DInterest: Compound', accounts => {
   })
 
   it('earlyWithdraw()', async function () {
-    const depositAmount = 10 * PRECISION
+    const depositAmount = 10 * STABLECOIN_PRECISION
 
     // acc0 deposits stablecoin into the DInterest pool for 1 year
     await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
@@ -299,7 +300,7 @@ contract('DInterest: Compound', accounts => {
   })
 
   it('fundAll()', async function () {
-    const depositAmount = 10 * PRECISION
+    const depositAmount = 10 * STABLECOIN_PRECISION
 
     // acc0 deposits stablecoin into the DInterest pool for 1 year
     await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
@@ -328,7 +329,7 @@ contract('DInterest: Compound', accounts => {
 
     // Check deficit
     const surplusObj = await dInterestPool.surplus.call()
-    assert(!surplusObj.isNegative || (surplusObj.isNegative && BigNumber(surplusObj.surplusAmount).div(PRECISION).lt(epsilon)), 'Surplus negative after funding all deposits')
+    assert(!surplusObj.isNegative || (surplusObj.isNegative && BigNumber(surplusObj.surplusAmount).div(STABLECOIN_PRECISION).lt(epsilon)), 'Surplus negative after funding all deposits')
 
     // Wait 9 months
     await timePass(0.75)
@@ -344,7 +345,7 @@ contract('DInterest: Compound', accounts => {
   })
 
   it('fundMultiple()', async function () {
-    const depositAmount = 10 * PRECISION
+    const depositAmount = 10 * STABLECOIN_PRECISION
 
     // acc0 deposits stablecoin into the DInterest pool for 1 year
     await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })

@@ -33,7 +33,8 @@ contract CERC20Mock is ERC20, ERC20Detailed {
 
     constructor(address _dai) public ERC20Detailed("cDAI", "cDAI", 8) {
         dai = _dai;
-        _exchangeRate = 2 * (10**26); // 1 cDAI = 0.02 DAI
+        uint256 daiDecimals = ERC20Detailed(_dai).decimals();
+        _exchangeRate = 2 * (10**(daiDecimals + 8)); // 1 cDAI = 0.02 DAI
         _supplyRate = 45290900000; // 10% supply rate per year
     }
 

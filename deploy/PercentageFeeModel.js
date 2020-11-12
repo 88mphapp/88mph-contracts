@@ -2,12 +2,12 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
   const { deploy, log, get } = deployments
   const { deployer } = await getNamedAccounts()
 
-  const rewardsDeployment = await get('Rewards')
+  const dumperDeployment = await get('Dumper2')
 
   const deployResult = await deploy('PercentageFeeModel', {
     from: deployer,
     args: [
-      rewardsDeployment.address
+      dumperDeployment.address
     ]
   })
   if (deployResult.newlyDeployed) {
@@ -15,4 +15,4 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
   }
 }
 module.exports.tags = ['PercentageFeeModel']
-module.exports.dependencies = ['Rewards']
+module.exports.dependencies = ['Dumper']

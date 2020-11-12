@@ -39,21 +39,21 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
     // Set MPH minting multiplier for DInterest pool
     const MPHMinter = artifacts.require('MPHMinter')
     const mphMinterContract = await MPHMinter.at(mphMinterDeployment.address)
-    await mphMinterContract.setPoolMintingMultiplier(deployResult.address, BigNumber(poolConfig.PoolMintingMultiplier).toFixed())
-    await mphMinterContract.setPoolDepositorRewardMultiplier(deployResult.address, BigNumber(poolConfig.PoolDepositorRewardMultiplier).toFixed())
-    await mphMinterContract.setPoolFunderRewardMultiplier(deployResult.address, BigNumber(poolConfig.PoolFunderRewardMultiplier).toFixed())
+    await mphMinterContract.setPoolMintingMultiplier(deployResult.address, BigNumber(poolConfig.PoolMintingMultiplier).toFixed(), { from: deployer })
+    await mphMinterContract.setPoolDepositorRewardMultiplier(deployResult.address, BigNumber(poolConfig.PoolDepositorRewardMultiplier).toFixed(), { from: deployer })
+    await mphMinterContract.setPoolFunderRewardMultiplier(deployResult.address, BigNumber(poolConfig.PoolFunderRewardMultiplier).toFixed(), { from: deployer })
 
     // Transfer the ownership of the money market to the DInterest pool
     const MoneyMarket = artifacts.require(poolConfig.moneyMarket)
     const moneyMarketContract = await MoneyMarket.at(moneyMarketDeployment.address)
-    await moneyMarketContract.transferOwnership(deployResult.address)
+    await moneyMarketContract.transferOwnership(deployResult.address, { from: deployer })
 
     // Transfer NFT ownerships to the DInterest pool
     const NFT = artifacts.require('NFT')
     const depositNFTContract = await NFT.at(depositNFTDeployment.address)
     const fundingNFTContract = await NFT.at(fundingNFTDeployment.address)
-    await depositNFTContract.transferOwnership(deployResult.address)
-    await fundingNFTContract.transferOwnership(deployResult.address)
+    await depositNFTContract.transferOwnership(deployResult.address, { from: deployer })
+    await fundingNFTContract.transferOwnership(deployResult.address, { from: deployer })
   }
 }
 module.exports.tags = [poolConfig.name, 'DInterest']

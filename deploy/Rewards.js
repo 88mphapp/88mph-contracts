@@ -5,21 +5,17 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
 
   const mphTokenDeployment = await get('MPHToken')
 
-  const deployResult = await deploy('Rewards', {
+  const deployResult = await deploy('Rewards2', {
     from: deployer,
+    contract: 'Rewards',
     args: [
       mphTokenDeployment.address,
       config.rewardToken,
-      config.oneSplitAddress,
       config.rewardStartTime
     ]
   })
   if (deployResult.newlyDeployed) {
-    log(`Rewards deployed at ${deployResult.address}`)
-
-    const Rewards = artifacts.require('Rewards')
-    const rewardsContract = await Rewards.at(deployResult.address)
-    await rewardsContract.setRewardDistribution(config.rewardDistribution, { from: deployer })
+    log(`Rewards2 deployed at ${deployResult.address}`)
   }
 }
 module.exports.tags = ['Rewards', 'MPHRewards']

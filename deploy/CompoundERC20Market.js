@@ -4,14 +4,14 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
   const poolConfig = require('../deploy-configs/get-pool-config')
   const compoundConfig = require('../deploy-configs/protocols/compound.json')
 
-  const rewardsDeployment = await get('Rewards')
+  const dumperDeployment = await get('Dumper')
 
   const deployResult = await deploy('CompoundERC20Market', {
     from: deployer,
     args: [
       poolConfig.moneyMarketParams.cToken,
       compoundConfig.comptroller,
-      rewardsDeployment.address,
+      dumperDeployment.address,
       poolConfig.stablecoin
     ]
   })
@@ -20,4 +20,4 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
   }
 }
 module.exports.tags = ['CompoundERC20Market']
-module.exports.dependencies = ['Rewards']
+module.exports.dependencies = ['Dumper']

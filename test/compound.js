@@ -134,8 +134,8 @@ contract('DInterest: Compound', accounts => {
     mph.transferOwnership(mphMinter.address)
 
     // Initialize MPH rewards
-    rewards = await Rewards.new(mph.address, stablecoin.address, ZERO_ADDR, Math.floor(Date.now() / 1e3))
-    rewards.setRewardDistribution(acc0)
+    rewards = await Rewards.new(mph.address, stablecoin.address, Math.floor(Date.now() / 1e3))
+    rewards.setRewardDistribution(acc0, true)
 
     // Initialize the money market
     comp = await ERC20Mock.new()
@@ -172,7 +172,6 @@ contract('DInterest: Compound', accounts => {
     // Set MPH minting multiplier for DInterest pool
     await mphMinter.setPoolMintingMultiplier(dInterestPool.address, PoolMintingMultiplier)
     await mphMinter.setPoolDepositorRewardMultiplier(dInterestPool.address, PoolDepositorRewardMultiplier)
-    await mphMinter.setPoolFunderRewardMultiplier(dInterestPool.address, PoolFunderRewardMultiplier)
 
     // Transfer the ownership of the money market to the DInterest pool
     await market.transferOwnership(dInterestPool.address)

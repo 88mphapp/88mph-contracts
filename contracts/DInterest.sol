@@ -40,6 +40,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         bool finalSurplusIsNegative;
         uint256 finalSurplusAmount; // Surplus remaining after withdrawal
         uint256 mintMPHAmount; // Amount of MPH minted to user
+        uint256 depositTimestamp; // Unix timestamp at time of deposit, in seconds
     }
     Deposit[] internal deposits;
     uint256 public latestFundedDepositID; // the ID of the most recently created deposit that was funded
@@ -95,8 +96,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     event EFund(
         address indexed sender,
         uint256 indexed fundingID,
-        uint256 deficitAmount,
-        uint256 mintMPHAmount
+        uint256 deficitAmount
     );
     event ESetParamAddress(
         address indexed sender,
@@ -473,6 +473,12 @@ contract DInterest is ReentrancyGuard, Ownable {
         emit ESetParamAddress(msg.sender, "moneyMarket.rewards", newValue);
     }
 
+    function setMPHMinter(address newValue) external onlyOwner {
+        require(newValue.isContract(), "DInterest: not contract");
+        mphMinter = MPHMinter(newValue);
+        emit ESetParamAddress(msg.sender, "mphMinter", newValue);
+    }
+
     function setMinDepositPeriod(uint256 newValue) external onlyOwner {
         require(newValue <= MaxDepositPeriod, "DInterest: invalid value");
         MinDepositPeriod = newValue;
@@ -611,7 +617,8 @@ contract DInterest is ReentrancyGuard, Ownable {
                 active: true,
                 finalSurplusIsNegative: false,
                 finalSurplusAmount: 0,
-                mintMPHAmount: mintMPHAmount
+                mintMPHAmount: mintMPHAmount,
+                depositTimestamp: now
             })
         );
 
@@ -653,6 +660,11 @@ contract DInterest is ReentrancyGuard, Ownable {
                 now < depositEntry.maturationTimestamp,
                 "DInterest: Deposit mature, use withdraw() instead"
             );
+            // Verify `now > depositEntry.depositTimestamp`
+            require(
+                now > depositEntry.depositTimestamp,
+                "DInterest: Deposited in same block"
+            );
         } else {
             // Verify `now >= depositEntry.maturationTimestamp`
             require(
@@ -679,9 +691,6 @@ contract DInterest is ReentrancyGuard, Ownable {
 
         // Update totalInterestOwed
         totalInterestOwed = totalInterestOwed.sub(depositEntry.interestOwed);
-
-        // Burn depositNFT
-        depositNFT.burn(depositID);
 
         uint256 feeAmount;
         uint256 withdrawAmount;
@@ -774,14 +783,8 @@ contract DInterest is ReentrancyGuard, Ownable {
         // Mint fundingNFT
         fundingNFT.mint(msg.sender, fundingList.length);
 
-        // Mint MPH for msg.sender
-        uint256 mintMPHAmount = mphMinter.mintFunderReward(
-            msg.sender,
-            totalDeficit
-        );
-
         // Emit event
         uint256 fundingID = fundingList.length;
-        emit EFund(msg.sender, fundingID, totalDeficit, mintMPHAmount);
+        emit EFund(msg.sender, fundingID, totalDeficit);
     }
 }

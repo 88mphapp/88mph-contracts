@@ -24,4 +24,13 @@ contract MPHToken is ERC20, ERC20Detailed, Ownable {
         _transfer(from, to, amount);
         return true;
     }
+
+    function ownerBurn(address account, uint256 amount)
+        public
+        onlyOwner
+        returns (bool)
+    {
+        _burn(account, amount);
+        return true;
+    }
 }

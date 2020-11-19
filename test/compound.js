@@ -130,6 +130,7 @@ contract('DInterest: Compound', accounts => {
 
     // Initialize MPH
     mph = await MPHToken.new()
+    await mph.init()
     mphMinter = await MPHMinter.new(mph.address, govTreasury, devWallet, DevRewardMultiplier)
     mph.transferOwnership(mphMinter.address)
 

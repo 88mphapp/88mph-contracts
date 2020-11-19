@@ -89,10 +89,11 @@ contract MPHMinter is Ownable {
 
         if (early) {
             // burn all MPH
-            mph.ownerBurn(from, takeBackAmount);
+            mph.burnFrom(from, takeBackAmount);
         } else {
             // transfer to gov treasury
-            mph.ownerTransfer(from, govTreasury, takeBackAmount);
+            mph.transferFrom(from, address(this), takeBackAmount);
+            mph.transfer(govTreasury, takeBackAmount);
         }
         return takeBackAmount;
     }

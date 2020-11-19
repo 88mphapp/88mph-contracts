@@ -13,7 +13,6 @@
   "stablecoin": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
   "PoolMintingMultiplier": 4e18,
   "PoolDepositorRewardMultiplier": 0.1e18,
-  "PoolFunderRewardMultiplier": 0.1e18,
   "IRMultiplier": 0.75e18,
   "EMAInitial": 9.5e8,
   "EMAUpdateInverval": 86400,

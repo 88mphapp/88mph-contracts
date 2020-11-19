@@ -133,6 +133,11 @@ contract('DInterest: Compound', accounts => {
     mphMinter = await MPHMinter.new(mph.address, govTreasury, devWallet, DevRewardMultiplier)
     mph.transferOwnership(mphMinter.address)
 
+    // Set infinite MPH approval
+    await mph.approve(mphMinter.address, INF, { from: acc0 })
+    await mph.approve(mphMinter.address, INF, { from: acc1 })
+    await mph.approve(mphMinter.address, INF, { from: acc2 })
+
     // Initialize MPH rewards
     rewards = await Rewards.new(mph.address, stablecoin.address, Math.floor(Date.now() / 1e3))
     rewards.setRewardDistribution(acc0, true)

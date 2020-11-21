@@ -2,7 +2,7 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
   const { deploy, log, get } = deployments
   const { deployer } = await getNamedAccounts()
 
-  const dumperDeployment = await get('Dumper2')
+  const dumperDeployment = await get('Dumper')
 
   const deployResult = await deploy('PercentageFeeModel', {
     from: deployer,

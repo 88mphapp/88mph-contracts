@@ -3,9 +3,9 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
   const { deployer } = await getNamedAccounts()
   const config = require('../deploy-configs/get-network-config')
 
-  const rewardsDeployment = await get('Rewards2')
+  const rewardsDeployment = await get('Rewards')
 
-  const deployResult = await deploy('Dumper2', {
+  const deployResult = await deploy('Dumper', {
     from: deployer,
     contract: 'Dumper',
     args: [

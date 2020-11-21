@@ -152,4 +152,17 @@ contract MPHMinter is Ownable {
             newMultiplier
         );
     }
+
+    function setDevRewardMultiplier(
+        uint256 newMultiplier
+    ) external onlyOwner {
+        require(newMultiplier <= PRECISION, "MPHMinter: invalid multiplier");
+        devRewardMultiplier = newMultiplier;
+        emit ESetParamUint(
+            msg.sender,
+            "devRewardMultiplier",
+            address(0),
+            newMultiplier
+        );
+    }
 }

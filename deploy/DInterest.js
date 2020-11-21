@@ -41,7 +41,6 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
     const mphMinterContract = await MPHMinter.at(mphMinterDeployment.address)
     await mphMinterContract.setPoolMintingMultiplier(deployResult.address, BigNumber(poolConfig.PoolMintingMultiplier).toFixed(), { from: deployer })
     await mphMinterContract.setPoolDepositorRewardMultiplier(deployResult.address, BigNumber(poolConfig.PoolDepositorRewardMultiplier).toFixed(), { from: deployer })
-    await mphMinterContract.setPoolFunderRewardMultiplier(deployResult.address, BigNumber(poolConfig.PoolFunderRewardMultiplier).toFixed(), { from: deployer })
 
     // Transfer the ownership of the money market to the DInterest pool
     const MoneyMarket = artifacts.require(poolConfig.moneyMarket)

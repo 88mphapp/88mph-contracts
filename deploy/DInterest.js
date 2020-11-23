@@ -69,6 +69,9 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
       await dInterestContract.transferOwnership(config.govTreasury, { from: deployer })
       log(`Transfer ${poolConfig.name} ownership to ${config.govTreasury}`)
     }
+
+    const finalBalance = BigNumber((await web3.eth.getBalance(deployer)).toString()).div(1e18)
+    log(`Deployer ETH balance: ${finalBalance.toString()} ETH`)
   }
 }
 module.exports.tags = [poolConfig.name, 'DInterest']

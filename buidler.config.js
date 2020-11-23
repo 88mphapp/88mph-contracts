@@ -38,7 +38,7 @@ module.exports = {
         mnemonic: secret.mnemonic
       },
       gas: 'auto',
-      gasPrice: 24.0000001e9
+      gasPrice: 50.0000001e9
     },
     buidlerevm: {
       blockGasLimit: 9950000,
@@ -47,8 +47,8 @@ module.exports = {
     },
     ganache: {
       url: 'http://localhost:8545',
-      gasLimit: 1e7,
-      gasPrice: 1e11
+      gas: 'auto',
+      gasPrice: 50.0000001e9
     }
   }
 }

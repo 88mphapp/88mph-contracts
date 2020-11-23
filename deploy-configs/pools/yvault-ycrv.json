@@ -17,7 +17,7 @@
   "PoolDepositorRewardVestPeriod": 604800,
   "PoolFunderRewardVestPeriod": 0,
   "IRMultiplier": 0.75e18,
-  "EMAInitial": 9.5e8,
+  "EMAInitial": 25e8,
   "EMAUpdateInverval": 604800,
   "EMASmoothingFactor": 2e18,
   "EMAAverageWindowInIntervals": 4,

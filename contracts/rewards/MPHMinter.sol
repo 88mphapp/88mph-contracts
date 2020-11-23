@@ -91,6 +91,9 @@ contract MPHMinter is Ownable {
             depositPeriodInSeconds,
             interestAmount
         );
+        if (depositorReward == 0 && devReward == 0 && govReward == 0) {
+            return 0;
+        }
 
         // mint and vest depositor reward
         mph.ownerMint(address(this), depositorReward);
@@ -135,6 +138,9 @@ contract MPHMinter is Ownable {
             mintMPHAmount,
             early
         );
+        if (takeBackAmount == 0 && devReward == 0 && govReward == 0) {
+            return 0;
+        }
         require(
             takeBackAmount >= devReward.add(govReward),
             "MPHMinter: takeBackAmount < devReward + govReward"
@@ -180,6 +186,9 @@ contract MPHMinter is Ownable {
             interestPayoutAmount,
             early
         );
+        if (funderReward == 0 && devReward == 0 && govReward == 0) {
+            return 0;
+        }
 
         // mint and vest funder reward
         mph.ownerMint(address(this), funderReward);

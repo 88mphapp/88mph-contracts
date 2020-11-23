@@ -10,6 +10,8 @@ const MPHToken = artifacts.require('MPHToken')
 const MPHMinter = artifacts.require('MPHMinter')
 const Rewards = artifacts.require('Rewards')
 const EMAOracle = artifacts.require('EMAOracle')
+const MPHIssuanceModel = artifacts.require('MPHIssuanceModel01')
+const Vesting = artifacts.require('Vesting')
 
 const CompoundERC20Market = artifacts.require('CompoundERC20Market')
 const CERC20Mock = artifacts.require('CERC20Mock')
@@ -25,13 +27,15 @@ const MinDepositPeriod = 90 * 24 * 60 * 60 // 90 days in seconds
 const MaxDepositPeriod = 3 * YEAR_IN_SEC // 3 years in seconds
 const MinDepositAmount = BigNumber(0 * PRECISION).toFixed() // 0 stablecoins
 const MaxDepositAmount = BigNumber(1000 * PRECISION).toFixed() // 1000 stablecoins
-const PoolMintingMultiplier = BigNumber(1 * PRECISION * (PRECISION / STABLECOIN_PRECISION)).toFixed()
-const PoolDepositorRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
-const PoolFunderRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
+const PoolDepositorRewardMintMultiplier = BigNumber(3.168873e-13 * PRECISION * (PRECISION / STABLECOIN_PRECISION)).toFixed() // 1e5 stablecoin * 1 year => 1 MPH
+const PoolDepositorRewardTakeBackMultiplier = BigNumber(0.9 * PRECISION).toFixed()
+const PoolFunderRewardMultiplier = BigNumber(3.168873e-13 * PRECISION * (PRECISION / STABLECOIN_PRECISION)).toFixed() // 1e5 stablecoin * 1 year => 1 MPH
 const DevRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
 const EMAUpdateInterval = 24 * 60 * 60
 const EMASmoothingFactor = BigNumber(2 * PRECISION).toFixed()
 const EMAAverageWindowInIntervals = 30
+const PoolDepositorRewardVestPeriod = 7 * 24 * 60 * 60 // 7 days
+const PoolFunderRewardVestPeriod = 0 * 24 * 60 * 60 // 0 days
 
 const epsilon = 1e-4
 const INF = BigNumber(2).pow(256).minus(1).toFixed()
@@ -39,7 +43,7 @@ const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
 
 // Utilities
 // travel `time` seconds forward in time
-function timeTravel (time) {
+function timeTravel(time) {
   return new Promise((resolve, reject) => {
     web3.currentProvider.send({
       jsonrpc: '2.0',
@@ -53,34 +57,34 @@ function timeTravel (time) {
   })
 }
 
-async function latestBlockTimestamp () {
+async function latestBlockTimestamp() {
   return (await web3.eth.getBlock('latest')).timestamp
 }
 
-function calcFeeAmount (interestAmount) {
+function calcFeeAmount(interestAmount) {
   return interestAmount.times(0.1)
 }
 
-function applyFee (interestAmount) {
+function applyFee(interestAmount) {
   return interestAmount.minus(calcFeeAmount(interestAmount))
 }
 
-function calcInterestAmount (depositAmount, interestRatePerSecond, depositPeriodInSeconds, applyFee) {
+function calcInterestAmount(depositAmount, interestRatePerSecond, depositPeriodInSeconds, applyFee) {
   const interestBeforeFee = BigNumber(depositAmount).times(depositPeriodInSeconds).times(interestRatePerSecond).div(PRECISION).times(IRMultiplier).div(PRECISION)
   return applyFee ? interestBeforeFee.minus(calcFeeAmount(interestBeforeFee)) : interestBeforeFee
 }
 
 // Converts a JS number into a string that doesn't use scientific notation
-function num2str (num) {
+function num2str(num) {
   return BigNumber(num).integerValue().toFixed()
 }
 
-function epsilonEq (curr, prev) {
+function epsilonEq(curr, prev) {
   return BigNumber(curr).eq(prev) || BigNumber(curr).minus(prev).div(prev).abs().lt(epsilon)
 }
 
 // Tests
-contract('DInterest: Compound', accounts => {
+contract('Compound', accounts => {
   // Accounts
   const acc0 = accounts[0]
   const acc1 = accounts[1]
@@ -103,6 +107,8 @@ contract('DInterest: Compound', accounts => {
   let mph
   let mphMinter
   let rewards
+  let mphIssuanceModel
+  let vesting
 
   // Constants
   const INIT_EXRATE = 2e8 * STABLECOIN_PRECISION // 1 cToken = 0.02 stablecoin
@@ -131,7 +137,9 @@ contract('DInterest: Compound', accounts => {
     // Initialize MPH
     mph = await MPHToken.new()
     await mph.init()
-    mphMinter = await MPHMinter.new(mph.address, govTreasury, devWallet, DevRewardMultiplier)
+    vesting = await Vesting.new(mph.address)
+    mphIssuanceModel = await MPHIssuanceModel.new(DevRewardMultiplier)
+    mphMinter = await MPHMinter.new(mph.address, govTreasury, devWallet, mphIssuanceModel.address, vesting.address)
     mph.transferOwnership(mphMinter.address)
 
     // Set infinite MPH approval
@@ -176,8 +184,12 @@ contract('DInterest: Compound', accounts => {
     )
 
     // Set MPH minting multiplier for DInterest pool
-    await mphMinter.setPoolMintingMultiplier(dInterestPool.address, PoolMintingMultiplier)
-    await mphMinter.setPoolDepositorRewardMultiplier(dInterestPool.address, PoolDepositorRewardMultiplier)
+    await mphMinter.setPoolWhitelist(dInterestPool.address, true)
+    await mphIssuanceModel.setPoolDepositorRewardMintMultiplier(dInterestPool.address, PoolDepositorRewardMintMultiplier)
+    await mphIssuanceModel.setPoolDepositorRewardTakeBackMultiplier(dInterestPool.address, PoolDepositorRewardTakeBackMultiplier)
+    await mphIssuanceModel.setPoolFunderRewardMultiplier(dInterestPool.address, PoolFunderRewardMultiplier)
+    await mphIssuanceModel.setPoolDepositorRewardVestPeriod(dInterestPool.address, PoolDepositorRewardVestPeriod)
+    await mphIssuanceModel.setPoolFunderRewardVestPeriod(dInterestPool.address, PoolFunderRewardVestPeriod)
 
     // Transfer the ownership of the money market to the DInterest pool
     await market.transferOwnership(dInterestPool.address)
@@ -187,227 +199,420 @@ contract('DInterest: Compound', accounts => {
     await fundingNFT.transferOwnership(dInterestPool.address)
   })
 
-  it('deposit()', async function () {
-    const depositAmount = 100 * STABLECOIN_PRECISION
+  describe('normal operations', () => {
+    it('deposit()', async function () {
+      const depositAmount = 100 * STABLECOIN_PRECISION
 
-    // acc0 deposits stablecoin into the DInterest pool for 1 year
-    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
-    const blockNow = await latestBlockTimestamp()
-    const acc0BeforeBalance = BigNumber(await stablecoin.balanceOf(acc0))
-    await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
+      // acc0 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+      const blockNow = await latestBlockTimestamp()
+      const acc0BeforeBalance = BigNumber(await stablecoin.balanceOf(acc0))
+      await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
 
-    // Calculate interest amount
-    const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0))
-    const interestExpected = calcInterestAmount(depositAmount, BigNumber(INIT_INTEREST_RATE).times(PRECISION).div(YEAR_IN_SEC), num2str(YEAR_IN_SEC), false).div(STABLECOIN_PRECISION)
+      // Calculate interest amount
+      const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0))
+      const interestExpected = calcInterestAmount(depositAmount, BigNumber(INIT_INTEREST_RATE).times(PRECISION).div(YEAR_IN_SEC), num2str(YEAR_IN_SEC), false).div(STABLECOIN_PRECISION)
 
-    // Verify stablecoin transfer
-    assert.equal(acc0BeforeBalance.minus(acc0CurrentBalance).toNumber(), depositAmount, 'stablecoin not transferred out of acc0')
+      // Verify stablecoin transfer
+      assert.equal(acc0BeforeBalance.minus(acc0CurrentBalance).toNumber(), depositAmount, 'stablecoin not transferred out of acc0')
 
-    // Verify totalDeposit
-    const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit())
-    assert.equal(totalDeposit0.toNumber(), depositAmount, 'totalDeposit not updated after acc0 deposited')
+      // Verify totalDeposit
+      const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit())
+      assert.equal(totalDeposit0.toNumber(), depositAmount, 'totalDeposit not updated after acc0 deposited')
 
-    // Verify totalInterestOwed
-    const totalInterestOwed = BigNumber(await dInterestPool.totalInterestOwed()).div(STABLECOIN_PRECISION)
-    assert(epsilonEq(totalInterestOwed, interestExpected), 'totalInterestOwed not updated after acc0 deposited')
-  })
+      // Verify totalInterestOwed
+      const totalInterestOwed = BigNumber(await dInterestPool.totalInterestOwed()).div(STABLECOIN_PRECISION)
+      assert(epsilonEq(totalInterestOwed, interestExpected), 'totalInterestOwed not updated after acc0 deposited')
+    })
 
-  it('withdraw()', async function () {
-    const depositAmount = 10 * STABLECOIN_PRECISION
+    it('withdraw()', async function () {
+      const depositAmount = 10 * STABLECOIN_PRECISION
 
-    // acc0 deposits stablecoin into the DInterest pool for 1 year
-    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
-    let blockNow = await latestBlockTimestamp()
-    await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
+      // acc0 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+      let blockNow = await latestBlockTimestamp()
+      await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
 
-    // Wait 6 months
-    await timePass(0.5)
+      // Wait 6 months
+      await timePass(0.5)
 
-    // acc1 deposits stablecoin into the DInterest pool for 1 year
-    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })
-    blockNow = await latestBlockTimestamp()
-    await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc1 })
+      // acc1 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })
+      blockNow = await latestBlockTimestamp()
+      await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc1 })
 
-    // Wait 6 months
-    await timePass(0.5)
+      // Wait 6 months
+      await timePass(0.5)
 
-    // acc0 withdraws
-    const acc0BeforeBalance = await stablecoin.balanceOf(acc0)
-    await dInterestPool.withdraw(1, 0, { from: acc0 })
-
-    // try withdrawing again (should fail)
-    try {
+      // acc0 withdraws
+      const acc0BeforeBalance = await stablecoin.balanceOf(acc0)
+      await vesting.withdrawVested(acc0, 0, { from: acc0 })
       await dInterestPool.withdraw(1, 0, { from: acc0 })
-      assert.fail('acc0 withdrew twice')
-    } catch (error) { }
 
-    // Verify withdrawn amount
-    const acc0CurrentBalance = await stablecoin.balanceOf(acc0)
-    const acc0WithdrawnAmountExpected = applyFee(BigNumber((await dInterestPool.getDeposit(1)).interestOwed)).plus(depositAmount)
-    const acc0WithdrawnAmountActual = BigNumber(acc0CurrentBalance).minus(acc0BeforeBalance)
-    assert(epsilonEq(acc0WithdrawnAmountActual, acc0WithdrawnAmountExpected), 'acc0 didn\'t withdraw correct amount of stablecoin')
+      // try withdrawing again (should fail)
+      try {
+        await dInterestPool.withdraw(1, 0, { from: acc0 })
+        assert.fail('acc0 withdrew twice')
+      } catch (error) { }
 
-    // Verify totalDeposit
-    const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit())
-    assert(totalDeposit0.eq(depositAmount), 'totalDeposit not updated after acc0 withdrawed')
+      // Verify withdrawn amount
+      const acc0CurrentBalance = await stablecoin.balanceOf(acc0)
+      const acc0WithdrawnAmountExpected = applyFee(BigNumber((await dInterestPool.getDeposit(1)).interestOwed)).plus(depositAmount)
+      const acc0WithdrawnAmountActual = BigNumber(acc0CurrentBalance).minus(acc0BeforeBalance)
+      assert(epsilonEq(acc0WithdrawnAmountActual, acc0WithdrawnAmountExpected), 'acc0 didn\'t withdraw correct amount of stablecoin')
 
-    // Wait 6 months
-    await timePass(0.5)
+      // Verify totalDeposit
+      const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit())
+      assert(totalDeposit0.eq(depositAmount), 'totalDeposit not updated after acc0 withdrawed')
 
-    // acc1 withdraws
-    const acc1BeforeBalance = await stablecoin.balanceOf(acc1)
-    await dInterestPool.withdraw(2, 0, { from: acc1 })
+      // Wait 6 months
+      await timePass(0.5)
 
-    // Verify withdrawn amount
-    const acc1CurrentBalance = await stablecoin.balanceOf(acc1)
-    const acc1WithdrawnAmountExpected = applyFee(BigNumber((await dInterestPool.getDeposit(2)).interestOwed)).plus(depositAmount)
-    const acc1WithdrawnAmountActual = BigNumber(acc1CurrentBalance).minus(acc1BeforeBalance)
-    assert(epsilonEq(acc1WithdrawnAmountActual, acc1WithdrawnAmountExpected), 'acc1 didn\'t withdraw correct amount of stablecoin')
+      // acc1 withdraws
+      const acc1BeforeBalance = await stablecoin.balanceOf(acc1)
+      await vesting.withdrawVested(acc1, 0, { from: acc1 })
+      await dInterestPool.withdraw(2, 0, { from: acc1 })
 
-    // Verify totalDeposit
-    const totalDeposit1 = BigNumber(await dInterestPool.totalDeposit())
-    assert(totalDeposit1.eq(0), 'totalDeposit not updated after acc1 withdrawed')
+      // Verify withdrawn amount
+      const acc1CurrentBalance = await stablecoin.balanceOf(acc1)
+      const acc1WithdrawnAmountExpected = applyFee(BigNumber((await dInterestPool.getDeposit(2)).interestOwed)).plus(depositAmount)
+      const acc1WithdrawnAmountActual = BigNumber(acc1CurrentBalance).minus(acc1BeforeBalance)
+      assert(epsilonEq(acc1WithdrawnAmountActual, acc1WithdrawnAmountExpected), 'acc1 didn\'t withdraw correct amount of stablecoin')
+
+      // Verify totalDeposit
+      const totalDeposit1 = BigNumber(await dInterestPool.totalDeposit())
+      assert(totalDeposit1.eq(0), 'totalDeposit not updated after acc1 withdrawed')
+    })
+
+    it('earlyWithdraw()', async function () {
+      const depositAmount = 10 * STABLECOIN_PRECISION
+
+      // acc0 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+      let blockNow = await latestBlockTimestamp()
+      await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
+
+      // acc0 withdraws early
+      await timePass(1 / 52) // 1 week
+      const acc0BeforeBalance = BigNumber(await stablecoin.balanceOf(acc0))
+      await vesting.withdrawVested(acc0, 0, { from: acc0 })
+      await dInterestPool.earlyWithdraw(1, 0, { from: acc0 })
+
+      // Verify withdrawn amount
+      const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0))
+      assert.equal(acc0CurrentBalance.minus(acc0BeforeBalance).toNumber(), depositAmount, 'acc0 didn\'t withdraw correct amount of stablecoin')
+
+      // Verify totalDeposit
+      const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit())
+      assert(totalDeposit0.eq(0), 'totalDeposit not updated after acc0 withdrawed')
+
+      // acc0 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+      blockNow = await latestBlockTimestamp()
+      await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
+
+      // Wait 1 year
+      await timePass(1)
+
+      // acc0 tries to withdraw early but fails
+      try {
+        await vesting.withdrawVested(acc0, 1, { from: acc0 })
+        await dInterestPool.earlyWithdraw(2, 0, { from: acc0 })
+        assert.fail('Called earlyWithdraw() after maturation without error')
+      } catch (e) { }
+    })
+
+    it('fundAll()', async function () {
+      const depositAmount = 10 * STABLECOIN_PRECISION
+
+      // acc0 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+      let blockNow = await latestBlockTimestamp()
+      await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
+
+      // acc1 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })
+      blockNow = await latestBlockTimestamp()
+      await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc1 })
+
+      // acc1 deposits stablecoin into the DInterest pool for 3 months
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })
+      blockNow = await latestBlockTimestamp()
+      await dInterestPool.deposit(num2str(depositAmount), blockNow + 0.25 * YEAR_IN_SEC, { from: acc1 })
+
+      // Wait 3 months
+      await timePass(0.25)
+
+      // Withdraw deposit 3
+      await vesting.withdrawVested(acc1, 1, { from: acc1 })
+      await dInterestPool.withdraw(3, 0, { from: acc1 })
+
+      // Fund all deficit using acc2
+      await stablecoin.approve(dInterestPool.address, INF, { from: acc2 })
+      await dInterestPool.fundAll({ from: acc2 })
+
+      // Check deficit
+      const surplusObj = await dInterestPool.surplus.call()
+      assert(!surplusObj.isNegative || (surplusObj.isNegative && BigNumber(surplusObj.surplusAmount).div(STABLECOIN_PRECISION).lt(epsilon)), 'Surplus negative after funding all deposits')
+
+      // Wait 9 months
+      await timePass(0.75)
+
+      // acc0, acc1 withdraw deposits
+      const acc2BeforeBalance = BigNumber(await stablecoin.balanceOf(acc2))
+      await vesting.withdrawVested(acc0, 0, { from: acc0 })
+      await vesting.withdrawVested(acc1, 0, { from: acc1 })
+      await dInterestPool.withdraw(1, 1, { from: acc0 })
+      await dInterestPool.withdraw(2, 1, { from: acc1 })
+
+      // Check interest earned by funder
+      const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2))
+      assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(INIT_INTEREST_RATE).times(0.75)), 'acc2 didn\'t receive correct interest amount')
+    })
+
+    it('fundMultiple()', async function () {
+      const depositAmount = 10 * STABLECOIN_PRECISION
+
+      // acc0 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+      let blockNow = await latestBlockTimestamp()
+      await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
+
+      // acc1 deposits stablecoin into the DInterest pool for 3 months
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })
+      blockNow = await latestBlockTimestamp()
+      await dInterestPool.deposit(num2str(depositAmount), blockNow + 0.25 * YEAR_IN_SEC, { from: acc1 })
+
+      // acc1 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })
+      blockNow = await latestBlockTimestamp()
+      await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc1 })
+
+      // acc1 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })
+      blockNow = await latestBlockTimestamp()
+      await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc1 })
+
+      // Wait 3 months
+      await timePass(0.25)
+
+      // Withdraw deposit 2
+      await vesting.withdrawVested(acc1, 0, { from: acc0 })
+      await dInterestPool.withdraw(2, 0, { from: acc1 })
+
+      // Fund deficit for the first 3 deposits using acc2
+      await stablecoin.approve(dInterestPool.address, INF, { from: acc2 })
+      await dInterestPool.fundMultiple(3, { from: acc2 })
+
+      // Check deficit
+      // Deficits of deposits 1-3 are filled, so the pool's deficit/surplus should equal that of deposit 4
+      const deposit4SurplusObj = await dInterestPool.surplusOfDeposit.call(4)
+      const expectedSurplus = BigNumber(deposit4SurplusObj.surplusAmount).times(deposit4SurplusObj.isNegative ? -1 : 1)
+      const surplusObj = await dInterestPool.surplus.call()
+      const actualSurplus = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+      assert(epsilonEq(actualSurplus, expectedSurplus), 'Incorrect surplus after funding')
+
+      // Wait 9 months
+      await timePass(0.75)
+
+      // acc0, acc1 withdraw deposits
+      const acc2BeforeBalance = BigNumber(await stablecoin.balanceOf(acc2))
+      await vesting.withdrawVested(acc0, 0, { from: acc0 })
+      await vesting.withdrawVested(acc1, 1, { from: acc0 })
+      await vesting.withdrawVested(acc1, 2, { from: acc0 })
+      await dInterestPool.withdraw(1, 1, { from: acc0 })
+      await dInterestPool.withdraw(3, 1, { from: acc1 })
+      await dInterestPool.withdraw(4, 0, { from: acc1 })
+
+      // Check interest earned by funder
+      const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2))
+      assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(INIT_INTEREST_RATE).times(0.75)), 'acc2 didn\'t receive correct interest amount')
+    })
+
+    it('claimRewards()', async function () {
+      const expectedMintAmount = PRECISION
+      const beforeBalance = await comp.balanceOf(rewards.address)
+      await market.claimRewards()
+      assert.equal(expectedMintAmount, BigNumber(await comp.balanceOf(rewards.address)).minus(beforeBalance).toNumber(), 'Claimed COMP amount incorrect')
+    })
   })
 
-  it('earlyWithdraw()', async function () {
-    const depositAmount = 10 * STABLECOIN_PRECISION
+  describe('MPH tokenomics', () => {
+    it('should mint correct MPH depositor reward', async () => {
+      const depositAmount = 100 * STABLECOIN_PRECISION
 
-    // acc0 deposits stablecoin into the DInterest pool for 1 year
-    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
-    let blockNow = await latestBlockTimestamp()
-    await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
+      // acc0 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+      const blockNow = await latestBlockTimestamp()
+      const acc0BeforeBalance = BigNumber(await mph.balanceOf(acc0))
+      await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
 
-    // acc0 withdraws early
-    const acc0BeforeBalance = BigNumber(await stablecoin.balanceOf(acc0))
-    await dInterestPool.earlyWithdraw(1, 0, { from: acc0 })
+      // wait for vest to finish
+      await timePass(1 / 52) // 1 week
+      await vesting.withdrawVested(acc0, 0, { from: acc0 })
 
-    // Verify withdrawn amount
-    const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0))
-    assert.equal(acc0CurrentBalance.minus(acc0BeforeBalance).toNumber(), depositAmount, 'acc0 didn\'t withdraw correct amount of stablecoin')
+      const expectedMPHReward = BigNumber(depositAmount).times(YEAR_IN_SEC).times(PoolDepositorRewardMintMultiplier).div(PRECISION)
+      const actualMPHReward = BigNumber(await mph.balanceOf(acc0)).minus(acc0BeforeBalance)
+      assert(epsilonEq(actualMPHReward, expectedMPHReward), 'MPH depositor reward incorrect')
+    })
 
-    // Verify totalDeposit
-    const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit())
-    assert(totalDeposit0.eq(0), 'totalDeposit not updated after acc0 withdrawed')
+    it('should take back correct MPH depositor reward', async () => {
+      const depositAmount = 100 * STABLECOIN_PRECISION
 
-    // acc0 deposits stablecoin into the DInterest pool for 1 year
-    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
-    blockNow = await latestBlockTimestamp()
-    await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
+      // acc0 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+      const blockNow = await latestBlockTimestamp()
+      const acc0BeforeBalance = BigNumber(await mph.balanceOf(acc0))
+      await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
 
-    // Wait 1 year
-    await timePass(1)
+      // Wait 1 year
+      await timePass(1)
 
-    // acc0 tries to withdraw early but fails
-    try {
-      await dInterestPool.earlyWithdraw(2, 0, { from: acc0 })
-      assert.fail('Called earlyWithdraw() after maturation without error')
-    } catch (e) { }
-  })
+      // Withdraw deposit 1
+      await vesting.withdrawVested(acc0, 0, { from: acc0 })
+      await dInterestPool.withdraw(1, 0, { from: acc0 })
 
-  it('fundAll()', async function () {
-    const depositAmount = 10 * STABLECOIN_PRECISION
+      const expectedMPHReward = BigNumber(depositAmount).times(YEAR_IN_SEC).times(PoolDepositorRewardMintMultiplier).div(PRECISION).times(PRECISION - PoolDepositorRewardTakeBackMultiplier).div(PRECISION)
+      const actualMPHReward = BigNumber(await mph.balanceOf(acc0)).minus(acc0BeforeBalance)
+      assert(epsilonEq(actualMPHReward, expectedMPHReward), 'MPH depositor takeback amount incorrect')
+    })
 
-    // acc0 deposits stablecoin into the DInterest pool for 1 year
-    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
-    let blockNow = await latestBlockTimestamp()
-    await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
+    it('should mint correct MPH funder reward', async () => {
+      const depositAmount = 10 * STABLECOIN_PRECISION
 
-    // acc1 deposits stablecoin into the DInterest pool for 1 year
-    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })
-    blockNow = await latestBlockTimestamp()
-    await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc1 })
+      // acc0 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+      let blockNow = await latestBlockTimestamp()
+      await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
 
-    // acc1 deposits stablecoin into the DInterest pool for 3 months
-    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })
-    blockNow = await latestBlockTimestamp()
-    await dInterestPool.deposit(num2str(depositAmount), blockNow + 0.25 * YEAR_IN_SEC, { from: acc1 })
+      // acc1 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })
+      blockNow = await latestBlockTimestamp()
+      await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc1 })
 
-    // Wait 3 months
-    await timePass(0.25)
+      // acc1 deposits stablecoin into the DInterest pool for 3 months
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })
+      blockNow = await latestBlockTimestamp()
+      await dInterestPool.deposit(num2str(depositAmount), blockNow + 0.25 * YEAR_IN_SEC, { from: acc1 })
 
-    // Withdraw deposit 3
-    await dInterestPool.withdraw(3, 0, { from: acc1 })
+      // Wait 3 months
+      await timePass(0.25)
 
-    // Fund all deficit using acc2
-    await stablecoin.approve(dInterestPool.address, INF, { from: acc2 })
-    await dInterestPool.fundAll({ from: acc2 })
+      // Withdraw deposit 3
+      await vesting.withdrawVested(acc1, 1, { from: acc1 })
+      await dInterestPool.withdraw(3, 0, { from: acc1 })
 
-    // Check deficit
-    const surplusObj = await dInterestPool.surplus.call()
-    assert(!surplusObj.isNegative || (surplusObj.isNegative && BigNumber(surplusObj.surplusAmount).div(STABLECOIN_PRECISION).lt(epsilon)), 'Surplus negative after funding all deposits')
+      // Fund all deficit using acc2
+      await stablecoin.approve(dInterestPool.address, INF, { from: acc2 })
+      await dInterestPool.fundAll({ from: acc2 })
 
-    // Wait 9 months
-    await timePass(0.75)
+      // Wait 9 months
+      await timePass(0.75)
 
-    // acc0, acc1 withdraw deposits
-    const acc2BeforeBalance = BigNumber(await stablecoin.balanceOf(acc2))
-    await dInterestPool.withdraw(1, 1, { from: acc0 })
-    await dInterestPool.withdraw(2, 1, { from: acc1 })
+      // acc0, acc1 withdraw deposits
+      const acc2BeforeBalance = BigNumber(await mph.balanceOf(acc2))
+      await vesting.withdrawVested(acc0, 0, { from: acc0 })
+      await vesting.withdrawVested(acc1, 0, { from: acc1 })
+      await dInterestPool.withdraw(1, 1, { from: acc0 })
+      await dInterestPool.withdraw(2, 1, { from: acc1 })
 
-    // Check interest earned by funder
-    const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2))
-    assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(INIT_INTEREST_RATE).times(0.75)), 'acc2 didn\'t receive correct interest amount')
-  })
+      // Check interest earned by funder
+      const actualMPHReward = BigNumber(await mph.balanceOf(acc2)).minus(acc2BeforeBalance)
+      const expectedMPHReward = BigNumber(depositAmount * 2).times(0.75 * YEAR_IN_SEC).times(PoolFunderRewardMultiplier).div(PRECISION)
+      assert(epsilonEq(actualMPHReward, expectedMPHReward), 'MPH funder reward amount incorrect')
+    })
 
-  it('fundMultiple()', async function () {
-    const depositAmount = 10 * STABLECOIN_PRECISION
+    it('should not increase depositor MPH balance if early withdraw', async () => {
+      const depositAmount = 100 * STABLECOIN_PRECISION
 
-    // acc0 deposits stablecoin into the DInterest pool for 1 year
-    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
-    let blockNow = await latestBlockTimestamp()
-    await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
+      // acc0 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+      const blockNow = await latestBlockTimestamp()
+      const acc0BeforeBalance = BigNumber(await mph.balanceOf(acc0))
+      await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
 
-    // acc1 deposits stablecoin into the DInterest pool for 3 months
-    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })
-    blockNow = await latestBlockTimestamp()
-    await dInterestPool.deposit(num2str(depositAmount), blockNow + 0.25 * YEAR_IN_SEC, { from: acc1 })
+      // acc0 withdraws early
+      await timePass(1 / 52) // 1 week
+      await vesting.withdrawVested(acc0, 0, { from: acc0 })
+      await dInterestPool.earlyWithdraw(1, 0, { from: acc0 })
 
-    // acc1 deposits stablecoin into the DInterest pool for 1 year
-    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })
-    blockNow = await latestBlockTimestamp()
-    await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc1 })
+      const actualMPHReward = BigNumber(await mph.balanceOf(acc0)).minus(acc0BeforeBalance).div(PRECISION)
+      assert(actualMPHReward.lte(0), 'early withdraw increased MPH balance')
+    })
 
-    // acc1 deposits stablecoin into the DInterest pool for 1 year
-    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc1 })
-    blockNow = await latestBlockTimestamp()
-    await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc1 })
+    it('should not increase attacker balances if deposit => buy bonds => immediately early withdraw', async () => {
+      const depositAmount = 100 * STABLECOIN_PRECISION
 
-    // Wait 3 months
-    await timePass(0.25)
+      // acc0 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+      const blockNow = await latestBlockTimestamp()
+      const acc0BeforeStablecoinBalance = BigNumber(await stablecoin.balanceOf(acc0))
+      const acc0BeforeMPHBalance = BigNumber(await mph.balanceOf(acc0))
+      await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
 
-    // Withdraw deposit 2
-    await dInterestPool.withdraw(2, 0, { from: acc1 })
+      // acc0 buys bonds
+      await stablecoin.approve(dInterestPool.address, INF, { from: acc0 })
+      await dInterestPool.fundAll({ from: acc0 })
 
-    // Fund deficit for the first 3 deposits using acc2
-    await stablecoin.approve(dInterestPool.address, INF, { from: acc2 })
-    await dInterestPool.fundMultiple(3, { from: acc2 })
+      // acc0 withdraws early
+      await timePass(1 / 52) // 1 week
+      await vesting.withdrawVested(acc0, 0, { from: acc0 })
+      await dInterestPool.earlyWithdraw(1, 1, { from: acc0 })
 
-    // Check deficit
-    // Deficits of deposits 1-3 are filled, so the pool's deficit/surplus should equal that of deposit 4
-    const deposit4SurplusObj = await dInterestPool.surplusOfDeposit.call(4)
-    const expectedSurplus = BigNumber(deposit4SurplusObj.surplusAmount).times(deposit4SurplusObj.isNegative ? -1 : 1)
-    const surplusObj = await dInterestPool.surplus.call()
-    const actualSurplus = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
-    assert(epsilonEq(actualSurplus, expectedSurplus), 'Incorrect surplus after funding')
+      const actualMPHReward = BigNumber(await mph.balanceOf(acc0)).minus(acc0BeforeMPHBalance)
+      assert(actualMPHReward.lte(0), 'attack yielded MPH reward')
 
-    // Wait 9 months
-    await timePass(0.75)
+      const actualStablecoinReward = BigNumber(await stablecoin.balanceOf(acc0)).minus(acc0BeforeStablecoinBalance)
+      assert(actualStablecoinReward.lte(0), 'attack yielded stablecoin reward')
+    })
 
-    // acc0, acc1 withdraw deposits
-    const acc2BeforeBalance = BigNumber(await stablecoin.balanceOf(acc2))
-    await dInterestPool.withdraw(1, 1, { from: acc0 })
-    await dInterestPool.withdraw(3, 1, { from: acc1 })
-    await dInterestPool.withdraw(4, 0, { from: acc1 })
+    it('should not increase attacker balances if deposit => buy bonds => wait a while => early withdraw', async () => {
+      const depositAmount = 100 * STABLECOIN_PRECISION
 
-    // Check interest earned by funder
-    const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2))
-    assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(2).times(INIT_INTEREST_RATE).times(0.75)), 'acc2 didn\'t receive correct interest amount')
-  })
+      // acc0 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+      const blockNow = await latestBlockTimestamp()
+      const acc0BeforeStablecoinBalance = BigNumber(await stablecoin.balanceOf(acc0))
+      const acc0BeforeMPHBalance = BigNumber(await mph.balanceOf(acc0))
+      await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
 
-  it('claimRewards()', async function () {
-    const expectedMintAmount = PRECISION
-    const beforeBalance = await comp.balanceOf(rewards.address)
-    await market.claimRewards()
-    assert.equal(expectedMintAmount, BigNumber(await comp.balanceOf(rewards.address)).minus(beforeBalance).toNumber(), 'Claimed COMP amount incorrect')
+      // acc0 buys bonds
+      await stablecoin.approve(dInterestPool.address, INF, { from: acc0 })
+      await dInterestPool.fundAll({ from: acc0 })
+
+      // Wait 3 months
+      await timePass(0.25)
+
+      // acc0 withdraws early
+      await vesting.withdrawVested(acc0, 0, { from: acc0 })
+      await dInterestPool.earlyWithdraw(1, 1, { from: acc0 })
+
+      const actualMPHReward = BigNumber(await mph.balanceOf(acc0)).minus(acc0BeforeMPHBalance)
+      assert(actualMPHReward.lte(0), 'attack yielded MPH reward')
+
+      const actualStablecoinReward = BigNumber(await stablecoin.balanceOf(acc0)).minus(acc0BeforeStablecoinBalance)
+      assert(actualStablecoinReward.lte(0), 'attack yielded stablecoin reward')
+    })
+
+    it('MPHMinter should not accept calls from random account', async () => {
+      try {
+        const depositAmount = 100 * STABLECOIN_PRECISION
+        await mphMinter.mintDepositorReward(acc1, num2str(depositAmount), num2str(YEAR_IN_SEC), 0, { from: acc1 })
+        assert.fail('Rando called mphMinter.mintDepositorReward()!!!')
+      } catch { }
+
+      try {
+        const mintMPHAmount = 100 * PRECISION
+        await mphMinter.takeBackDepositorReward(acc1, num2str(mintMPHAmount), true, { from: acc1 })
+        assert.fail('Rando called mphMinter.takeBackDepositorReward()!!!')
+      } catch { }
+
+      try {
+        const depositAmount = 100 * STABLECOIN_PRECISION
+        const blockNow = await latestBlockTimestamp()
+        await mphMinter.mintFunderReward(acc1, num2str(depositAmount), num2str(blockNow), num2str(blockNow + YEAR_IN_SEC), 0, false, { from: acc1 })
+        assert.fail('Rando called mphMinter.mintFunderReward()!!!')
+      } catch { }
+    })
   })
 })

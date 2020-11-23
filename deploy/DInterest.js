@@ -64,11 +64,8 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
     const dInterestDeployment = await get(poolConfig.name)
     const DInterest = artifacts.require('DInterest')
     const dInterestContract = await DInterest.at(dInterestDeployment.address)
-    const dInterestOwner = await dInterestContract.owner()
-    if (dInterestOwner.toLowerCase() !== config.govTreasury.toLowerCase()) {
-      await dInterestContract.transferOwnership(config.govTreasury, { from: deployer })
-      log(`Transfer ${poolConfig.name} ownership to ${config.govTreasury}`)
-    }
+    await dInterestContract.transferOwnership(config.govTreasury, { from: deployer })
+    log(`Transfer ${poolConfig.name} ownership to ${config.govTreasury}`)
 
     const finalBalance = BigNumber((await web3.eth.getBalance(deployer)).toString()).div(1e18)
     log(`Deployer ETH balance: ${finalBalance.toString()} ETH`)

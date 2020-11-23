@@ -54,6 +54,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 toDepositID;
         uint256 recordedFundedDepositAmount;
         uint256 recordedMoneyMarketIncomeIndex;
+        uint256 creationTimestamp; // Unix timestamp at time of deposit, in seconds
     }
     Funding[] internal fundingList;
 
@@ -268,7 +269,8 @@ contract DInterest is ReentrancyGuard, Ownable {
                 fromDepositID: latestFundedDepositID,
                 toDepositID: deposits.length,
                 recordedFundedDepositAmount: unfundedUserDepositAmount,
-                recordedMoneyMarketIncomeIndex: incomeIndex
+                recordedMoneyMarketIncomeIndex: incomeIndex,
+                creationTimestamp: now
             })
         );
 
@@ -343,7 +345,8 @@ contract DInterest is ReentrancyGuard, Ownable {
                 fromDepositID: latestFundedDepositID,
                 toDepositID: toDepositID,
                 recordedFundedDepositAmount: totalDepositToFund,
-                recordedMoneyMarketIncomeIndex: incomeIndex
+                recordedMoneyMarketIncomeIndex: incomeIndex,
+                creationTimestamp: now
             })
         );
 
@@ -604,6 +607,8 @@ contract DInterest is ReentrancyGuard, Ownable {
         // Mint MPH for msg.sender
         uint256 mintMPHAmount = mphMinter.mintDepositorReward(
             msg.sender,
+            amount,
+            depositPeriod,
             interestAmount
         );
 
@@ -704,47 +709,22 @@ contract DInterest is ReentrancyGuard, Ownable {
         }
         withdrawAmount = moneyMarket.withdraw(withdrawAmount);
 
-        (bool depositIsNegative, uint256 depositSurplus) = surplusOfDeposit(
-            depositID
-        );
+        (
+            bool depositSurplusIsNegative,
+            uint256 depositSurplus
+        ) = surplusOfDeposit(depositID);
 
         // If deposit was funded, payout interest to funder
         if (depositIsFunded(depositID)) {
-            Funding storage f = _getFunding(fundingID);
-            require(
-                depositID > f.fromDepositID && depositID <= f.toDepositID,
-                "DInterest: Deposit not funded by fundingID"
+            _payInterestToFunder(
+                fundingID,
+                depositID,
+                depositEntry.amount,
+                depositEntry.maturationTimestamp,
+                depositSurplusIsNegative,
+                depositSurplus,
+                early
             );
-            uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
-            require(
-                currentMoneyMarketIncomeIndex > 0,
-                "DInterest: currentMoneyMarketIncomeIndex == 0"
-            );
-            uint256 interestAmount = f
-                .recordedFundedDepositAmount
-                .mul(currentMoneyMarketIncomeIndex)
-                .div(f.recordedMoneyMarketIncomeIndex)
-                .sub(f.recordedFundedDepositAmount);
-
-            // Update funding values
-            f.recordedFundedDepositAmount = f.recordedFundedDepositAmount.sub(
-                depositEntry.amount
-            );
-            f.recordedMoneyMarketIncomeIndex = currentMoneyMarketIncomeIndex;
-
-            // Send interest to funder
-            uint256 transferToFunderAmount = (early && depositIsNegative)
-                ? interestAmount.add(depositSurplus)
-                : interestAmount;
-            if (transferToFunderAmount > 0) {
-                transferToFunderAmount = moneyMarket.withdraw(
-                    transferToFunderAmount
-                );
-                stablecoin.safeTransfer(
-                    fundingNFT.ownerOf(fundingID),
-                    transferToFunderAmount
-                );
-            }
         } else {
             // Remove deposit from future deficit fundings
             unfundedUserDepositAmount = unfundedUserDepositAmount.sub(
@@ -752,7 +732,7 @@ contract DInterest is ReentrancyGuard, Ownable {
             );
 
             // Record remaining surplus
-            depositEntry.finalSurplusIsNegative = depositIsNegative;
+            depositEntry.finalSurplusIsNegative = depositSurplusIsNegative;
             depositEntry.finalSurplusAmount = depositSurplus;
         }
 
@@ -769,6 +749,60 @@ contract DInterest is ReentrancyGuard, Ownable {
             fundingID,
             early,
             takeBackMPHAmount
+        );
+    }
+
+    function _payInterestToFunder(
+        uint256 fundingID,
+        uint256 depositID,
+        uint256 depositAmount,
+        uint256 depositMaturationTimestamp,
+        bool depositSurplusIsNegative,
+        uint256 depositSurplus,
+        bool early
+    ) internal {
+        Funding storage f = _getFunding(fundingID);
+        require(
+            depositID > f.fromDepositID && depositID <= f.toDepositID,
+            "DInterest: Deposit not funded by fundingID"
+        );
+        uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
+        require(
+            currentMoneyMarketIncomeIndex > 0,
+            "DInterest: currentMoneyMarketIncomeIndex == 0"
+        );
+        uint256 interestAmount = f
+            .recordedFundedDepositAmount
+            .mul(currentMoneyMarketIncomeIndex)
+            .div(f.recordedMoneyMarketIncomeIndex)
+            .sub(f.recordedFundedDepositAmount);
+
+        // Update funding values
+        f.recordedFundedDepositAmount = f.recordedFundedDepositAmount.sub(
+            depositAmount
+        );
+        f.recordedMoneyMarketIncomeIndex = currentMoneyMarketIncomeIndex;
+
+        // Send interest to funder
+        address funder = fundingNFT.ownerOf(fundingID);
+        uint256 transferToFunderAmount = (early && depositSurplusIsNegative)
+            ? interestAmount.add(depositSurplus)
+            : interestAmount;
+        if (transferToFunderAmount > 0) {
+            transferToFunderAmount = moneyMarket.withdraw(
+                transferToFunderAmount
+            );
+            stablecoin.safeTransfer(funder, transferToFunderAmount);
+        }
+
+        // Mint funder rewards
+        mphMinter.mintFunderReward(
+            funder,
+            depositAmount,
+            f.creationTimestamp,
+            depositMaturationTimestamp,
+            interestAmount,
+            early
         );
     }
 

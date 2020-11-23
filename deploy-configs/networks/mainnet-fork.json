@@ -5,5 +5,6 @@
   "rewardToken": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
   "oneSplitAddress": "0x2AD672FDA8a042c4c78C411bF9d4f1b320aA915a",
   "rewardStartTime": 1606161600,
-  "mph": "0x8888801af4d980682e47f1a9036e589479e835c5"
+  "mph": "0x8888801af4d980682e47f1a9036e589479e835c5",
+  "mphIssuanceModel": "MPHIssuanceModel01"
 }

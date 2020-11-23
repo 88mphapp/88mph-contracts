@@ -1,9 +1,11 @@
-const BigNumber = require('bignumber.js')
+const config = require('../deploy-configs/get-network-config')
 
 module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artifacts }) => {
-  const { deploy, log } = deployments
+  const { deploy, log, get } = deployments
   const { deployer } = await getNamedAccounts()
-  const config = require('../deploy-configs/get-network-config')
+
+  const mphIssuanceModelDeployment = await get(config.mphIssuanceModel)
+  const vestingDeployment = await get('Vesting')
 
   const deployResult = await deploy('MPHMinter', {
     from: deployer,
@@ -11,7 +13,8 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
       config.mph,
       config.govTreasury,
       config.devWallet,
-      BigNumber(config.devRewardMultiplier).toFixed()
+      mphIssuanceModelDeployment.address,
+      vestingDeployment.address
     ]
   })
   if (deployResult.newlyDeployed) {
@@ -20,4 +23,4 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
   }
 }
 module.exports.tags = ['MPHMinter', 'MPHRewards']
-module.exports.dependencies = []
+module.exports.dependencies = [config.mphIssuanceModel, 'Vesting']

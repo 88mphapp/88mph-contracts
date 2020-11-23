@@ -1,1 +1,1 @@
-ganache-cli -l 10000000 --fork https://mainnet.infura.io/v3/2f4ac5ce683c4da09f88b2b564d44199 -d -i 1
+ganache-cli -l 10000000 --fork https://eth-mainnet.alchemyapi.io/v2/pvGDp1uf8J7QZ7MXpLhYs_SnMnsE0TY5 -d -i 1

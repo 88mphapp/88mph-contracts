@@ -31,7 +31,7 @@ module.exports = {
   },
   networks: {
     mainnet: {
-      url: 'https://mainnet.infura.io/v3/7a7dd3472294438eab040845d03c215c',
+      url: 'https://eth-mainnet.alchemyapi.io/v2/pvGDp1uf8J7QZ7MXpLhYs_SnMnsE0TY5',
       chainId: 1,
       from: secret.account,
       accounts: {

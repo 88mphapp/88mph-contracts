@@ -1,7 +1,7 @@
 const poolConfig = require('../deploy-configs/get-pool-config')
 
-const nftName = `${poolConfig.nftNamePrefix}Funding`
-const nftSymbol = `${poolConfig.nftSymbolPrefix}Funding`
+const nftName = `${poolConfig.nftNamePrefix}Bond`
+const nftSymbol = `${poolConfig.nftSymbolPrefix}Bond`
 
 module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artifacts }) => {
   const { deploy, log } = deployments

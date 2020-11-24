@@ -31,14 +31,14 @@ module.exports = {
   },
   networks: {
     mainnet: {
-      url: 'https://mainnet.infura.io/v3/7a7dd3472294438eab040845d03c215c',
+      url: 'https://eth-mainnet.alchemyapi.io/v2/pvGDp1uf8J7QZ7MXpLhYs_SnMnsE0TY5',
       chainId: 1,
       from: secret.account,
       accounts: {
         mnemonic: secret.mnemonic
       },
       gas: 'auto',
-      gasPrice: 16.0000001e9
+      gasPrice: 42.0000001e9
     },
     buidlerevm: {
       blockGasLimit: 9950000,
@@ -47,8 +47,8 @@ module.exports = {
     },
     ganache: {
       url: 'http://localhost:8545',
-      gasLimit: 1e7,
-      gasPrice: 1e11
+      gas: 'auto',
+      gasPrice: 48.0000001e9
     }
   }
 }

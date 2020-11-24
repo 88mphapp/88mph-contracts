@@ -12,3 +12,9 @@
 ```bash
 npx buidler deploy --tags DInterest --network [networkName]
 ```
+
+## Transfer shared contracts' ownerships to governance treasury
+
+```bash
+npx buidler deploy --tags transfer-ownerships --network [networkName]
+```

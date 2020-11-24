@@ -40,26 +40,25 @@ import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "./OneSplitAudit.sol";
 
 contract IRewardDistributionRecipient is Ownable {
-    address rewardDistribution;
+    mapping(address => bool) public isRewardDistribution;
 
     function notifyRewardAmount(uint256 reward) external;
 
     modifier onlyRewardDistribution() {
         require(
-            _msgSender() == rewardDistribution,
+            isRewardDistribution[_msgSender()],
             "Caller is not reward distribution"
         );
         _;
     }
 
-    function setRewardDistribution(address _rewardDistribution)
-        external
-        onlyOwner
-    {
-        rewardDistribution = _rewardDistribution;
+    function setRewardDistribution(
+        address _rewardDistribution,
+        bool _isRewardDistribution
+    ) external onlyOwner {
+        isRewardDistribution[_rewardDistribution] = _isRewardDistribution;
     }
 }
 
@@ -100,7 +99,6 @@ contract LPTokenWrapper {
 
 contract Rewards is LPTokenWrapper, IRewardDistributionRecipient {
     IERC20 public rewardToken;
-    OneSplitAudit public oneSplit;
     uint256 public constant DURATION = 7 days;
 
     uint256 public starttime;
@@ -108,8 +106,6 @@ contract Rewards is LPTokenWrapper, IRewardDistributionRecipient {
     uint256 public rewardRate = 0;
     uint256 public lastUpdateTime;
     uint256 public rewardPerTokenStored;
-
-    bool public initialized = false;
 
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
@@ -137,11 +133,9 @@ contract Rewards is LPTokenWrapper, IRewardDistributionRecipient {
     constructor(
         address _stakeToken,
         address _rewardToken,
-        address _oneSplit,
         uint256 _starttime
     ) public LPTokenWrapper(_stakeToken) {
         rewardToken = IERC20(_rewardToken);
-        oneSplit = OneSplitAudit(_oneSplit);
         starttime = _starttime;
     }
 
@@ -207,38 +201,8 @@ contract Rewards is LPTokenWrapper, IRewardDistributionRecipient {
         onlyRewardDistribution
         updateReward(address(0))
     {
-        _notifyRewardAmount(reward);
-    }
-
-    function dump(address token, uint256 parts) external {
-        require(token != address(stakeToken), "Rewards: no dump stakeToken");
-        require(token != address(rewardToken), "Rewards: no dump rewardToken");
-
-        // dump token for rewardToken
-        uint256 tokenBalance = IERC20(token).balanceOf(address(this));
-        (uint256 returnAmount, uint256[] memory distribution) = oneSplit
-            .getExpectedReturn(
-            token,
-            address(rewardToken),
-            tokenBalance,
-            parts,
-            0
-        );
-        uint256 receivedRewardTokenAmount = oneSplit.swap(
-            token,
-            address(rewardToken),
-            tokenBalance,
-            returnAmount,
-            distribution,
-            0
-        );
-
-        // notify reward
-        _notifyRewardAmount(receivedRewardTokenAmount);
-    }
-
-    function _notifyRewardAmount(uint256 reward) internal {
         // https://sips.synthetix.io/sips/sip-77
+        require(reward > 0, "Rewards: reward == 0");
         require(
             reward < uint256(-1) / 10**18,
             "Rewards: rewards too large, would lock"

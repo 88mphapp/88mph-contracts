@@ -9,6 +9,7 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
 
   const deployResult = await deploy('EMAOracle', {
     from: deployer,
+    contract: 'EMAOracle',
     args: [
       BigNumber(poolConfig.EMAInitial).toFixed(),
       BigNumber(poolConfig.EMAUpdateInverval).toFixed(),

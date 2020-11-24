@@ -10,7 +10,7 @@ interface OneSplitAudit {
         uint256 minReturn,
         uint256[] calldata distribution,
         uint256 flags
-    ) external payable returns (uint256 returnAmount);
+    ) external payable;
 
     function getExpectedReturn(
         address fromToken,

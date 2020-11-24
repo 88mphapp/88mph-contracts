@@ -614,5 +614,11 @@ contract('Compound', accounts => {
         assert.fail('Rando called mphMinter.mintFunderReward()!!!')
       } catch { }
     })
+
+    it('owner can update MPH owner', async () => {
+      await mphMinter.setMPHTokenOwner(devWallet, { from: acc0 })
+      const newOwner = await mph.owner()
+      assert.equal(newOwner, devWallet, 'MPH owner not updated')
+    })
   })
 })

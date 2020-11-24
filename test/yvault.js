@@ -42,7 +42,7 @@ const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
 
 // Utilities
 // travel `time` seconds forward in time
-function timeTravel (time) {
+function timeTravel(time) {
   return new Promise((resolve, reject) => {
     web3.currentProvider.send({
       jsonrpc: '2.0',
@@ -56,29 +56,29 @@ function timeTravel (time) {
   })
 }
 
-async function latestBlockTimestamp () {
+async function latestBlockTimestamp() {
   return (await web3.eth.getBlock('latest')).timestamp
 }
 
-function calcFeeAmount (interestAmount) {
+function calcFeeAmount(interestAmount) {
   return interestAmount.times(0.1)
 }
 
-function applyFee (interestAmount) {
+function applyFee(interestAmount) {
   return interestAmount.minus(calcFeeAmount(interestAmount))
 }
 
-function calcInterestAmount (depositAmount, interestRatePerSecond, depositPeriodInSeconds, applyFee) {
+function calcInterestAmount(depositAmount, interestRatePerSecond, depositPeriodInSeconds, applyFee) {
   const interestBeforeFee = BigNumber(depositAmount).times(depositPeriodInSeconds).times(interestRatePerSecond).div(PRECISION).times(IRMultiplier).div(PRECISION)
   return applyFee ? interestBeforeFee.minus(calcFeeAmount(interestBeforeFee)) : interestBeforeFee
 }
 
 // Converts a JS number into a string that doesn't use scientific notation
-function num2str (num) {
+function num2str(num) {
   return BigNumber(num).integerValue().toFixed()
 }
 
-function epsilonEq (curr, prev) {
+function epsilonEq(curr, prev) {
   return BigNumber(curr).eq(prev) ||
     (!BigNumber(prev).isZero() && BigNumber(curr).minus(prev).div(prev).abs().lt(epsilon)) ||
     (!BigNumber(curr).isZero() && BigNumber(prev).minus(curr).div(curr).abs().lt(epsilon))
@@ -598,6 +598,12 @@ contract('YVault', accounts => {
         await mphMinter.mintFunderReward(acc1, num2str(depositAmount), num2str(blockNow), num2str(blockNow + YEAR_IN_SEC), 0, false, { from: acc1 })
         assert.fail('Rando called mphMinter.mintFunderReward()!!!')
       } catch { }
+    })
+
+    it('owner can update MPH owner', async () => {
+      await mphMinter.setMPHTokenOwner(devWallet, { from: acc0 })
+      const newOwner = await mph.owner()
+      assert.equal(newOwner, devWallet, 'MPH owner not updated')
     })
   })
 })

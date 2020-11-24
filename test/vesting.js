@@ -59,8 +59,8 @@ contract('Vesting', accounts => {
     await token.approve(vesting.address, num2str(vestAmount), { from: acc0 })
     await vesting.vest(acc1, num2str(vestAmount), num2str(vestPeriod), { from: acc0 })
 
-    // wait 7 days
-    await timeTravel(7 * DAY)
+    // wait 10 days
+    await timeTravel(10 * DAY)
 
     // acc1 withdraws vested amount
     const acc1BeforeBalance = BigNumber(await token.balanceOf(acc1))
@@ -99,8 +99,8 @@ contract('Vesting', accounts => {
     await token.approve(vesting.address, num2str(vestAmount), { from: acc0 })
     await vesting.vest(acc1, num2str(vestAmount), num2str(vestPeriod), { from: acc0 })
 
-    // wait 7 days
-    await timeTravel(7 * DAY)
+    // wait 10 days
+    await timeTravel(10 * DAY)
 
     // acc1 withdraws vested amount
     const acc1BeforeBalance = BigNumber(await token.balanceOf(acc1))

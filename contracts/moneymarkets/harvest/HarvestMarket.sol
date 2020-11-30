@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
-import "./imports/Vault.sol";
+import "./imports/HarvestVault.sol";
 import "./imports/HarvestStaking.sol";
 
 contract HarvestMarket is IMoneyMarket, Ownable {
@@ -16,7 +16,7 @@ contract HarvestMarket is IMoneyMarket, Ownable {
     using SafeERC20 for ERC20;
     using Address for address;
 
-    Vault public vault;
+    HarvestVault public vault;
     address public rewards;
     HarvestStaking public stakingPool;
     ERC20 public stablecoin;
@@ -43,7 +43,7 @@ contract HarvestMarket is IMoneyMarket, Ownable {
             "HarvestMarket: An input address is not a contract"
         );
 
-        vault = Vault(_vault);
+        vault = HarvestVault(_vault);
         rewards = _rewards;
         stakingPool = HarvestStaking(_stakingPool);
         stablecoin = ERC20(_stablecoin);
@@ -96,7 +96,7 @@ contract HarvestMarket is IMoneyMarket, Ownable {
 
     function totalValue() external returns (uint256) {
         uint256 sharePrice = vault.getPricePerFullShare();
-        uint256 shareBalance = vault.balanceOf(address(this));
+        uint256 shareBalance = vault.balanceOf(address(this)).add(stakingPool.balanceOf(address(this)));
         return shareBalance.decmul(sharePrice);
     }
 

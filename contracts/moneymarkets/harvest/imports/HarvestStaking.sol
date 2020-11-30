@@ -10,4 +10,6 @@ interface HarvestStaking {
     function getReward() external;
 
     function rewardToken() external returns (address);
+
+    function balanceOf(address account) external view returns (uint256);
 }

@@ -2,7 +2,7 @@
 
 pragma solidity 0.5.17;
 
-interface Vault {
+interface HarvestVault {
     function deposit(uint256) external;
 
     function withdraw(uint256) external;

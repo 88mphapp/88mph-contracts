@@ -19,4 +19,4 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
   }
 }
 module.exports.tags = ['HarvestMarket']
-module.exports.dependencies = []
+module.exports.dependencies = ['Dumper']

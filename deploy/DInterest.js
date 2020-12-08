@@ -39,7 +39,7 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
     log(`${poolConfig.name} deployed at ${deployResult.address}`)
 
     // Set MPH minting multiplier for DInterest pool
-    const MPHMinter = artifacts.require('MPHMinter')
+    /* const MPHMinter = artifacts.require('MPHMinter')
     const mphMinterContract = await MPHMinter.at(mphMinterDeployment.address)
     await mphMinterContract.setPoolWhitelist(deployResult.address, true, { from: deployer })
     const MPHIssuanceModel = artifacts.require(config.mphIssuanceModel)
@@ -49,7 +49,7 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
     await mphIssuanceModelContract.setPoolFunderRewardMultiplier(deployResult.address, BigNumber(poolConfig.PoolFunderRewardMultiplier).toFixed(), { from: deployer })
     await mphIssuanceModelContract.setPoolDepositorRewardVestPeriod(deployResult.address, BigNumber(poolConfig.PoolDepositorRewardVestPeriod).toFixed(), { from: deployer })
     await mphIssuanceModelContract.setPoolFunderRewardVestPeriod(deployResult.address, BigNumber(poolConfig.PoolFunderRewardVestPeriod).toFixed(), { from: deployer })
-
+    */
     // Transfer the ownership of the money market to the DInterest pool
     const MoneyMarket = artifacts.require(poolConfig.moneyMarket)
     const moneyMarketContract = await MoneyMarket.at(moneyMarketDeployment.address)

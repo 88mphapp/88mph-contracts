@@ -1,28 +1,51 @@
 pragma solidity 0.5.17;
 
-
 // Aave lending pool interface
-// Documentation: https://docs.aave.com/developers/developing-on-aave/the-protocol/lendingpool
+// Documentation: https://docs.aave.com/developers/the-core-protocol/lendingpool/ilendingpool
+// refer to the whitepaper, section 1.1 basic concepts for a formal description of these properties.
 interface ILendingPool {
-    function deposit(address _reserve, uint256 _amount, uint16 _referralCode)
-        external;
+    /**
+     * @dev Deposits an `amount` of underlying asset into the reserve, receiving in return overlying aTokens.
+     * - E.g. User deposits 100 USDC and gets in return 100 aUSDC
+     * @param asset The address of the underlying asset to deposit
+     * @param amount The amount to be deposited
+     * @param onBehalfOf The address that will receive the aTokens, same as msg.sender if the user
+     *   wants to receive them on his own wallet, or a different address if the beneficiary of aTokens
+     *   is a different wallet
+     * @param referralCode Code used to register the integrator originating the operation, for potential rewards.
+     *   0 if the action is executed directly by the user, without any middle-man
+     **/
+    function deposit(
+        address asset,
+        uint256 amount,
+        address onBehalfOf,
+        uint16 referralCode
+    ) external;
 
-    function getReserveData(address _reserve)
+    /**
+     * @dev Withdraws an `amount` of underlying asset from the reserve, burning the equivalent aTokens owned
+     * E.g. User has 100 aUSDC, calls withdraw() and receives 100 USDC, burning the 100 aUSDC
+     * @param asset The address of the underlying asset to withdraw
+     * @param amount The underlying amount to be withdrawn
+     *   - Send the value type(uint256).max in order to withdraw the whole aToken balance
+     * @param to Address that will receive the underlying, same as msg.sender if the user
+     *   wants to receive it on his own wallet, or a different address if the beneficiary is a
+     *   different wallet
+     * @return The final amount withdrawn
+     **/
+    function withdraw(
+        address asset,
+        uint256 amount,
+        address to
+    ) external returns (uint256);
+
+    /**
+     * @dev Returns the normalized income normalized income of the reserve
+     * @param asset The address of the underlying asset of the reserve
+     * @return The reserve's normalized income
+     */
+    function getReserveNormalizedIncome(address asset)
         external
         view
-        returns (
-            uint256 totalLiquidity,
-            uint256 availableLiquidity,
-            uint256 totalBorrowsStable,
-            uint256 totalBorrowsVariable,
-            uint256 liquidityRate,
-            uint256 variableBorrowRate,
-            uint256 stableBorrowRate,
-            uint256 averageStableBorrowRate,
-            uint256 utilizationRate,
-            uint256 liquidityIndex,
-            uint256 variableBorrowIndex,
-            address aTokenAddress,
-            uint40 lastUpdateTimestamp
-        );
+        returns (uint256);
 }

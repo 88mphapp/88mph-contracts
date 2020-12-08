@@ -11,12 +11,4 @@ contract LendingPoolAddressesProviderMock {
     function setLendingPoolImpl(address _pool) external {
         pool = _pool;
     }
-
-    function getLendingPoolCore() external view returns (address) {
-        return core;
-    }
-
-    function setLendingPoolCoreImpl(address _pool) external {
-        core = _pool;
-    }
 }

@@ -27,17 +27,16 @@ contract ATokenMock is ERC20, ERC20Detailed {
         normalizedIncome = 10 ** 27;
     }
 
-    function redeem(uint256 _amount) external {
-        _burn(msg.sender, _amount);
-        dai.transfer(msg.sender, _amount);
-    }
-
     function mint(address _user, uint256 _amount) external {
         _mint(_user, _amount);
         if (!isUser[_user]) {
             users.push(_user);
             isUser[_user] = true;
         }
+    }
+
+    function burn(address _user, uint256 _amount) external {
+        _burn(_user, _amount);
     }
 
     function mintInterest(uint256 _seconds) external {

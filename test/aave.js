@@ -17,7 +17,6 @@ const Vesting = artifacts.require('Vesting')
 const AaveMarket = artifacts.require('AaveMarket')
 const ATokenMock = artifacts.require('ATokenMock')
 const LendingPoolMock = artifacts.require('LendingPoolMock')
-const LendingPoolCoreMock = artifacts.require('LendingPoolCoreMock')
 const LendingPoolAddressesProviderMock = artifacts.require('LendingPoolAddressesProviderMock')
 
 // Constants
@@ -97,7 +96,6 @@ contract('Aave', accounts => {
   // Contract instances
   let stablecoin
   let aToken
-  let lendingPoolCore
   let lendingPool
   let lendingPoolAddressesProvider
   let dInterestPool
@@ -125,17 +123,14 @@ contract('Aave', accounts => {
     // Initialize mock stablecoin and Aave
     stablecoin = await ERC20Mock.new()
     aToken = await ATokenMock.new(stablecoin.address)
-    lendingPoolCore = await LendingPoolCoreMock.new()
-    lendingPool = await LendingPoolMock.new(lendingPoolCore.address)
-    await lendingPoolCore.setLendingPool(lendingPool.address)
+    lendingPool = await LendingPoolMock.new()
     await lendingPool.setReserveAToken(stablecoin.address, aToken.address)
     lendingPoolAddressesProvider = await LendingPoolAddressesProviderMock.new()
     await lendingPoolAddressesProvider.setLendingPoolImpl(lendingPool.address)
-    await lendingPoolAddressesProvider.setLendingPoolCoreImpl(lendingPoolCore.address)
 
     // Mint stablecoin
     const mintAmount = 1000 * STABLECOIN_PRECISION
-    await stablecoin.mint(aToken.address, num2str(mintAmount))
+    await stablecoin.mint(lendingPool.address, num2str(mintAmount))
     await stablecoin.mint(acc0, num2str(mintAmount))
     await stablecoin.mint(acc1, num2str(mintAmount))
     await stablecoin.mint(acc2, num2str(mintAmount))
@@ -158,7 +153,7 @@ contract('Aave', accounts => {
     rewards.setRewardDistribution(acc0, true)
 
     // Initialize the money market
-    market = await AaveMarket.new(lendingPoolAddressesProvider.address, stablecoin.address)
+    market = await AaveMarket.new(lendingPoolAddressesProvider.address, aToken.address, stablecoin.address)
 
     // Initialize the NFTs
     depositNFT = await NFT.new('88mph Deposit', '88mph-Deposit')

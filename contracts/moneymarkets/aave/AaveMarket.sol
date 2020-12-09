@@ -6,10 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../IMoneyMarket.sol";
-import "./imports/IAToken.sol";
 import "./imports/ILendingPool.sol";
 import "./imports/ILendingPoolAddressesProvider.sol";
-import "./imports/ILendingPoolCore.sol";
 
 contract AaveMarket is IMoneyMarket, Ownable {
     using SafeMath for uint256;
@@ -20,36 +18,50 @@ contract AaveMarket is IMoneyMarket, Ownable {
 
     ILendingPoolAddressesProvider public provider; // Used for fetching the current address of LendingPool
     ERC20 public stablecoin;
+    ERC20 public aToken;
 
-    constructor(address _provider, address _stablecoin) public {
+    constructor(
+        address _provider,
+        address _aToken,
+        address _stablecoin
+    ) public {
         // Verify input addresses
         require(
-            _provider != address(0) && _stablecoin != address(0),
+            _provider != address(0) &&
+                _aToken != address(0) &&
+                _stablecoin != address(0),
             "AaveMarket: An input address is 0"
         );
         require(
-            _provider.isContract() && _stablecoin.isContract(),
+            _provider.isContract() &&
+                _aToken.isContract() &&
+                _stablecoin.isContract(),
             "AaveMarket: An input address is not a contract"
         );
 
         provider = ILendingPoolAddressesProvider(_provider);
         stablecoin = ERC20(_stablecoin);
+        aToken = ERC20(_aToken);
     }
 
     function deposit(uint256 amount) external onlyOwner {
         require(amount > 0, "AaveMarket: amount is 0");
 
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
-        address lendingPoolCore = provider.getLendingPoolCore();
 
         // Transfer `amount` stablecoin from `msg.sender`
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
         // Approve `amount` stablecoin to lendingPool
-        stablecoin.safeIncreaseAllowance(lendingPoolCore, amount);
+        stablecoin.safeIncreaseAllowance(address(lendingPool), amount);
 
         // Deposit `amount` stablecoin to lendingPool
-        lendingPool.deposit(address(stablecoin), amount, REFERRALCODE);
+        lendingPool.deposit(
+            address(stablecoin),
+            amount,
+            address(this),
+            REFERRALCODE
+        );
     }
 
     function withdraw(uint256 amountInUnderlying)
@@ -61,16 +73,13 @@ contract AaveMarket is IMoneyMarket, Ownable {
 
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
 
-        // Initialize aToken
-        (, , , , , , , , , , , address aTokenAddress, ) = lendingPool
-            .getReserveData(address(stablecoin));
-        IAToken aToken = IAToken(aTokenAddress);
-
         // Redeem `amountInUnderlying` aToken, since 1 aToken = 1 stablecoin
-        aToken.redeem(amountInUnderlying);
-
         // Transfer `amountInUnderlying` stablecoin to `msg.sender`
-        stablecoin.safeTransfer(msg.sender, amountInUnderlying);
+        lendingPool.withdraw(
+            address(stablecoin),
+            amountInUnderlying,
+            msg.sender
+        );
 
         return amountInUnderlying;
     }
@@ -78,21 +87,12 @@ contract AaveMarket is IMoneyMarket, Ownable {
     function claimRewards() external {}
 
     function totalValue() external returns (uint256) {
-        ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
-
-        // Initialize aToken
-        (, , , , , , , , , , , address aTokenAddress, ) = lendingPool
-            .getReserveData(address(stablecoin));
-        IAToken aToken = IAToken(aTokenAddress);
-
         return aToken.balanceOf(address(this));
     }
 
     function incomeIndex() external returns (uint256) {
-        ILendingPoolCore lendingPoolCore = ILendingPoolCore(
-            provider.getLendingPoolCore()
-        );
-        return lendingPoolCore.getReserveNormalizedIncome(address(stablecoin));
+        ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
+        return lendingPool.getReserveNormalizedIncome(address(stablecoin));
     }
 
     function setRewards(address newValue) external {}

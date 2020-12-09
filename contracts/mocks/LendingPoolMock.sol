@@ -2,54 +2,55 @@ pragma solidity 0.5.17;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./ATokenMock.sol";
-import "./LendingPoolCoreMock.sol";
 
 contract LendingPoolMock {
     mapping(address => address) internal reserveAToken;
-    LendingPoolCoreMock public core;
 
-    constructor(address _core) public {
-        core = LendingPoolCoreMock(_core);
-    }
-
-    function setReserveAToken(address _reserve, address _aTokenAddress) external {
+    function setReserveAToken(address _reserve, address _aTokenAddress)
+        external
+    {
         reserveAToken[_reserve] = _aTokenAddress;
     }
 
-    function deposit(address _reserve, uint256 _amount, uint16)
-        external
-    {
-        ERC20 token = ERC20(_reserve);
-        core.bounceTransfer(_reserve, msg.sender, _amount);
+    function deposit(
+        address asset,
+        uint256 amount,
+        address onBehalfOf,
+        uint16
+    ) external {
+        // Transfer asset
+        ERC20 token = ERC20(asset);
+        token.transferFrom(msg.sender, address(this), amount);
 
         // Mint aTokens
-        address aTokenAddress = reserveAToken[_reserve];
+        address aTokenAddress = reserveAToken[asset];
         ATokenMock aToken = ATokenMock(aTokenAddress);
-        aToken.mint(msg.sender, _amount);
-        token.transfer(aTokenAddress, _amount);
+        aToken.mint(onBehalfOf, amount);
     }
 
-    function getReserveData(address _reserve)
+    function withdraw(
+        address asset,
+        uint256 amount,
+        address to
+    ) external returns (uint256) {
+        // Burn aTokens
+        address aTokenAddress = reserveAToken[asset];
+        ATokenMock aToken = ATokenMock(aTokenAddress);
+        aToken.burn(msg.sender, amount);
+
+        // Transfer asset
+        ERC20 token = ERC20(asset);
+        token.transfer(to, amount);
+    }
+
+    // The equivalent of exchangeRateStored() for Compound cTokens
+    function getReserveNormalizedIncome(address asset)
         external
         view
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256 liquidityRate,
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            address aTokenAddress,
-            uint40
-        )
+        returns (uint256)
     {
-        aTokenAddress = reserveAToken[_reserve];
+        address aTokenAddress = reserveAToken[asset];
         ATokenMock aToken = ATokenMock(aTokenAddress);
-        liquidityRate = aToken.liquidityRate();
+        return aToken.normalizedIncome();
     }
 }

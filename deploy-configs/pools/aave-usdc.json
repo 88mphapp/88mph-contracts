@@ -21,5 +21,7 @@
   "EMAUpdateInverval": 86400,
   "EMASmoothingFactor": 2e18,
   "EMAAverageWindowInIntervals": 30,
-  "moneyMarketParams": {}
+  "moneyMarketParams": {
+    "aToken": "0xBcca60bB61934080951369a648Fb03DF4F96263C"
+  }
 }

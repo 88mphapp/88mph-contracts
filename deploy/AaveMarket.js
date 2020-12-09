@@ -8,6 +8,7 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
     from: deployer,
     args: [
       aaveConfig.lendingPoolAddressesProvider,
+      poolConfig.moneyMarketParams.aToken,
       poolConfig.stablecoin
     ]
   })

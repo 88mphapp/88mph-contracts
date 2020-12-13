@@ -1,4 +1,4 @@
 {
   "network": "mainnet",
-  "pool": "aave-usdc"
+  "pool": "harvest-crvhusd"
 }

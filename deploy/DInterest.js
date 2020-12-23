@@ -13,7 +13,6 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
   const depositNFTDeployment = await get(`${poolConfig.nftNamePrefix}Deposit`)
   const fundingNFTDeployment = await get(`${poolConfig.nftNamePrefix}Bond`)
   const mphMinterDeployment = await get('MPHMinter')
-  const mphIssuanceModelDeployment = await get(config.mphIssuanceModel)
 
   const deployResult = await deploy(poolConfig.name, {
     from: deployer,

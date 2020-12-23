@@ -1,0 +1,28 @@
+{
+  "name": "88mph Harvest crvHBTC Pool",
+  "nftNamePrefix": "88mph Harvest crvHBTC Pool ",
+  "nftSymbolPrefix": "88mph-Harvest-crvHBTC-",
+  "moneyMarket": "HarvestMarket",
+  "interestModel": "LinearInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MinDepositPeriod": 604800,
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 0.01e18,
+  "MaxDepositAmount": 10e18,
+  "stablecoin": "0xb19059ebb43466C323583928285a49f558E572Fd",
+  "PoolDepositorRewardMintMultiplier": 0,
+  "PoolDepositorRewardTakeBackMultiplier": 0.9e18,
+  "PoolFunderRewardMultiplier": 0,
+  "PoolDepositorRewardVestPeriod": 604800,
+  "PoolFunderRewardVestPeriod": 0,
+  "IRMultiplier": 0.75e18,
+  "EMAInitial": 19e8,
+  "EMAUpdateInverval": 259200,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 10,
+  "moneyMarketParams": {
+    "vault": "0xCC775989e76ab386E9253df5B0c0b473E22102E2",
+    "stakingPool": "0x01f9CAaD0f9255b0C0Aa2fBD1c1aA06ad8Af7254"
+  }
+}

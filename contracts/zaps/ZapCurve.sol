@@ -114,6 +114,7 @@ contract ZapCurve {
         );
 
         // zap inputToken into curve
+        inputTokenContract.safeIncreaseAllowance(address(zapper), inputTokenAmount);
         outputTokenAmount =
             zapper.ZapIn(
                 address(this),

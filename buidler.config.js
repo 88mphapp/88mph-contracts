@@ -38,7 +38,7 @@ module.exports = {
         mnemonic: secret.mnemonic
       },
       gas: 'auto',
-      gasPrice: 69.0000001e9
+      gasPrice: 60.0000001e9
     },
     buidlerevm: {
       blockGasLimit: 9950000,

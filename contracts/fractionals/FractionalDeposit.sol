@@ -76,13 +76,17 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
         nft.transferFrom(address(this), creator, nftID);
     }
 
-    function redeemShares(address user, uint256 amountInShares) external {
+    function redeemShares(address user, uint256 amountInShares)
+        external
+        returns (uint256 redeemStablecoinAmount)
+    {
         require(!active, "FractionalDeposit: deposit active");
 
         ERC20 stablecoin = pool.stablecoin();
         uint256 stablecoinBalance = stablecoin.balanceOf(address(this));
-        uint256 redeemStablecoinAmount =
-            amountInShares.mul(stablecoinBalance).div(totalSupply());
+        redeemStablecoinAmount = amountInShares.mul(stablecoinBalance).div(
+            totalSupply()
+        );
         if (redeemStablecoinAmount > stablecoinBalance) {
             // prevent transferring too much
             redeemStablecoinAmount = stablecoinBalance;

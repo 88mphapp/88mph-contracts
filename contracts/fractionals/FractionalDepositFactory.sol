@@ -8,11 +8,13 @@ import "../NFT.sol";
 
 contract FractionalDepositFactory is CloneFactory, IERC721Receiver {
     address public template;
+    address public mph;
 
     event CreateClone(address _clone);
 
-    constructor(address _template) public {
+    constructor(address _template, address _mph) public {
         template = _template;
+        mph = _mph;
     }
 
     function createFractionalDeposit(
@@ -34,6 +36,7 @@ contract FractionalDepositFactory is CloneFactory, IERC721Receiver {
         clone.init(
             msg.sender,
             _pool,
+            mph,
             _nftID,
             _totalSupply,
             _tokenName,

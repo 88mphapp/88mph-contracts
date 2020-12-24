@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "../DInterest.sol";
 import "../NFT.sol";
+import "../rewards/MPHToken.sol";
 
 contract FractionalDeposit is ERC20, IERC721Receiver {
     using SafeMath for uint256;
@@ -15,6 +16,7 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
     address public creator; // will receive NFT upon deposit withdrawal
     DInterest public pool;
     NFT public nft;
+    MPHToken public mph;
     uint256 public nftID;
     bool public active;
     string public name;
@@ -31,6 +33,7 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
     function init(
         address _creator,
         address _pool,
+        address _mph,
         uint256 _nftID,
         uint256 _totalSupply,
         string calldata _tokenName,
@@ -39,7 +42,9 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
         require(!initialized, "FractionalDeposit: initialized");
         initialized = true;
 
+        creator = _creator;
         pool = DInterest(_pool);
+        mph = MPHToken(_mph);
         nft = NFT(pool.depositNFT());
         nftID = _nftID;
         active = true;
@@ -57,14 +62,24 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
         _mint(_creator, _totalSupply);
     }
 
-    function withdrawDeposit(uint256 fundingID) external {
+    function withdrawDeposit(uint256 mphTakebackAmount, uint256 fundingID) external {
         require(active, "FractionalDeposit: deposit inactive");
         active = false;
 
         uint256 _nftID = nftID;
 
+        // transfer MPH from msg.sender
+        mph.transferFrom(msg.sender, address(this), mphTakebackAmount);
+
         // withdraw deposit from DInterest pool
+        mph.increaseAllowance(address(pool.mphMinter()), mphTakebackAmount);
         pool.withdraw(_nftID, fundingID);
+
+        // return possible leftover MPH
+        uint256 mphBalance = mph.balanceOf(address(this));
+        if (mphBalance > 0) {
+            mph.transfer(msg.sender, mphBalance);
+        }
 
         emit WithdrawDeposit();
     }
@@ -76,7 +91,7 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
         nft.transferFrom(address(this), creator, nftID);
     }
 
-    function redeemShares(address user, uint256 amountInShares)
+    function redeemShares(uint256 amountInShares)
         external
         returns (uint256 redeemStablecoinAmount)
     {
@@ -93,12 +108,12 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
         }
 
         // burn shares from sender
-        _burnFrom(user, amountInShares);
+        _burn(msg.sender, amountInShares);
 
         // transfer pro rata withdrawn deposit
-        stablecoin.safeTransfer(user, redeemStablecoinAmount);
+        stablecoin.safeTransfer(msg.sender, redeemStablecoinAmount);
 
-        emit RedeemShares(user, amountInShares, redeemStablecoinAmount);
+        emit RedeemShares(msg.sender, amountInShares, redeemStablecoinAmount);
     }
 
     /**

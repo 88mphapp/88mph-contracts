@@ -21,6 +21,13 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
     string public symbol;
     uint8 public constant decimals = 18;
 
+    event WithdrawDeposit();
+    event RedeemShares(
+        address indexed user,
+        uint256 amountInShares,
+        uint256 redeemStablecoinAmount
+    );
+
     function init(
         address _creator,
         address _pool,
@@ -59,8 +66,14 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
         // withdraw deposit from DInterest pool
         pool.withdraw(_nftID, fundingID);
 
+        emit WithdrawDeposit();
+    }
+
+    function transferNFTToCreator() external {
+        require(!active, "FractionalDeposit: deposit active");
+
         // transfer NFT to creator
-        nft.transferFrom(address(this), creator, _nftID);
+        nft.transferFrom(address(this), creator, nftID);
     }
 
     function redeemShares(address user, uint256 amountInShares) external {
@@ -80,6 +93,8 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
 
         // transfer pro rata withdrawn deposit
         stablecoin.safeTransfer(user, redeemStablecoinAmount);
+
+        emit RedeemShares(user, amountInShares, redeemStablecoinAmount);
     }
 
     /**

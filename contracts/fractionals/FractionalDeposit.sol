@@ -1,4 +1,5 @@
 pragma solidity 0.5.17;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -35,7 +36,6 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
         address _pool,
         address _mph,
         uint256 _nftID,
-        uint256 _totalSupply,
         string calldata _tokenName,
         string calldata _tokenSymbol
     ) external {
@@ -57,9 +57,10 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
             "FractionalDeposit: not deposit owner"
         );
 
-        // mint totalSupply tokens to creator
-        require(_totalSupply > 0, "FractionalDeposit: 0 supply");
-        _mint(_creator, _totalSupply);
+        // mint tokens to creator
+        DInterest.Deposit memory deposit = pool.getDeposit(_nftID);
+        uint256 initialSupply = deposit.amount.add(deposit.interestOwed);
+        _mint(_creator, initialSupply);
     }
 
     function withdrawDeposit(uint256 mphTakebackAmount, uint256 fundingID) external {

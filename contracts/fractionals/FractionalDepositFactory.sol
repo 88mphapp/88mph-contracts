@@ -20,7 +20,6 @@ contract FractionalDepositFactory is CloneFactory, IERC721Receiver {
     function createFractionalDeposit(
         address _pool,
         uint256 _nftID,
-        uint256 _totalSupply,
         string calldata _tokenName,
         string calldata _tokenSymbol
     ) external returns (FractionalDeposit) {
@@ -38,7 +37,6 @@ contract FractionalDepositFactory is CloneFactory, IERC721Receiver {
             _pool,
             mph,
             _nftID,
-            _totalSupply,
             _tokenName,
             _tokenSymbol
         );

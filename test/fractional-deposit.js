@@ -210,7 +210,6 @@ contract('FractionalDeposit', accounts => {
     await fractionalDepositFactory.createFractionalDeposit(
       dInterestPool.address,
       1,
-      num2str(100 * PRECISION),
       '88mph Fractional Deposit',
       'MPHFD-01',
       { from: acc0 }
@@ -223,7 +222,6 @@ contract('FractionalDeposit', accounts => {
     const receipt = await fractionalDepositFactory.createFractionalDeposit(
       dInterestPool.address,
       1,
-      num2str(100 * PRECISION),
       '88mph Fractional Deposit',
       'MPHFD-01',
       { from: acc0 }
@@ -243,15 +241,12 @@ contract('FractionalDeposit', accounts => {
   describe('after withdrawal', () => {
     let fractionalDeposit
 
-    const shareTotalSupply = 100 * PRECISION
-
     beforeEach(async () => {
       // create fractional deposit
       await depositNFT.setApprovalForAll(fractionalDepositFactory.address, true, { from: acc0 })
       const receipt = await fractionalDepositFactory.createFractionalDeposit(
         dInterestPool.address,
         1,
-        num2str(shareTotalSupply),
         '88mph Fractional Deposit',
         'MPHFD-01',
         { from: acc0 }
@@ -271,17 +266,20 @@ contract('FractionalDeposit', accounts => {
     it('redeem share', async () => {
       const depositBalance = BigNumber(await stablecoin.balanceOf(fractionalDeposit.address)).div(STABLECOIN_PRECISION)
 
+      const depositObject = await dInterestPool.getDeposit(1)
+      const shareTotalSupply = BigNumber(depositObject.amount).plus(depositObject.interestOwed)
+
       // transfer 50% of shares to acc1, 30% to acc2
-      await fractionalDeposit.transfer(acc1, num2str(0.5 * shareTotalSupply), { from: acc0 })
-      await fractionalDeposit.transfer(acc2, num2str(0.3 * shareTotalSupply), { from: acc0 })
+      await fractionalDeposit.transfer(acc1, num2str(shareTotalSupply.times(0.5)), { from: acc0 })
+      await fractionalDeposit.transfer(acc2, num2str(shareTotalSupply.times(0.3)), { from: acc0 })
 
       // redeem shares
       const acc0BeforeBalance = BigNumber(await stablecoin.balanceOf(acc0)).div(STABLECOIN_PRECISION)
       const acc1BeforeBalance = BigNumber(await stablecoin.balanceOf(acc1)).div(STABLECOIN_PRECISION)
       const acc2BeforeBalance = BigNumber(await stablecoin.balanceOf(acc2)).div(STABLECOIN_PRECISION)
-      await fractionalDeposit.redeemShares(num2str(0.2 * shareTotalSupply), { from: acc0 })
-      await fractionalDeposit.redeemShares(num2str(0.5 * shareTotalSupply), { from: acc1 })
-      await fractionalDeposit.redeemShares(num2str(0.3 * shareTotalSupply), { from: acc2 })
+      await fractionalDeposit.redeemShares(await fractionalDeposit.balanceOf(acc0), { from: acc0 })
+      await fractionalDeposit.redeemShares(await fractionalDeposit.balanceOf(acc1), { from: acc1 })
+      await fractionalDeposit.redeemShares(await fractionalDeposit.balanceOf(acc2), { from: acc2 })
       const acc0AfterBalance = BigNumber(await stablecoin.balanceOf(acc0)).div(STABLECOIN_PRECISION)
       const acc1AfterBalance = BigNumber(await stablecoin.balanceOf(acc1)).div(STABLECOIN_PRECISION)
       const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2)).div(STABLECOIN_PRECISION)

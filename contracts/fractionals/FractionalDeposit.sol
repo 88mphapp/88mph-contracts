@@ -3,11 +3,13 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "../DInterest.sol";
 import "../NFT.sol";
 import "../rewards/MPHToken.sol";
+import "../models/fee/IFeeModel.sol";
 
 contract FractionalDeposit is ERC20, IERC721Receiver {
     using SafeMath for uint256;
@@ -19,10 +21,11 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
     NFT public nft;
     MPHToken public mph;
     uint256 public nftID;
+    uint256 public mintMPHAmount;
     bool public active;
     string public name;
     string public symbol;
-    uint8 public constant decimals = 18;
+    uint8 public decimals;
 
     event WithdrawDeposit();
     event RedeemShares(
@@ -59,44 +62,39 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
 
         // mint tokens to creator
         DInterest.Deposit memory deposit = pool.getDeposit(_nftID);
-        uint256 initialSupply = deposit.amount.add(deposit.interestOwed);
+        require(deposit.active, "FractionalDeposit: deposit inactive");
+        uint256 rawInterestOwed = deposit.interestOwed;
+        uint256 interestAfterFee = rawInterestOwed.sub(pool.feeModel().getFee(rawInterestOwed));
+        uint256 initialSupply = deposit.amount.add(interestAfterFee);
         _mint(_creator, initialSupply);
-    }
-
-    function withdrawDeposit(uint256 mphTakebackAmount, uint256 fundingID) external {
-        require(active, "FractionalDeposit: deposit inactive");
-        active = false;
-
-        uint256 _nftID = nftID;
 
         // transfer MPH from msg.sender
-        mph.transferFrom(msg.sender, address(this), mphTakebackAmount);
+        mintMPHAmount = deposit.mintMPHAmount;
+        mph.transferFrom(msg.sender, address(this), mintMPHAmount);
 
-        // withdraw deposit from DInterest pool
-        mph.increaseAllowance(address(pool.mphMinter()), mphTakebackAmount);
-        pool.withdraw(_nftID, fundingID);
+        // set decimals to be the same as the underlying stablecoin
+        decimals = ERC20Detailed(address(pool.stablecoin())).decimals();
+    }
 
-        // return possible leftover MPH
-        uint256 mphBalance = mph.balanceOf(address(this));
-        if (mphBalance > 0) {
-            mph.transfer(msg.sender, mphBalance);
-        }
-
-        emit WithdrawDeposit();
+    function withdrawDeposit(uint256 fundingID) external {
+        _withdrawDeposit(fundingID);
     }
 
     function transferNFTToCreator() external {
         require(!active, "FractionalDeposit: deposit active");
 
         // transfer NFT to creator
-        nft.transferFrom(address(this), creator, nftID);
+        nft.safeTransferFrom(address(this), creator, nftID);
     }
 
-    function redeemShares(uint256 amountInShares)
+    function redeemShares(uint256 amountInShares, uint256 fundingID)
         external
         returns (uint256 redeemStablecoinAmount)
     {
-        require(!active, "FractionalDeposit: deposit active");
+        if (active) {
+            // if deposit is still active, call withdrawDeposit()
+            _withdrawDeposit(fundingID);
+        }
 
         ERC20 stablecoin = pool.stablecoin();
         uint256 stablecoinBalance = stablecoin.balanceOf(address(this));
@@ -115,6 +113,25 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
         stablecoin.safeTransfer(msg.sender, redeemStablecoinAmount);
 
         emit RedeemShares(msg.sender, amountInShares, redeemStablecoinAmount);
+    }
+
+    function _withdrawDeposit(uint256 fundingID) internal {
+        require(active, "FractionalDeposit: deposit inactive");
+        active = false;
+
+        uint256 _nftID = nftID;
+
+        // withdraw deposit from DInterest pool
+        mph.increaseAllowance(address(pool.mphMinter()), mintMPHAmount);
+        pool.withdraw(_nftID, fundingID);
+
+        // return leftover MPH
+        uint256 mphBalance = mph.balanceOf(address(this));
+        if (mphBalance > 0) {
+            mph.transfer(creator, mphBalance);
+        }
+
+        emit WithdrawDeposit();
     }
 
     /**

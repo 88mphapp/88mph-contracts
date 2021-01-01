@@ -1,20 +1,23 @@
 pragma solidity 0.5.17;
+pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "../libs/CloneFactory.sol";
 import "./FractionalDeposit.sol";
 import "../DInterest.sol";
 import "../NFT.sol";
+import "../rewards/MPHToken.sol";
 
 contract FractionalDepositFactory is CloneFactory, IERC721Receiver {
     address public template;
-    address public mph;
+    MPHToken public mph;
 
     event CreateClone(address _clone);
 
     constructor(address _template, address _mph) public {
         template = _template;
-        mph = _mph;
+        mph = MPHToken(_mph);
     }
 
     function createFractionalDeposit(
@@ -28,14 +31,20 @@ contract FractionalDepositFactory is CloneFactory, IERC721Receiver {
         // transfer NFT from msg.sender to clone
         DInterest pool = DInterest(_pool);
         NFT nft = NFT(pool.depositNFT());
-        nft.transferFrom(msg.sender, address(this), _nftID);
-        nft.transferFrom(address(this), address(clone), _nftID);
+        nft.safeTransferFrom(msg.sender, address(this), _nftID);
+        nft.safeTransferFrom(address(this), address(clone), _nftID);
+
+        // transfer MPH reward from msg.sender
+        DInterest.Deposit memory deposit = pool.getDeposit(_nftID);
+        uint256 mintMPHAmount = deposit.mintMPHAmount;
+        mph.transferFrom(msg.sender, address(this), mintMPHAmount);
+        mph.increaseAllowance(address(clone), mintMPHAmount);
 
         // initialize
         clone.init(
             msg.sender,
             _pool,
-            mph,
+            address(mph),
             _nftID,
             _tokenName,
             _tokenSymbol

@@ -80,8 +80,10 @@ contract HarvestMarket is IMoneyMarket, Ownable {
         // Withdraw `amountInShares` shares from vault
         uint256 sharePrice = vault.getPricePerFullShare();
         uint256 amountInShares = amountInUnderlying.decdiv(sharePrice);
-        stakingPool.withdraw(amountInShares);
-        vault.withdraw(amountInShares);
+        if (amountInShares > 0) {
+            stakingPool.withdraw(amountInShares);
+            vault.withdraw(amountInShares);
+        }
 
         // Transfer stablecoin to `msg.sender`
         actualAmountWithdrawn = stablecoin.balanceOf(address(this));

@@ -29,13 +29,6 @@ contract HarvestMarket is IMoneyMarket, Ownable {
     ) public {
         // Verify input addresses
         require(
-            _vault != address(0) &&
-                _rewards != address(0) &&
-                _stakingPool != address(0) &&
-                _stablecoin != address(0),
-            "HarvestMarket: An input address is 0"
-        );
-        require(
             _vault.isContract() &&
                 _rewards.isContract() &&
                 _stakingPool.isContract() &&

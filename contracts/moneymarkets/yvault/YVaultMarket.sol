@@ -21,10 +21,6 @@ contract YVaultMarket is IMoneyMarket, Ownable {
     constructor(address _vault, address _stablecoin) public {
         // Verify input addresses
         require(
-            _vault != address(0) && _stablecoin != address(0),
-            "YVaultMarket: An input address is 0"
-        );
-        require(
             _vault.isContract() && _stablecoin.isContract(),
             "YVaultMarket: An input address is not a contract"
         );

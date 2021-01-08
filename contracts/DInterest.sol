@@ -540,7 +540,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     }
 
     function setMinDepositAmount(uint256 newValue) external onlyOwner {
-        require(newValue <= MaxDepositAmount, "DInterest: invalid value");
+        require(newValue <= MaxDepositAmount && newValue > 0, "DInterest: invalid value");
         MinDepositAmount = newValue;
         emit ESetParamUint(msg.sender, "MinDepositAmount", newValue);
     }
@@ -615,9 +615,6 @@ contract DInterest is ReentrancyGuard, Ownable {
      */
 
     function _deposit(uint256 amount, uint256 maturationTimestamp) internal {
-        // Cannot deposit 0
-        require(amount > 0, "DInterest: Deposit amount is 0");
-
         // Ensure deposit amount is not more than maximum
         require(
             amount >= MinDepositAmount && amount <= MaxDepositAmount,

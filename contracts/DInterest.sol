@@ -509,6 +509,10 @@ contract DInterest is ReentrancyGuard, Ownable {
     function setInterestOracle(address newValue) external onlyOwner {
         require(newValue.isContract(), "DInterest: not contract");
         interestOracle = IInterestOracle(newValue);
+        require(
+            interestOracle.moneyMarket() == address(moneyMarket),
+            "DInterest: moneyMarket mismatch"
+        );
         emit ESetParamAddress(msg.sender, "interestOracle", newValue);
     }
 

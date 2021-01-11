@@ -54,6 +54,10 @@ contract FractionalDepositFactory is CloneFactory, IERC721Receiver {
         return clone;
     }
 
+    function isFractionalDeposit(address query) external view returns (bool) {
+        return isClone(template, query);
+    }
+
     /**
      * @notice Handle the receipt of an NFT
      * @dev The ERC721 smart contract calls this function on the recipient

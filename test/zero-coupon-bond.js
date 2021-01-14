@@ -255,7 +255,7 @@ contract('ZeroCouponBond', accounts => {
     // mint ZCB
     const fractionalDepositBalance = await fractionalDeposit.balanceOf(acc0)
     await fractionalDeposit.approve(zcbAddress, fractionalDepositBalance)
-    await zcb.mint(fractionalDepositAddress, fractionalDepositBalance)
+    await zcb.mintWithFractionalDeposit(fractionalDepositAddress, fractionalDepositBalance)
 
     // check balances
     assert(epsilonEq(await zcb.balanceOf(acc0), fractionalDepositBalance), 'zero coupon bonds not credited to acc0')
@@ -290,7 +290,7 @@ contract('ZeroCouponBond', accounts => {
     // mint ZCB
     const fractionalDepositBalance = await fractionalDeposit.balanceOf(acc0)
     await fractionalDeposit.approve(zcbAddress, fractionalDepositBalance)
-    await zcb.mint(fractionalDepositAddress, fractionalDepositBalance)
+    await zcb.mintWithFractionalDeposit(fractionalDepositAddress, fractionalDepositBalance)
 
     // wait 2 years
     await timePass(2)
@@ -307,6 +307,53 @@ contract('ZeroCouponBond', accounts => {
     const afterStablecoinBalance = await stablecoin.balanceOf(acc0)
 
     // check balances
+    const actualMPHReward = await mph.balanceOf(acc0)
+    const expectedMPHReward = BigNumber(PoolDepositorRewardMintMultiplier).times(depositAmount).div(PRECISION).times(YEAR_IN_SEC).times(BigNumber(PRECISION).minus(PoolDepositorRewardTakeBackMultiplier)).div(PRECISION)
+    assert(epsilonEq(actualMPHReward, expectedMPHReward), 'MPH reward amount incorrect')
+    assert(epsilonEq(afterStablecoinBalance.sub(beforeStablecoinBalance), fractionalDepositBalance), 'stablecoins not credited to acc0')
+    assert(BigNumber(await zcb.balanceOf(acc0)).div(STABLECOIN_PRECISION).lt(epsilon), 'zero coupon bonds not burned from acc0')
+    assert(BigNumber(await fractionalDeposit.balanceOf(zcbAddress)).div(STABLECOIN_PRECISION).lt(epsilon), 'fractional deposit not burned from zero coupon bonds contract')
+  })
+
+  it('create zero coupon bond from NFT and redeem', async () => {
+    // create ZCB
+    const blockNow = await latestBlockTimestamp()
+    const zcbReceipt = await zeroCouponBondFactory.createZeroCouponBond(
+      dInterestPool.address,
+      num2str(blockNow + 2 * YEAR_IN_SEC),
+      '88mph Zero Coupon Bond',
+      'MPHZCB-Jan-2023',
+      { from: acc0 }
+    )
+    const zcbAddress = zcbReceipt.logs[0].args._clone
+    const zcb = await ZeroCouponBond.at(zcbAddress)
+
+    // mint ZCB
+    await depositNFT.approve(zcbAddress, 1)
+    await mph.approve(zcbAddress, INF)
+    const mintReceipt = await zcb.mintWithDepositNFT(1, '88mph Fractional Deposit', 'MPHFD-Jan-2022')
+    const fractionalDepositAddress = mintReceipt.logs[mintReceipt.logs.length - 1].args.fractionalDepositAddress
+    const fractionalDeposit = await FractionalDeposit.at(fractionalDepositAddress)
+    const fractionalDepositBalance = await fractionalDeposit.balanceOf(zcbAddress)
+
+    // wait 2 years
+    await timePass(2)
+
+    // redeem fractional deposit shares
+    await zcb.redeemFractionalDepositShares(fractionalDepositAddress, 0)
+
+    // check balances
+    assert(epsilonEq(await stablecoin.balanceOf(zcbAddress), fractionalDepositBalance), 'stablecoins not withdrawn to zero coupon bonds contract')
+
+    // redeem stablecoin
+    const beforeStablecoinBalance = await stablecoin.balanceOf(acc0)
+    await zcb.redeemStablecoin(await zcb.balanceOf(acc0))
+    const afterStablecoinBalance = await stablecoin.balanceOf(acc0)
+
+    // check balances
+    const actualMPHReward = await mph.balanceOf(acc0)
+    const expectedMPHReward = BigNumber(PoolDepositorRewardMintMultiplier).times(depositAmount).div(PRECISION).times(YEAR_IN_SEC).times(BigNumber(PRECISION).minus(PoolDepositorRewardTakeBackMultiplier)).div(PRECISION)
+    assert(epsilonEq(actualMPHReward, expectedMPHReward), 'MPH reward amount incorrect')
     assert(epsilonEq(afterStablecoinBalance.sub(beforeStablecoinBalance), fractionalDepositBalance), 'stablecoins not credited to acc0')
     assert(BigNumber(await zcb.balanceOf(acc0)).div(STABLECOIN_PRECISION).lt(epsilon), 'zero coupon bonds not burned from acc0')
     assert(BigNumber(await fractionalDeposit.balanceOf(zcbAddress)).div(STABLECOIN_PRECISION).lt(epsilon), 'fractional deposit not burned from zero coupon bonds contract')

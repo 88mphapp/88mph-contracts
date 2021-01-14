@@ -6,17 +6,17 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "../DInterest.sol";
 import "../NFT.sol";
 import "../rewards/MPHToken.sol";
 import "../models/fee/IFeeModel.sol";
 
-contract FractionalDeposit is ERC20, IERC721Receiver {
+contract FractionalDeposit is ERC20, IERC721Receiver, Ownable {
     using SafeMath for uint256;
     using SafeERC20 for ERC20;
 
     bool public initialized;
-    address public creator; // will receive NFT upon deposit withdrawal
     DInterest public pool;
     NFT public nft;
     MPHToken public mph;
@@ -35,7 +35,7 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
     );
 
     function init(
-        address _creator,
+        address _owner,
         address _pool,
         address _mph,
         uint256 _nftID,
@@ -45,7 +45,7 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
         require(!initialized, "FractionalDeposit: initialized");
         initialized = true;
 
-        creator = _creator;
+        _transferOwnership(_owner);
         pool = DInterest(_pool);
         mph = MPHToken(_mph);
         nft = NFT(pool.depositNFT());
@@ -60,13 +60,13 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
             "FractionalDeposit: not deposit owner"
         );
 
-        // mint tokens to creator
+        // mint tokens to owner
         DInterest.Deposit memory deposit = pool.getDeposit(_nftID);
         require(deposit.active, "FractionalDeposit: deposit inactive");
         uint256 rawInterestOwed = deposit.interestOwed;
         uint256 interestAfterFee = rawInterestOwed.sub(pool.feeModel().getFee(rawInterestOwed));
         uint256 initialSupply = deposit.amount.add(interestAfterFee);
-        _mint(_creator, initialSupply);
+        _mint(_owner, initialSupply);
 
         // transfer MPH from msg.sender
         mintMPHAmount = deposit.mintMPHAmount;
@@ -80,11 +80,11 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
         _withdrawDeposit(fundingID);
     }
 
-    function transferNFTToCreator() external {
+    function transferNFTToOwner() external {
         require(!active, "FractionalDeposit: deposit active");
 
-        // transfer NFT to creator
-        nft.safeTransferFrom(address(this), creator, nftID);
+        // transfer NFT to owner
+        nft.safeTransferFrom(address(this), owner(), nftID);
     }
 
     function redeemShares(uint256 amountInShares, uint256 fundingID)
@@ -128,7 +128,7 @@ contract FractionalDeposit is ERC20, IERC721Receiver {
         // return leftover MPH
         uint256 mphBalance = mph.balanceOf(address(this));
         if (mphBalance > 0) {
-            mph.transfer(creator, mphBalance);
+            mph.transfer(owner(), mphBalance);
         }
 
         emit WithdrawDeposit();

@@ -190,6 +190,8 @@ contract ZeroCouponBond is ERC20, ClonedReentrancyGuard, IERC721Receiver {
         nonReentrant
         returns (uint256 actualRedeemedAmount)
     {
+        require(now >= maturationTimestamp, "ZeroCouponBond: not mature");
+
         uint256 stablecoinBalance = stablecoin.balanceOf(address(this));
         actualRedeemedAmount = amount > stablecoinBalance
             ? stablecoinBalance

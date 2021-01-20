@@ -29,13 +29,6 @@ contract HarvestMarket is IMoneyMarket, Ownable {
     ) public {
         // Verify input addresses
         require(
-            _vault != address(0) &&
-                _rewards != address(0) &&
-                _stakingPool != address(0) &&
-                _stablecoin != address(0),
-            "HarvestMarket: An input address is 0"
-        );
-        require(
             _vault.isContract() &&
                 _rewards.isContract() &&
                 _stakingPool.isContract() &&
@@ -80,8 +73,10 @@ contract HarvestMarket is IMoneyMarket, Ownable {
         // Withdraw `amountInShares` shares from vault
         uint256 sharePrice = vault.getPricePerFullShare();
         uint256 amountInShares = amountInUnderlying.decdiv(sharePrice);
-        stakingPool.withdraw(amountInShares);
-        vault.withdraw(amountInShares);
+        if (amountInShares > 0) {
+            stakingPool.withdraw(amountInShares);
+            vault.withdraw(amountInShares);
+        }
 
         // Transfer stablecoin to `msg.sender`
         actualAmountWithdrawn = stablecoin.balanceOf(address(this));

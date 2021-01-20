@@ -81,6 +81,12 @@ contract MPHMinter is Ownable {
         uint256 depositPeriodInSeconds,
         uint256 interestAmount
     ) external onlyWhitelistedPool returns (uint256) {
+        if (mph.owner() != address(this)) {
+            // not the owner of the MPH token, cannot mint
+            emit MintDepositorReward(msg.sender, to, 0);
+            return 0;
+        }
+    
         (
             uint256 depositorReward,
             uint256 devReward,
@@ -174,6 +180,12 @@ contract MPHMinter is Ownable {
         uint256 interestPayoutAmount,
         bool early
     ) external onlyWhitelistedPool returns (uint256) {
+        if (mph.owner() != address(this)) {
+            // not the owner of the MPH token, cannot mint
+            emit MintDepositorReward(msg.sender, to, 0);
+            return 0;
+        }
+
         (
             uint256 funderReward,
             uint256 devReward,

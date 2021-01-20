@@ -27,12 +27,6 @@ contract AaveMarket is IMoneyMarket, Ownable {
     ) public {
         // Verify input addresses
         require(
-            _provider != address(0) &&
-                _aToken != address(0) &&
-                _stablecoin != address(0),
-            "AaveMarket: An input address is 0"
-        );
-        require(
             _provider.isContract() &&
                 _aToken.isContract() &&
                 _stablecoin.isContract(),

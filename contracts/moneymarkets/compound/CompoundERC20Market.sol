@@ -29,13 +29,6 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
     ) public {
         // Verify input addresses
         require(
-            _cToken != address(0) &&
-                _comptroller != address(0) &&
-                _rewards != address(0) &&
-                _stablecoin != address(0),
-            "CompoundERC20Market: An input address is 0"
-        );
-        require(
             _cToken.isContract() &&
                 _comptroller.isContract() &&
                 _rewards.isContract() &&

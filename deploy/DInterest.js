@@ -12,7 +12,7 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
   const interestOracleDeployment = await get(poolConfig.interestOracle)
   const depositNFTDeployment = await get(`${poolConfig.nftNamePrefix}Deposit`)
   const fundingNFTDeployment = await get(`${poolConfig.nftNamePrefix}Bond`)
-  const mphMinterDeployment = await get('MPHMinter')
+  const mphMinterAddress = config.mphMinter
 
   const deployResult = await deploy(poolConfig.name, {
     from: deployer,
@@ -31,7 +31,7 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
       interestOracleDeployment.address,
       depositNFTDeployment.address,
       fundingNFTDeployment.address,
-      mphMinterDeployment.address
+      mphMinterAddress
     ]
   })
   if (deployResult.newlyDeployed) {

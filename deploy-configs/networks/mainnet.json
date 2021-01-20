@@ -6,5 +6,6 @@
   "oneSplitAddress": "0xC586BeF4a0992C495Cf22e1aeEE4E446CECDee0E",
   "rewardStartTime": 1606161600,
   "mph": "0x8888801af4d980682e47f1a9036e589479e835c5",
-  "mphIssuanceModel": "MPHIssuanceModel01"
+  "mphIssuanceModel": "MPHIssuanceModel01",
+  "mphMinter": "0x03577A2151A10675a9689190fE5D331Ee7ff2517"
 }

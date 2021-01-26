@@ -90,75 +90,49 @@ contract ZeroCouponBond is ERC20, ClonedReentrancyGuard, IERC721Receiver {
         );
     }
 
-    function mintWithFractionalDeposit(
-        address fractionalDepositAddress,
-        uint256 amount
-    ) external nonReentrant {
-        FractionalDeposit fractionalDeposit =
-            FractionalDeposit(fractionalDepositAddress);
-
-        // verify the validity of the fractional deposit
-        // 1. verify the contract is a clone of our trusted contract
-        require(
-            fractionalDepositFactory.isFractionalDeposit(
-                fractionalDepositAddress
-            ),
-            "ZeroCouponBond: not fractional deposit"
-        );
-        // 2. verify the fractional deposit uses the same DInterest pool
-        DInterest fdPool = fractionalDeposit.pool();
-        require(
-            address(fdPool) == address(pool),
-            "ZeroCouponBond: pool mismatch"
-        );
-        // at this point we know the FD contract owns the deposit NFT
-        // because the pool is non-zero, we know the init() function has been called
-        // 3. verify the deposit is active
-        require(fractionalDeposit.active(), "ZeroCouponBond: deposit inactive");
-        // 4. verify the deposit's maturation time is on or before the maturation time
-        // of this zero coupon bond
-        uint256 fdMaturationTimestamp =
-            pool.getDeposit(fractionalDeposit.nftID()).maturationTimestamp;
-        require(
-            fdMaturationTimestamp <= maturationTimestamp,
-            "ZeroCouponBonds: maturation too late"
-        );
-
-        // transfer `amount` fractional deposit tokens from `msg.sender`
-        fractionalDeposit.transferFrom(msg.sender, address(this), amount);
-
-        // mint `amount` zero coupon bonds to `msg.sender`
-        _mint(msg.sender, amount);
-
-        emit Mint(msg.sender, fractionalDepositAddress, amount);
-    }
-
     function mintWithDepositNFT(
         uint256 nftID,
         string calldata fractionalDepositName,
         string calldata fractionalDepositSymbol
-    ) external nonReentrant {
+    )
+        external
+        nonReentrant
+        returns (
+            uint256 zeroCouponBondsAmount,
+            FractionalDeposit fractionalDeposit
+        )
+    {
+        // ensure the deposit's maturation time is on or before that of the ZCB
+        DInterest.Deposit memory depositStruct = pool.getDeposit(nftID);
+        uint256 depositMaturationTimestamp = depositStruct.maturationTimestamp;
+        require(
+            depositMaturationTimestamp <= maturationTimestamp,
+            "ZeroCouponBonds: maturation too late"
+        );
+
+        // transfer MPH from `msg.sender`
+        MPHToken mph = fractionalDepositFactory.mph();
+        mph.transferFrom(
+            msg.sender,
+            address(this),
+            depositStruct.mintMPHAmount
+        );
+
         // transfer deposit NFT from `msg.sender`
         NFT depositNFT = pool.depositNFT();
         depositNFT.safeTransferFrom(msg.sender, address(this), nftID);
 
-        // transfer MPH from `msg.sender`
-        uint256 mintMPHAmount = pool.getDeposit(nftID).mintMPHAmount;
-        MPHToken mph = fractionalDepositFactory.mph();
-        mph.transferFrom(msg.sender, address(this), mintMPHAmount);
-
         // call fractionalDepositFactory to create fractional deposit using NFT
-        FractionalDeposit fractionalDeposit =
-            fractionalDepositFactory.createFractionalDeposit(
-                address(pool),
-                nftID,
-                fractionalDepositName,
-                fractionalDepositSymbol
-            );
+        fractionalDeposit = fractionalDepositFactory.createFractionalDeposit(
+            address(pool),
+            nftID,
+            fractionalDepositName,
+            fractionalDepositSymbol
+        );
         fractionalDeposit.transferOwnership(msg.sender);
 
         // mint zero coupon bonds to `msg.sender`
-        uint256 zeroCouponBondsAmount = fractionalDeposit.totalSupply();
+        zeroCouponBondsAmount = fractionalDeposit.totalSupply();
         _mint(msg.sender, zeroCouponBondsAmount);
 
         emit Mint(

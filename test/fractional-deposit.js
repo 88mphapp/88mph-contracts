@@ -291,7 +291,7 @@ contract('FractionalDeposit', accounts => {
     })
 
     it('transfer NFT to creator', async () => {
-      await fractionalDeposit.transferNFTToCreator({ from: acc0 })
+      await fractionalDeposit.transferNFTToOwner({ from: acc0 })
 
       // verify NFT ownership
       const nftOwner = await depositNFT.ownerOf(1)

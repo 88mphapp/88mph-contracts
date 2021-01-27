@@ -48,7 +48,7 @@ const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
 
 // Utilities
 // travel `time` seconds forward in time
-function timeTravel (time) {
+function timeTravel(time) {
   return new Promise((resolve, reject) => {
     web3.currentProvider.send({
       jsonrpc: '2.0',
@@ -62,16 +62,16 @@ function timeTravel (time) {
   })
 }
 
-async function latestBlockTimestamp () {
+async function latestBlockTimestamp() {
   return (await web3.eth.getBlock('latest')).timestamp
 }
 
 // Converts a JS number into a string that doesn't use scientific notation
-function num2str (num) {
+function num2str(num) {
   return BigNumber(num).integerValue().toFixed()
 }
 
-function epsilonEq (curr, prev, ep) {
+function epsilonEq(curr, prev, ep) {
   const _epsilon = ep || epsilon
   return BigNumber(curr).eq(prev) ||
     (!BigNumber(prev).isZero() && BigNumber(curr).minus(prev).div(prev).abs().lt(_epsilon)) ||
@@ -269,5 +269,31 @@ contract('ZeroCouponBond', accounts => {
     assert(epsilonEq(afterStablecoinBalance.sub(beforeStablecoinBalance), fractionalDepositBalance), 'stablecoins not credited to acc0')
     assert(BigNumber(await zcb.balanceOf(acc0)).div(STABLECOIN_PRECISION).lt(epsilon), 'zero coupon bonds not burned from acc0')
     assert(BigNumber(await fractionalDeposit.balanceOf(zcbAddress)).div(STABLECOIN_PRECISION).lt(epsilon), 'fractional deposit not burned from zero coupon bonds contract')
+  })
+
+  it('should not be able to mint using deposit that matures after the zero coupon bond', async () => {
+    // create ZCB that matures in 6 months (earlier than the deposit)
+    const blockNow = await latestBlockTimestamp()
+    const zcbReceipt = await zeroCouponBondFactory.createZeroCouponBond(
+      dInterestPool.address,
+      num2str(blockNow + 0.5 * YEAR_IN_SEC),
+      '88mph Zero Coupon Bond',
+      'MPHZCB',
+      { from: acc0 }
+    )
+    const zcbAddress = zcbReceipt.logs[0].args._clone
+    const zcb = await ZeroCouponBond.at(zcbAddress)
+
+    // mint ZCB
+    await depositNFT.approve(zcbAddress, 1)
+    await mph.approve(zcbAddress, INF)
+    try {
+      await zcb.mintWithDepositNFT(1, '88mph Fractional Deposit', 'MPHFD-Jan-2022')
+      assert.fail('minted with deposit that matures after the zero coupon bond')
+    } catch (error) {
+      if (error.message === 'minted with deposit that matures after the zero coupon bond') {
+        assert.fail('minted with deposit that matures after the zero coupon bond')
+      }
+    }
   })
 })

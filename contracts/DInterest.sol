@@ -375,6 +375,8 @@ contract DInterest is ReentrancyGuard, Ownable {
         external
         returns (uint256 interestAmount)
     {
+        address funder = fundingNFT.ownerOf(fundingID);
+        require(funder == msg.sender, "DInterest: not funder");
         Funding storage f = _getFunding(fundingID);
         uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
         interestAmount = f
@@ -399,7 +401,6 @@ contract DInterest is ReentrancyGuard, Ownable {
         );
 
         // Send interest to funder
-        address funder = fundingNFT.ownerOf(fundingID);
         if (interestAmount > 0) {
             interestAmount = moneyMarket.withdraw(interestAmount);
             stablecoin.safeTransfer(funder, interestAmount);

@@ -470,13 +470,13 @@ contract('Aave', accounts => {
       await timePass(0.3)
 
       // Payout interest
-      await dInterestPool.payInterestToFunder(1, { from: acc0 })
+      await dInterestPool.payInterestToFunder(1, { from: acc2 })
 
       // Wait 0.7 year
       await timePass(0.7)
 
       // Payout interest
-      await dInterestPool.payInterestToFunder(1, { from: acc0 })
+      await dInterestPool.payInterestToFunder(1, { from: acc2 })
 
       // Withdraw deposit
       await vesting.withdrawVested(acc0, 0, { from: acc0 })

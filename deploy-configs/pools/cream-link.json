@@ -1,0 +1,27 @@
+{
+  "name": "88mph crLINK Pool",
+  "nftNamePrefix": "88mph crLINK Pool ",
+  "nftSymbolPrefix": "88mph-crLINK-",
+  "moneyMarket": "CreamERC20Market",
+  "interestModel": "LinearInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MinDepositPeriod": 604800,
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 5e6,
+  "MaxDepositAmount": 5000e6,
+  "stablecoin": "0x514910771af9ca656af840dff83e8264ecf986ca",
+  "PoolDepositorRewardMintMultiplier": 0,
+  "PoolDepositorRewardTakeBackMultiplier": 0.9e18,
+  "PoolFunderRewardMultiplier": 0,
+  "PoolDepositorRewardVestPeriod": 604800,
+  "PoolFunderRewardVestPeriod": 0,
+  "IRMultiplier": 0.75e18,
+  "EMAInitial": 1.959e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0x697256CAA3cCaFD62BB6d3Aa1C7C5671786A5fD9"
+  }
+}

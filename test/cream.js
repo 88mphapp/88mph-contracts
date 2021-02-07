@@ -8,14 +8,14 @@ const LinearInterestModel = artifacts.require('LinearInterestModel')
 const NFT = artifacts.require('NFT')
 const MPHToken = artifacts.require('MPHToken')
 const MPHMinter = artifacts.require('MPHMinter')
-const ERC20Mock = artifacts.require('ERC20Mock')
 const Rewards = artifacts.require('Rewards')
 const EMAOracle = artifacts.require('EMAOracle')
 const MPHIssuanceModel = artifacts.require('MPHIssuanceModel01')
 const Vesting = artifacts.require('Vesting')
 
-const VaultMock = artifacts.require('VaultMock')
-const YVaultMarket = artifacts.require('YVaultMarket')
+const CreamERC20Market = artifacts.require('CreamERC20Market')
+const CERC20Mock = artifacts.require('CERC20Mock')
+const ERC20Mock = artifacts.require('ERC20Mock')
 
 // Constants
 const PRECISION = 1e18
@@ -79,13 +79,11 @@ function num2str(num) {
 }
 
 function epsilonEq(curr, prev) {
-  return BigNumber(curr).eq(prev) ||
-    (!BigNumber(prev).isZero() && BigNumber(curr).minus(prev).div(prev).abs().lt(epsilon)) ||
-    (!BigNumber(curr).isZero() && BigNumber(prev).minus(curr).div(curr).abs().lt(epsilon))
+  return BigNumber(curr).eq(prev) || BigNumber(curr).minus(prev).div(prev).abs().lt(epsilon)
 }
 
 // Tests
-contract('YVault', accounts => {
+contract('Cream', accounts => {
   // Accounts
   const acc0 = accounts[0]
   const acc1 = accounts[1]
@@ -95,7 +93,7 @@ contract('YVault', accounts => {
 
   // Contract instances
   let stablecoin
-  let vault
+  let cToken
   let dInterestPool
   let market
   let feeModel
@@ -114,16 +112,19 @@ contract('YVault', accounts => {
 
   const timePass = async (timeInYears) => {
     await timeTravel(timeInYears * YEAR_IN_SEC)
-    await stablecoin.mint(vault.address, num2str(BigNumber(await stablecoin.balanceOf(vault.address)).times(INIT_INTEREST_RATE).times(timeInYears)))
+    const currentExRate = BigNumber(await cToken.exchangeRateStored())
+    const rateAfterTimePasses = BigNumber(currentExRate).times(1 + timeInYears * INIT_INTEREST_RATE)
+    await cToken._setExchangeRateStored(num2str(rateAfterTimePasses))
   }
 
   beforeEach(async function () {
-    // Initialize mock stablecoin and Aave
+    // Initialize mock stablecoin and cToken
     stablecoin = await ERC20Mock.new()
-    vault = await VaultMock.new(stablecoin.address)
+    cToken = await CERC20Mock.new(stablecoin.address)
 
     // Mint stablecoin
     const mintAmount = 1000 * STABLECOIN_PRECISION
+    await stablecoin.mint(cToken.address, num2str(mintAmount))
     await stablecoin.mint(acc0, num2str(mintAmount))
     await stablecoin.mint(acc1, num2str(mintAmount))
     await stablecoin.mint(acc2, num2str(mintAmount))
@@ -146,7 +147,8 @@ contract('YVault', accounts => {
     rewards.setRewardDistribution(acc0, true)
 
     // Initialize the money market
-    market = await YVaultMarket.new(vault.address, stablecoin.address)
+    comp = await ERC20Mock.new()
+    market = await CreamERC20Market.new(cToken.address, stablecoin.address)
 
     // Initialize the NFTs
     depositNFT = await NFT.new('88mph Deposit', '88mph-Deposit')
@@ -292,7 +294,7 @@ contract('YVault', accounts => {
 
       // Verify withdrawn amount
       const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0))
-      assert(epsilonEq(acc0CurrentBalance.minus(acc0BeforeBalance).toNumber(), depositAmount), 'acc0 didn\'t withdraw correct amount of stablecoin')
+      assert.equal(acc0CurrentBalance.minus(acc0BeforeBalance).toNumber(), depositAmount, 'acc0 didn\'t withdraw correct amount of stablecoin')
 
       // Verify totalDeposit
       const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit())

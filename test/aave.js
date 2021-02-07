@@ -452,6 +452,41 @@ contract('Aave', accounts => {
       const interestExpected = depositAmount * (1 + IRMultiplier * INIT_INTEREST_RATE) * (INIT_INTEREST_RATE) // earned interest on deposit + interest
       assert(epsilonEq(totalInterestOwedToFunders, interestExpected), 'interest owed to funders not correct')
     })
+
+    it('payInterestToFunder()', async () => {
+      const depositAmount = 10 * STABLECOIN_PRECISION
+
+      // acc0 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+      let blockNow = await latestBlockTimestamp()
+      await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
+
+      // Fund all deficit using acc2
+      await stablecoin.approve(dInterestPool.address, INF, { from: acc2 })
+      await dInterestPool.fundAll({ from: acc2 })
+      const beforeBalance = BigNumber(await stablecoin.balanceOf(acc2))
+
+      // Wait 0.3 year
+      await timePass(0.3)
+
+      // Payout interest
+      await dInterestPool.payInterestToFunder(1, { from: acc0 })
+
+      // Wait 0.7 year
+      await timePass(0.7)
+
+      // Payout interest
+      await dInterestPool.payInterestToFunder(1, { from: acc0 })
+
+      // Withdraw deposit
+      await vesting.withdrawVested(acc0, 0, { from: acc0 })
+      await dInterestPool.withdraw(1, 1, { from: acc0 })
+
+      // Check interest received
+      const actualInterestReceived = BigNumber(await stablecoin.balanceOf(acc2)).minus(beforeBalance)
+      const expectedInterestReceived = BigNumber(depositAmount).times(1 + IRMultiplier * INIT_INTEREST_RATE).times(INIT_INTEREST_RATE)
+      assert(epsilonEq(actualInterestReceived, expectedInterestReceived), 'interest received incorrect')
+    })
   })
 
   describe('MPH tokenomics', () => {

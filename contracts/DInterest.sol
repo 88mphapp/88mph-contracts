@@ -371,6 +371,41 @@ contract DInterest is ReentrancyGuard, Ownable {
         _fund(totalDeficit);
     }
 
+    function payInterestToFunder(uint256 fundingID)
+        external
+        returns (uint256 interestAmount)
+    {
+        Funding storage f = _getFunding(fundingID);
+        uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
+        interestAmount = f
+            .recordedFundedDepositAmount
+            .mul(currentMoneyMarketIncomeIndex)
+            .div(f.recordedMoneyMarketIncomeIndex)
+            .sub(f.recordedFundedDepositAmount);
+
+        // Update funding values
+        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex = sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex
+            .sub(
+            f.recordedFundedDepositAmount.mul(EXTRA_PRECISION).div(
+                f.recordedMoneyMarketIncomeIndex
+            )
+        );
+        f.recordedMoneyMarketIncomeIndex = currentMoneyMarketIncomeIndex;
+        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex = sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex
+            .add(
+            f.recordedFundedDepositAmount.mul(EXTRA_PRECISION).div(
+                f.recordedMoneyMarketIncomeIndex
+            )
+        );
+
+        // Send interest to funder
+        address funder = fundingNFT.ownerOf(fundingID);
+        if (interestAmount > 0) {
+            interestAmount = moneyMarket.withdraw(interestAmount);
+            stablecoin.safeTransfer(funder, interestAmount);
+        }
+    }
+
     /**
         Public getters
      */
@@ -544,7 +579,10 @@ contract DInterest is ReentrancyGuard, Ownable {
     }
 
     function setMinDepositAmount(uint256 newValue) external onlyOwner {
-        require(newValue <= MaxDepositAmount && newValue > 0, "DInterest: invalid value");
+        require(
+            newValue <= MaxDepositAmount && newValue > 0,
+            "DInterest: invalid value"
+        );
         MinDepositAmount = newValue;
         emit ESetParamUint(msg.sender, "MinDepositAmount", newValue);
     }

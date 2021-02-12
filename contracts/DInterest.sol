@@ -826,7 +826,9 @@ contract DInterest is ReentrancyGuard, Ownable {
             stablecoin.safeTransfer(msg.sender, withdrawAmount.sub(feeAmount));
 
             // Send `feeAmount` stablecoin to feeModel beneficiary
-            stablecoin.safeTransfer(feeModel.beneficiary(), feeAmount);
+            if (feeAmount > 0) {
+                stablecoin.safeTransfer(feeModel.beneficiary(), feeAmount);
+            }
         }
 
         // If deposit was funded, payout interest to funder

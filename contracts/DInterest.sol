@@ -403,7 +403,9 @@ contract DInterest is ReentrancyGuard, Ownable {
         // Send interest to funder
         if (interestAmount > 0) {
             interestAmount = moneyMarket.withdraw(interestAmount);
-            stablecoin.safeTransfer(funder, interestAmount);
+            if (interestAmount > 0) {
+                stablecoin.safeTransfer(funder, interestAmount);
+            }
         }
     }
 
@@ -907,7 +909,9 @@ contract DInterest is ReentrancyGuard, Ownable {
             transferToFunderAmount = moneyMarket.withdraw(
                 transferToFunderAmount
             );
-            stablecoin.safeTransfer(funder, transferToFunderAmount);
+            if (transferToFunderAmount > 0) {
+                stablecoin.safeTransfer(funder, transferToFunderAmount);
+            }
         }
 
         // Mint funder rewards

@@ -55,11 +55,15 @@ contract DelegatedYVaultMarket is IMoneyMarket, Ownable {
         // Withdraw `amountInShares` shares from vault
         uint256 sharePrice = vault.getPricePerFullShare();
         uint256 amountInShares = amountInUnderlying.decdiv(sharePrice).mul(995).div(1000);
-        vault.withdraw(amountInShares);
+        if (amountInShares > 0) {
+            vault.withdraw(amountInShares);
+        }
 
         // Transfer stablecoin to `msg.sender`
         actualAmountWithdrawn = stablecoin.balanceOf(address(this));
-        stablecoin.safeTransfer(msg.sender, actualAmountWithdrawn);
+        if (actualAmountWithdrawn > 0) {
+            stablecoin.safeTransfer(msg.sender, actualAmountWithdrawn);
+        }
     }
 
     function claimRewards() external {}

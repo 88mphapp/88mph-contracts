@@ -1,0 +1,27 @@
+{
+  "name": "88mph yaLINK Pool",
+  "nftNamePrefix": "88mph yaLINK Pool ",
+  "nftSymbolPrefix": "88mph-yaLINK-",
+  "moneyMarket": "DelegatedYVaultMarket",
+  "interestModel": "LinearInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MinDepositPeriod": 604800,
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 5e18,
+  "MaxDepositAmount": 5000e18,
+  "stablecoin": "0xA64BD6C70Cb9051F6A9ba1F163Fdc07E0DfB5F84",
+  "PoolDepositorRewardMintMultiplier": 0,
+  "PoolDepositorRewardTakeBackMultiplier": 0.9e18,
+  "PoolFunderRewardMultiplier": 0,
+  "PoolDepositorRewardVestPeriod": 604800,
+  "PoolFunderRewardVestPeriod": 0,
+  "IRMultiplier": 0.75e18,
+  "EMAInitial": 16e8,
+  "EMAUpdateInverval": 604800,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 4,
+  "moneyMarketParams": {
+    "vault": "0x29e240cfd7946ba20895a7a02edb25c210f9f324"
+  }
+}

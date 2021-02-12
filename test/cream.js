@@ -61,7 +61,7 @@ async function latestBlockTimestamp() {
 }
 
 function calcFeeAmount(interestAmount) {
-  return interestAmount.times(0.1)
+  return interestAmount.times(0.2)
 }
 
 function applyFee(interestAmount) {

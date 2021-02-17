@@ -6,6 +6,7 @@ const DInterest = artifacts.require('DInterest')
 const PercentageFeeModel = artifacts.require('PercentageFeeModel')
 const LinearInterestModel = artifacts.require('LinearInterestModel')
 const NFT = artifacts.require('NFT')
+const NFTFactory = artifacts.require('NFTFactory')
 const MPHToken = artifacts.require('MPHToken')
 const MPHMinter = artifacts.require('MPHMinter')
 const ERC20Mock = artifacts.require('ERC20Mock')
@@ -112,6 +113,7 @@ contract('Harvest', accounts => {
   let rewards
   let mphIssuanceModel
   let vesting
+  let nftFactory
 
   // Constants
   const INIT_INTEREST_RATE = 0.1 // 10% APY
@@ -161,8 +163,12 @@ contract('Harvest', accounts => {
     market = await HarvestMarket.new(vault.address, rewards.address, harvestStaking.address, stablecoin.address)
 
     // Initialize the NFTs
-    depositNFT = await NFT.new('88mph Deposit', '88mph-Deposit')
-    fundingNFT = await NFT.new('88mph Funding', '88mph-Funding')
+    const nftTemplate = await NFT.new()
+    nftFactory = await NFTFactory.new(nftTemplate.address)
+    const depositNFTReceipt = await nftFactory.createClone('88mph Deposit', '88mph-Deposit')
+    depositNFT = await NFT.at(depositNFTReceipt.logs[0].args._clone)
+    const fundingNFTReceipt = await nftFactory.createClone('88mph Funding', '88mph-Funding')
+    fundingNFT = await NFT.at(fundingNFTReceipt.logs[0].args._clone)
 
     // Initialize the interest oracle
     interestOracle = await EMAOracle.new(num2str(INIT_INTEREST_RATE * PRECISION / YEAR_IN_SEC), EMAUpdateInterval, EMASmoothingFactor, EMAAverageWindowInIntervals, market.address)

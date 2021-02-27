@@ -14,9 +14,8 @@ const EMAOracle = artifacts.require('EMAOracle')
 const MPHIssuanceModel = artifacts.require('MPHIssuanceModel01')
 const Vesting = artifacts.require('Vesting')
 
-const CompoundERC20Market = artifacts.require('CompoundERC20Market')
+const CreamERC20Market = artifacts.require('CreamERC20Market')
 const CERC20Mock = artifacts.require('CERC20Mock')
-const ComptrollerMock = artifacts.require('ComptrollerMock')
 const ERC20Mock = artifacts.require('ERC20Mock')
 
 // Constants
@@ -85,7 +84,7 @@ function epsilonEq(curr, prev) {
 }
 
 // Tests
-contract('Compound', accounts => {
+contract('Cream', accounts => {
   // Accounts
   const acc0 = accounts[0]
   const acc1 = accounts[1]
@@ -98,8 +97,6 @@ contract('Compound', accounts => {
   let cToken
   let dInterestPool
   let market
-  let comptroller
-  let comp
   let feeModel
   let interestModel
   let interestOracle
@@ -113,9 +110,7 @@ contract('Compound', accounts => {
   let nftFactory
 
   // Constants
-  const INIT_EXRATE = 2e8 * STABLECOIN_PRECISION // 1 cToken = 0.02 stablecoin
   const INIT_INTEREST_RATE = 0.1 // 10% APY
-  const INIT_INTEREST_RATE_PER_SECOND = num2str(INIT_INTEREST_RATE * PRECISION / YEAR_IN_SEC)
 
   const timePass = async (timeInYears) => {
     await timeTravel(timeInYears * YEAR_IN_SEC)
@@ -154,9 +149,7 @@ contract('Compound', accounts => {
     rewards.setRewardDistribution(acc0, true)
 
     // Initialize the money market
-    comp = await ERC20Mock.new()
-    comptroller = await ComptrollerMock.new(comp.address)
-    market = await CompoundERC20Market.new(cToken.address, comptroller.address, rewards.address, stablecoin.address)
+    market = await CreamERC20Market.new(cToken.address, stablecoin.address)
 
     // Initialize the NFTs
     const nftTemplate = await NFT.new()
@@ -493,13 +486,6 @@ contract('Compound', accounts => {
       const actualInterestReceived = BigNumber(await stablecoin.balanceOf(acc2)).minus(beforeBalance)
       const expectedInterestReceived = BigNumber(depositAmount).times(1 + IRMultiplier * INIT_INTEREST_RATE).times(INIT_INTEREST_RATE)
       assert(epsilonEq(actualInterestReceived, expectedInterestReceived), 'interest received incorrect')
-    })
-
-    it('claimRewards()', async function () {
-      const expectedMintAmount = PRECISION
-      const beforeBalance = await comp.balanceOf(rewards.address)
-      await market.claimRewards()
-      assert.equal(expectedMintAmount, BigNumber(await comp.balanceOf(rewards.address)).minus(beforeBalance).toNumber(), 'Claimed COMP amount incorrect')
     })
   })
 

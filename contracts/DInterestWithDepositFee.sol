@@ -19,7 +19,7 @@ import "./models/interest-oracle/IInterestOracle.sol";
 // EL PSY CONGROO
 // Author: Zefram Lou
 // Contact: zefram@baconlabs.dev
-contract DInterest is ReentrancyGuard, Ownable {
+contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
     using SafeMath for uint256;
     using DecMath for uint256;
     using SafeERC20 for ERC20;
@@ -67,6 +67,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     uint256 public MaxDepositPeriod; // Maximum deposit period, in seconds
     uint256 public MinDepositAmount; // Minimum deposit amount for each deposit, in stablecoins
     uint256 public MaxDepositAmount; // Maximum deposit amount for each deposit, in stablecoins
+    uint256 public DepositFee; // The deposit fee charged by the money market
 
     // Instance variables
     uint256 public totalDeposit;
@@ -119,6 +120,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 MaxDepositPeriod;
         uint256 MinDepositAmount;
         uint256 MaxDepositAmount;
+        uint256 DepositFee;
     }
 
     constructor(
@@ -185,6 +187,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         MaxDepositPeriod = _depositLimit.MaxDepositPeriod;
         MinDepositAmount = _depositLimit.MinDepositAmount;
         MaxDepositAmount = _depositLimit.MaxDepositAmount;
+        DepositFee = _depositLimit.DepositFee;
         totalDeposit = 0;
     }
 
@@ -599,6 +602,15 @@ contract DInterest is ReentrancyGuard, Ownable {
         emit ESetParamUint(msg.sender, "MaxDepositAmount", newValue);
     }
 
+    function setDepositFee(uint256 newValue) external onlyOwner {
+        require(
+            newValue < PRECISION,
+            "DInterest: invalid value"
+        );
+        DepositFee = newValue;
+        emit ESetParamUint(msg.sender, "DepositFee", newValue);
+    }
+
     function setDepositNFTTokenURI(uint256 tokenId, string calldata newURI)
         external
         onlyOwner
@@ -655,6 +667,22 @@ contract DInterest is ReentrancyGuard, Ownable {
         return fundingList[fundingID.sub(1)];
     }
 
+    function _applyDepositFee(uint256 depositAmount)
+        internal
+        view
+        returns (uint256)
+    {
+        return depositAmount.decmul(PRECISION.sub(DepositFee));
+    }
+
+    function _unapplyDepositFee(uint256 depositAmount)
+        internal
+        view
+        returns (uint256)
+    {
+        return depositAmount.decdiv(PRECISION.sub(DepositFee));
+    }
+
     /**
         Internals
      */
@@ -674,16 +702,19 @@ contract DInterest is ReentrancyGuard, Ownable {
             "DInterest: Deposit period out of range"
         );
 
+        // Apply fee to deposit amount
+        uint256 amountAfterFee = _applyDepositFee(amount);
+
         // Update totalDeposit
-        totalDeposit = totalDeposit.add(amount);
+        totalDeposit = totalDeposit.add(amountAfterFee);
 
         // Calculate interest
-        uint256 interestAmount = calculateInterestAmount(amount, depositPeriod);
+        uint256 interestAmount = calculateInterestAmount(amountAfterFee, depositPeriod);
         require(interestAmount > 0, "DInterest: interestAmount == 0");
 
         // Update funding related data
         uint256 id = deposits.length.add(1);
-        unfundedUserDepositAmount = unfundedUserDepositAmount.add(amount).add(
+        unfundedUserDepositAmount = unfundedUserDepositAmount.add(amountAfterFee).add(
             interestAmount
         );
 
@@ -694,7 +725,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 mintMPHAmount =
             mphMinter.mintDepositorReward(
                 msg.sender,
-                amount,
+                amountAfterFee,
                 depositPeriod,
                 interestAmount
             );
@@ -702,7 +733,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         // Record deposit data for `msg.sender`
         deposits.push(
             Deposit({
-                amount: amount,
+                amount: amountAfterFee,
                 maturationTimestamp: maturationTimestamp,
                 interestOwed: interestAmount,
                 initialMoneyMarketIncomeIndex: moneyMarket.incomeIndex(),
@@ -728,7 +759,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         emit EDeposit(
             msg.sender,
             id,
-            amount,
+            amountAfterFee,
             maturationTimestamp,
             interestAmount,
             mintMPHAmount
@@ -926,18 +957,22 @@ contract DInterest is ReentrancyGuard, Ownable {
     }
 
     function _fund(uint256 totalDeficit) internal {
+        // Given the deposit fee, the funder needs to pay more than
+        // the deficit to cover the deficit
+        uint256 deficitWithFee = _unapplyDepositFee(totalDeficit);
+
         // Transfer `totalDeficit` stablecoins from msg.sender
-        stablecoin.safeTransferFrom(msg.sender, address(this), totalDeficit);
+        stablecoin.safeTransferFrom(msg.sender, address(this), deficitWithFee);
 
         // Deposit `totalDeficit` stablecoins into moneyMarket
-        stablecoin.safeIncreaseAllowance(address(moneyMarket), totalDeficit);
-        moneyMarket.deposit(totalDeficit);
+        stablecoin.safeIncreaseAllowance(address(moneyMarket), deficitWithFee);
+        moneyMarket.deposit(deficitWithFee);
 
         // Mint fundingNFT
         fundingNFT.mint(msg.sender, fundingList.length);
 
         // Emit event
         uint256 fundingID = fundingList.length;
-        emit EFund(msg.sender, fundingID, totalDeficit);
+        emit EFund(msg.sender, fundingID, deficitWithFee);
     }
 }

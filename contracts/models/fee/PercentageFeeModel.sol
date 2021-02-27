@@ -20,7 +20,7 @@ contract PercentageFeeModel is IFeeModel, Ownable {
         pure
         returns (uint256 _feeAmount)
     {
-        _feeAmount = _txAmount.div(10); // Precision is decreased by 1 decimal place
+        _feeAmount = _txAmount.div(5); // Precision is decreased by 1 decimal place
     }
 
     function setBeneficiary(address payable newValue) external onlyOwner {

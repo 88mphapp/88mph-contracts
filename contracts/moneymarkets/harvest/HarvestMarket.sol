@@ -80,7 +80,9 @@ contract HarvestMarket is IMoneyMarket, Ownable {
 
         // Transfer stablecoin to `msg.sender`
         actualAmountWithdrawn = stablecoin.balanceOf(address(this));
-        stablecoin.safeTransfer(msg.sender, actualAmountWithdrawn);
+        if (actualAmountWithdrawn > 0) {
+            stablecoin.safeTransfer(msg.sender, actualAmountWithdrawn);
+        }
     }
 
     function claimRewards() external {

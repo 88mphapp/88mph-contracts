@@ -1,4 +1,4 @@
 {
   "network": "mainnet",
-  "pool": "harvest-crvobtc"
+  "pool": "delegated-yvault-alink"
 }

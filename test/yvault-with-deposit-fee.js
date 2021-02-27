@@ -2,22 +2,21 @@
 const BigNumber = require('bignumber.js')
 
 // Contract artifacts
-const DInterest = artifacts.require('DInterest')
+const DInterest = artifacts.require('DInterestWithDepositFee')
 const PercentageFeeModel = artifacts.require('PercentageFeeModel')
 const LinearInterestModel = artifacts.require('LinearInterestModel')
 const NFT = artifacts.require('NFT')
 const NFTFactory = artifacts.require('NFTFactory')
 const MPHToken = artifacts.require('MPHToken')
 const MPHMinter = artifacts.require('MPHMinter')
+const ERC20Mock = artifacts.require('ERC20Mock')
 const Rewards = artifacts.require('Rewards')
 const EMAOracle = artifacts.require('EMAOracle')
 const MPHIssuanceModel = artifacts.require('MPHIssuanceModel01')
 const Vesting = artifacts.require('Vesting')
 
-const CompoundERC20Market = artifacts.require('CompoundERC20Market')
-const CERC20Mock = artifacts.require('CERC20Mock')
-const ComptrollerMock = artifacts.require('ComptrollerMock')
-const ERC20Mock = artifacts.require('ERC20Mock')
+const VaultMock = artifacts.require('VaultWithDepositFeeMock')
+const YVaultMarket = artifacts.require('YVaultMarket')
 
 // Constants
 const PRECISION = 1e18
@@ -44,7 +43,7 @@ const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
 
 // Utilities
 // travel `time` seconds forward in time
-function timeTravel(time) {
+function timeTravel (time) {
   return new Promise((resolve, reject) => {
     web3.currentProvider.send({
       jsonrpc: '2.0',
@@ -58,34 +57,37 @@ function timeTravel(time) {
   })
 }
 
-async function latestBlockTimestamp() {
+async function latestBlockTimestamp () {
   return (await web3.eth.getBlock('latest')).timestamp
 }
 
-function calcFeeAmount(interestAmount) {
+function calcFeeAmount (interestAmount) {
   return interestAmount.times(0.2)
 }
 
-function applyFee(interestAmount) {
+function applyFee (interestAmount) {
   return interestAmount.minus(calcFeeAmount(interestAmount))
 }
 
-function calcInterestAmount(depositAmount, interestRatePerSecond, depositPeriodInSeconds, applyFee) {
+function calcInterestAmount (depositAmount, interestRatePerSecond, depositPeriodInSeconds, applyFee) {
   const interestBeforeFee = BigNumber(depositAmount).times(depositPeriodInSeconds).times(interestRatePerSecond).div(PRECISION).times(IRMultiplier)
   return applyFee ? interestBeforeFee.minus(calcFeeAmount(interestBeforeFee)) : interestBeforeFee
 }
 
 // Converts a JS number into a string that doesn't use scientific notation
-function num2str(num) {
+function num2str (num) {
   return BigNumber(num).integerValue().toFixed()
 }
 
-function epsilonEq(curr, prev) {
-  return BigNumber(curr).eq(prev) || BigNumber(curr).minus(prev).div(prev).abs().lt(epsilon)
+function epsilonEq (curr, prev) {
+  return BigNumber(curr).eq(prev) ||
+    (!BigNumber(prev).isZero() && BigNumber(curr).minus(prev).div(prev).abs().lt(epsilon)) ||
+    (!BigNumber(curr).isZero() && BigNumber(prev).minus(curr).div(curr).abs().lt(epsilon))
 }
 
 // Tests
-contract('Compound', accounts => {
+
+contract('YVault with deposit fee', accounts => {
   // Accounts
   const acc0 = accounts[0]
   const acc1 = accounts[1]
@@ -95,11 +97,9 @@ contract('Compound', accounts => {
 
   // Contract instances
   let stablecoin
-  let cToken
+  let vault
   let dInterestPool
   let market
-  let comptroller
-  let comp
   let feeModel
   let interestModel
   let interestOracle
@@ -113,25 +113,24 @@ contract('Compound', accounts => {
   let nftFactory
 
   // Constants
-  const INIT_EXRATE = 2e8 * STABLECOIN_PRECISION // 1 cToken = 0.02 stablecoin
   const INIT_INTEREST_RATE = 0.1 // 10% APY
-  const INIT_INTEREST_RATE_PER_SECOND = num2str(INIT_INTEREST_RATE * PRECISION / YEAR_IN_SEC)
+  const INTEREST_RATE_PER_SECOND = BigNumber(INIT_INTEREST_RATE).times(PRECISION).div(YEAR_IN_SEC)
+  const DEPOSIT_FEE = 0.005 // 0.5% deposit fee
+
+  const applyDepositFee = amount => BigNumber(amount).times(1 - DEPOSIT_FEE)
 
   const timePass = async (timeInYears) => {
     await timeTravel(timeInYears * YEAR_IN_SEC)
-    const currentExRate = BigNumber(await cToken.exchangeRateStored())
-    const rateAfterTimePasses = BigNumber(currentExRate).times(1 + timeInYears * INIT_INTEREST_RATE)
-    await cToken._setExchangeRateStored(num2str(rateAfterTimePasses))
+    await stablecoin.mint(vault.address, num2str(BigNumber(await stablecoin.balanceOf(vault.address)).minus(await vault.feeCollected()).times(INIT_INTEREST_RATE).times(timeInYears)))
   }
 
   beforeEach(async function () {
-    // Initialize mock stablecoin and cToken
+    // Initialize mock stablecoin and Aave
     stablecoin = await ERC20Mock.new()
-    cToken = await CERC20Mock.new(stablecoin.address)
+    vault = await VaultMock.new(stablecoin.address, num2str(BigNumber(DEPOSIT_FEE).times(PRECISION)))
 
     // Mint stablecoin
     const mintAmount = 1000 * STABLECOIN_PRECISION
-    await stablecoin.mint(cToken.address, num2str(mintAmount))
     await stablecoin.mint(acc0, num2str(mintAmount))
     await stablecoin.mint(acc1, num2str(mintAmount))
     await stablecoin.mint(acc2, num2str(mintAmount))
@@ -154,9 +153,7 @@ contract('Compound', accounts => {
     rewards.setRewardDistribution(acc0, true)
 
     // Initialize the money market
-    comp = await ERC20Mock.new()
-    comptroller = await ComptrollerMock.new(comp.address)
-    market = await CompoundERC20Market.new(cToken.address, comptroller.address, rewards.address, stablecoin.address)
+    market = await YVaultMarket.new(vault.address, stablecoin.address)
 
     // Initialize the NFTs
     const nftTemplate = await NFT.new()
@@ -167,7 +164,7 @@ contract('Compound', accounts => {
     fundingNFT = await NFT.at(fundingNFTReceipt.logs[0].args._clone)
 
     // Initialize the interest oracle
-    interestOracle = await EMAOracle.new(num2str(INIT_INTEREST_RATE * PRECISION / YEAR_IN_SEC), EMAUpdateInterval, EMASmoothingFactor, EMAAverageWindowInIntervals, market.address)
+    interestOracle = await EMAOracle.new(num2str(INTEREST_RATE_PER_SECOND), EMAUpdateInterval, EMASmoothingFactor, EMAAverageWindowInIntervals, market.address)
 
     // Initialize the DInterest pool
     feeModel = await PercentageFeeModel.new(rewards.address)
@@ -177,7 +174,8 @@ contract('Compound', accounts => {
         MinDepositPeriod,
         MaxDepositPeriod,
         MinDepositAmount,
-        MaxDepositAmount
+        MaxDepositAmount,
+        DepositFee: num2str(BigNumber(DEPOSIT_FEE).times(PRECISION))
       },
       market.address,
       stablecoin.address,
@@ -217,14 +215,14 @@ contract('Compound', accounts => {
 
       // Calculate interest amount
       const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0))
-      const interestExpected = calcInterestAmount(depositAmount, BigNumber(INIT_INTEREST_RATE).times(PRECISION).div(YEAR_IN_SEC), num2str(YEAR_IN_SEC), false).div(STABLECOIN_PRECISION)
+      const interestExpected = applyDepositFee(calcInterestAmount(depositAmount, INTEREST_RATE_PER_SECOND, num2str(YEAR_IN_SEC), false).div(STABLECOIN_PRECISION))
 
       // Verify stablecoin transfer
       assert.equal(acc0BeforeBalance.minus(acc0CurrentBalance).toNumber(), depositAmount, 'stablecoin not transferred out of acc0')
 
       // Verify totalDeposit
       const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit())
-      assert.equal(totalDeposit0.toNumber(), depositAmount, 'totalDeposit not updated after acc0 deposited')
+      assert.equal(totalDeposit0.toNumber(), applyDepositFee(depositAmount), 'totalDeposit not updated after acc0 deposited')
 
       // Verify totalInterestOwed
       const totalInterestOwed = BigNumber(await dInterestPool.totalInterestOwed()).div(STABLECOIN_PRECISION)
@@ -233,6 +231,7 @@ contract('Compound', accounts => {
 
     it('withdraw()', async function () {
       const depositAmount = 10 * STABLECOIN_PRECISION
+      const depositAmountAfterFee = applyDepositFee(depositAmount)
 
       // acc0 deposits stablecoin into the DInterest pool for 1 year
       await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
@@ -263,13 +262,13 @@ contract('Compound', accounts => {
 
       // Verify withdrawn amount
       const acc0CurrentBalance = await stablecoin.balanceOf(acc0)
-      const acc0WithdrawnAmountExpected = applyFee(BigNumber((await dInterestPool.getDeposit(1)).interestOwed)).plus(depositAmount)
+      const acc0WithdrawnAmountExpected = applyFee(BigNumber((await dInterestPool.getDeposit(1)).interestOwed)).plus(depositAmountAfterFee)
       const acc0WithdrawnAmountActual = BigNumber(acc0CurrentBalance).minus(acc0BeforeBalance)
       assert(epsilonEq(acc0WithdrawnAmountActual, acc0WithdrawnAmountExpected), 'acc0 didn\'t withdraw correct amount of stablecoin')
 
       // Verify totalDeposit
       const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit())
-      assert(totalDeposit0.eq(depositAmount), 'totalDeposit not updated after acc0 withdrawed')
+      assert(totalDeposit0.eq(depositAmountAfterFee), 'totalDeposit not updated after acc0 withdrawed')
 
       // Wait 6 months
       await timePass(0.5)
@@ -281,7 +280,7 @@ contract('Compound', accounts => {
 
       // Verify withdrawn amount
       const acc1CurrentBalance = await stablecoin.balanceOf(acc1)
-      const acc1WithdrawnAmountExpected = applyFee(BigNumber((await dInterestPool.getDeposit(2)).interestOwed)).plus(depositAmount)
+      const acc1WithdrawnAmountExpected = applyFee(BigNumber((await dInterestPool.getDeposit(2)).interestOwed)).plus(depositAmountAfterFee)
       const acc1WithdrawnAmountActual = BigNumber(acc1CurrentBalance).minus(acc1BeforeBalance)
       assert(epsilonEq(acc1WithdrawnAmountActual, acc1WithdrawnAmountExpected), 'acc1 didn\'t withdraw correct amount of stablecoin')
 
@@ -306,7 +305,7 @@ contract('Compound', accounts => {
 
       // Verify withdrawn amount
       const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0))
-      assert.equal(acc0CurrentBalance.minus(acc0BeforeBalance).toNumber(), depositAmount, 'acc0 didn\'t withdraw correct amount of stablecoin')
+      assert(epsilonEq(acc0CurrentBalance.minus(acc0BeforeBalance).toNumber(), applyDepositFee(depositAmount)), 'acc0 didn\'t withdraw correct amount of stablecoin')
 
       // Verify totalDeposit
       const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit())
@@ -346,6 +345,13 @@ contract('Compound', accounts => {
       blockNow = await latestBlockTimestamp()
       await dInterestPool.deposit(num2str(depositAmount), blockNow + 0.25 * YEAR_IN_SEC, { from: acc1 })
 
+      // Check deficit is equal to interest promised
+      const expectedInterestPromised = applyDepositFee(calcInterestAmount(depositAmount, INTEREST_RATE_PER_SECOND, YEAR_IN_SEC, false)
+        .times(2)
+        .plus(calcInterestAmount(depositAmount, INTEREST_RATE_PER_SECOND, 0.25 * YEAR_IN_SEC, false)))
+      const initialSurplusObj = await dInterestPool.surplus.call()
+      assert(initialSurplusObj.isNegative && epsilonEq(expectedInterestPromised, initialSurplusObj.surplusAmount), 'initial deficit not equal to promised interest')
+
       // Wait 3 months
       await timePass(0.25)
 
@@ -373,7 +379,9 @@ contract('Compound', accounts => {
 
       // Check interest earned by funder
       const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2))
-      assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(1 + IRMultiplier * INIT_INTEREST_RATE).times(2).times(INIT_INTEREST_RATE).times(0.75)), 'acc2 didn\'t receive correct interest amount')
+      const actualInterestEarned = acc2AfterBalance.minus(acc2BeforeBalance)
+      const expectedInterestEarned = applyDepositFee(BigNumber(depositAmount).times(1 + IRMultiplier * INIT_INTEREST_RATE).times(2).times(INIT_INTEREST_RATE).times(0.75))
+      assert(epsilonEq(actualInterestEarned, expectedInterestEarned), 'acc2 didn\'t receive correct interest amount')
     })
 
     it('fundMultiple()', async function () {
@@ -432,15 +440,18 @@ contract('Compound', accounts => {
 
       // Check interest earned by funder
       const acc2AfterBalance = BigNumber(await stablecoin.balanceOf(acc2))
-      assert(epsilonEq(acc2AfterBalance.minus(acc2BeforeBalance), BigNumber(depositAmount).times(1 + IRMultiplier * INIT_INTEREST_RATE).times(2).times(INIT_INTEREST_RATE).times(0.75)), 'acc2 didn\'t receive correct interest amount')
+      const actualInterestReceived = acc2AfterBalance.minus(acc2BeforeBalance)
+      const expectedInterestReceived = applyDepositFee(BigNumber(depositAmount).times(1 + IRMultiplier * INIT_INTEREST_RATE).times(2).times(INIT_INTEREST_RATE).times(0.75))
+      assert(epsilonEq(actualInterestReceived, expectedInterestReceived), 'acc2 didn\'t receive correct interest amount')
     })
 
     it('totalInterestOwedToFunders()', async () => {
       const depositAmount = 10 * STABLECOIN_PRECISION
+      const depositAmountAfterFee = applyDepositFee(depositAmount)
 
       // acc0 deposits stablecoin into the DInterest pool for 1 year
       await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
-      let blockNow = await latestBlockTimestamp()
+      const blockNow = await latestBlockTimestamp()
       await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
 
       // Fund all deficit using acc2
@@ -452,11 +463,11 @@ contract('Compound', accounts => {
 
       // Surplus should be zero, because the interest owed to funders should be deducted from surplus
       const surplusObj = await dInterestPool.surplus.call()
-      assert(epsilonEq(0, surplusObj.surplusAmount), 'surplus not 0')
+      assert(BigNumber(surplusObj.surplusAmount).div(STABLECOIN_PRECISION).lte(epsilon), 'surplus not 0')
 
       // totalInterestOwedToFunders() should return the interest generated by the deposit
       const totalInterestOwedToFunders = await dInterestPool.totalInterestOwedToFunders.call()
-      const interestExpected = depositAmount * (1 + IRMultiplier * INIT_INTEREST_RATE) * (INIT_INTEREST_RATE) // earned interest on deposit + interest
+      const interestExpected = depositAmountAfterFee * (1 + IRMultiplier * INIT_INTEREST_RATE) * (INIT_INTEREST_RATE) // earned interest on deposit + interest
       assert(epsilonEq(totalInterestOwedToFunders, interestExpected), 'interest owed to funders not correct')
     })
 
@@ -465,7 +476,7 @@ contract('Compound', accounts => {
 
       // acc0 deposits stablecoin into the DInterest pool for 1 year
       await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
-      let blockNow = await latestBlockTimestamp()
+      const blockNow = await latestBlockTimestamp()
       await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
 
       // Fund all deficit using acc2
@@ -491,21 +502,15 @@ contract('Compound', accounts => {
 
       // Check interest received
       const actualInterestReceived = BigNumber(await stablecoin.balanceOf(acc2)).minus(beforeBalance)
-      const expectedInterestReceived = BigNumber(depositAmount).times(1 + IRMultiplier * INIT_INTEREST_RATE).times(INIT_INTEREST_RATE)
+      const expectedInterestReceived = applyDepositFee(BigNumber(depositAmount).times(1 + IRMultiplier * INIT_INTEREST_RATE).times(INIT_INTEREST_RATE))
       assert(epsilonEq(actualInterestReceived, expectedInterestReceived), 'interest received incorrect')
-    })
-
-    it('claimRewards()', async function () {
-      const expectedMintAmount = PRECISION
-      const beforeBalance = await comp.balanceOf(rewards.address)
-      await market.claimRewards()
-      assert.equal(expectedMintAmount, BigNumber(await comp.balanceOf(rewards.address)).minus(beforeBalance).toNumber(), 'Claimed COMP amount incorrect')
     })
   })
 
   describe('MPH tokenomics', () => {
     it('should mint correct MPH depositor reward', async () => {
       const depositAmount = 100 * STABLECOIN_PRECISION
+      const depositAmountAfterFee = applyDepositFee(depositAmount)
 
       // acc0 deposits stablecoin into the DInterest pool for 1 year
       await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
@@ -517,13 +522,14 @@ contract('Compound', accounts => {
       await timePass(1 / 52) // 1 week
       await vesting.withdrawVested(acc0, 0, { from: acc0 })
 
-      const expectedMPHReward = BigNumber(depositAmount).times(YEAR_IN_SEC).times(PoolDepositorRewardMintMultiplier).div(PRECISION)
+      const expectedMPHReward = BigNumber(depositAmountAfterFee).times(YEAR_IN_SEC).times(PoolDepositorRewardMintMultiplier).div(PRECISION)
       const actualMPHReward = BigNumber(await mph.balanceOf(acc0)).minus(acc0BeforeBalance)
       assert(epsilonEq(actualMPHReward, expectedMPHReward), 'MPH depositor reward incorrect')
     })
 
     it('should take back correct MPH depositor reward', async () => {
       const depositAmount = 100 * STABLECOIN_PRECISION
+      const depositAmountAfterFee = applyDepositFee(depositAmount)
 
       // acc0 deposits stablecoin into the DInterest pool for 1 year
       await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
@@ -538,13 +544,14 @@ contract('Compound', accounts => {
       await vesting.withdrawVested(acc0, 0, { from: acc0 })
       await dInterestPool.withdraw(1, 0, { from: acc0 })
 
-      const expectedMPHReward = BigNumber(depositAmount).times(YEAR_IN_SEC).times(PoolDepositorRewardMintMultiplier).div(PRECISION).times(PRECISION - PoolDepositorRewardTakeBackMultiplier).div(PRECISION)
+      const expectedMPHReward = BigNumber(depositAmountAfterFee).times(YEAR_IN_SEC).times(PoolDepositorRewardMintMultiplier).div(PRECISION).times(PRECISION - PoolDepositorRewardTakeBackMultiplier).div(PRECISION)
       const actualMPHReward = BigNumber(await mph.balanceOf(acc0)).minus(acc0BeforeBalance)
       assert(epsilonEq(actualMPHReward, expectedMPHReward), 'MPH depositor takeback amount incorrect')
     })
 
     it('should mint correct MPH funder reward', async () => {
       const depositAmount = 10 * STABLECOIN_PRECISION
+      const depositAmountAfterFee = applyDepositFee(depositAmount)
 
       // acc0 deposits stablecoin into the DInterest pool for 1 year
       await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
@@ -584,7 +591,7 @@ contract('Compound', accounts => {
 
       // Check interest earned by funder
       const actualMPHReward = BigNumber(await mph.balanceOf(acc2)).minus(acc2BeforeBalance)
-      const expectedMPHReward = BigNumber(depositAmount * 2).times(0.75 * YEAR_IN_SEC).times(PoolFunderRewardMultiplier).div(PRECISION)
+      const expectedMPHReward = BigNumber(depositAmountAfterFee * 2).times(0.75 * YEAR_IN_SEC).times(PoolFunderRewardMultiplier).div(PRECISION)
       assert(epsilonEq(actualMPHReward, expectedMPHReward), 'MPH funder reward amount incorrect')
     })
 

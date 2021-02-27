@@ -6,6 +6,7 @@ const DInterest = artifacts.require('DInterest')
 const PercentageFeeModel = artifacts.require('PercentageFeeModel')
 const LinearInterestModel = artifacts.require('LinearInterestModel')
 const NFT = artifacts.require('NFT')
+const NFTFactory = artifacts.require('NFTFactory')
 const MPHToken = artifacts.require('MPHToken')
 const MPHMinter = artifacts.require('MPHMinter')
 const ERC20Mock = artifacts.require('ERC20Mock')
@@ -62,7 +63,7 @@ async function latestBlockTimestamp () {
 }
 
 function calcFeeAmount (interestAmount) {
-  return interestAmount.times(0.1)
+  return interestAmount.times(0.2)
 }
 
 function applyFee (interestAmount) {
@@ -112,6 +113,7 @@ contract('Harvest', accounts => {
   let rewards
   let mphIssuanceModel
   let vesting
+  let nftFactory
 
   // Constants
   const INIT_INTEREST_RATE = 0.1 // 10% APY
@@ -161,8 +163,12 @@ contract('Harvest', accounts => {
     market = await HarvestMarket.new(vault.address, rewards.address, harvestStaking.address, stablecoin.address)
 
     // Initialize the NFTs
-    depositNFT = await NFT.new('88mph Deposit', '88mph-Deposit')
-    fundingNFT = await NFT.new('88mph Funding', '88mph-Funding')
+    const nftTemplate = await NFT.new()
+    nftFactory = await NFTFactory.new(nftTemplate.address)
+    const depositNFTReceipt = await nftFactory.createClone('88mph Deposit', '88mph-Deposit')
+    depositNFT = await NFT.at(depositNFTReceipt.logs[0].args._clone)
+    const fundingNFTReceipt = await nftFactory.createClone('88mph Funding', '88mph-Funding')
+    fundingNFT = await NFT.at(fundingNFTReceipt.logs[0].args._clone)
 
     // Initialize the interest oracle
     interestOracle = await EMAOracle.new(num2str(INIT_INTEREST_RATE * PRECISION / YEAR_IN_SEC), EMAUpdateInterval, EMASmoothingFactor, EMAAverageWindowInIntervals, market.address)
@@ -458,6 +464,41 @@ contract('Harvest', accounts => {
       const totalInterestOwedToFunders = await dInterestPool.totalInterestOwedToFunders.call()
       const interestExpected = depositAmount * (1 + IRMultiplier * INIT_INTEREST_RATE) * (INIT_INTEREST_RATE) // earned interest on deposit + interest
       assert(epsilonEq(totalInterestOwedToFunders, interestExpected), 'interest owed to funders not correct')
+    })
+
+    it('payInterestToFunder()', async () => {
+      const depositAmount = 10 * STABLECOIN_PRECISION
+
+      // acc0 deposits stablecoin into the DInterest pool for 1 year
+      await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+      let blockNow = await latestBlockTimestamp()
+      await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
+
+      // Fund all deficit using acc2
+      await stablecoin.approve(dInterestPool.address, INF, { from: acc2 })
+      await dInterestPool.fundAll({ from: acc2 })
+      const beforeBalance = BigNumber(await stablecoin.balanceOf(acc2))
+
+      // Wait 0.3 year
+      await timePass(0.3)
+
+      // Payout interest
+      await dInterestPool.payInterestToFunder(1, { from: acc2 })
+
+      // Wait 0.7 year
+      await timePass(0.7)
+
+      // Payout interest
+      await dInterestPool.payInterestToFunder(1, { from: acc2 })
+
+      // Withdraw deposit
+      await vesting.withdrawVested(acc0, 0, { from: acc0 })
+      await dInterestPool.withdraw(1, 1, { from: acc0 })
+
+      // Check interest received
+      const actualInterestReceived = BigNumber(await stablecoin.balanceOf(acc2)).minus(beforeBalance)
+      const expectedInterestReceived = BigNumber(depositAmount).times(1 + IRMultiplier * INIT_INTEREST_RATE).times(INIT_INTEREST_RATE)
+      assert(epsilonEq(actualInterestReceived, expectedInterestReceived), 'interest received incorrect')
     })
 
     it('claimRewards()', async function () {

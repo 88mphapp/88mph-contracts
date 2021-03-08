@@ -853,8 +853,10 @@ contract DInterest is ReentrancyGuard, Ownable {
             );
 
             // Record remaining surplus
-            depositEntry.finalSurplusIsNegative = depositSurplusIsNegative;
-            depositEntry.finalSurplusAmount = depositSurplus;
+            if (!early) {
+                depositEntry.finalSurplusIsNegative = depositSurplusIsNegative;
+                depositEntry.finalSurplusAmount = depositSurplus;
+            }
         }
     }
 

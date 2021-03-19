@@ -17,7 +17,6 @@ const Vesting = artifacts.require('Vesting')
 
 const VaultMock = artifacts.require('VaultMock')
 const YVaultMarket = artifacts.require('YVaultMarket')
-const DelegatedYVaultMarket = artifacts.require('DelegatedYVaultMarket')
 
 // Constants
 const PRECISION = 1e18

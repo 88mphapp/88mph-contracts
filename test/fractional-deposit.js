@@ -4,7 +4,7 @@ const BigNumber = require('bignumber.js')
 // Contract artifacts
 const DInterest = artifacts.require('DInterest')
 const PercentageFeeModel = artifacts.require('PercentageFeeModel')
-const LinearInterestModel = artifacts.require('LinearInterestModel')
+const LinearDecayInterestModel = artifacts.require('LinearDecayInterestModel')
 const NFT = artifacts.require('NFT')
 const NFTFactory = artifacts.require('NFTFactory')
 const MPHToken = artifacts.require('MPHToken')
@@ -26,8 +26,9 @@ const FractionalDepositFactory = artifacts.require('FractionalDepositFactory')
 const PRECISION = 1e18
 const STABLECOIN_PRECISION = 1e6
 const YEAR_IN_SEC = 31556952 // Number of seconds in a year
-const IRMultiplier = BigNumber(0.75 * 1e18).integerValue().toFixed() // Minimum safe avg interest rate multiplier
-const MinDepositPeriod = 90 * 24 * 60 * 60 // 90 days in seconds
+const multiplierIntercept = 0.5 * PRECISION
+const multiplierSlope = 0.25 / YEAR_IN_SEC * PRECISION
+const MinDepositPeriod = 1 * 24 * 60 * 60 // 1 day in seconds
 const MaxDepositPeriod = 3 * YEAR_IN_SEC // 3 years in seconds
 const MinDepositAmount = BigNumber(0 * PRECISION).toFixed() // 0 stablecoins
 const MaxDepositAmount = BigNumber(1000 * PRECISION).toFixed() // 1000 stablecoins
@@ -167,7 +168,7 @@ contract('FractionalDeposit', accounts => {
 
     // Initialize the DInterest pool
     feeModel = await PercentageFeeModel.new(rewards.address)
-    interestModel = await LinearInterestModel.new(IRMultiplier)
+    interestModel = await LinearDecayInterestModel.new(num2str(multiplierIntercept), num2str(multiplierSlope))
     dInterestPool = await DInterest.new(
       {
         MinDepositPeriod,

@@ -3,7 +3,7 @@
   "nftNamePrefix": "88mph Harvest CRV:RENWBTC Pool ",
   "nftSymbolPrefix": "88mph-Harvest-CRV:RENWBTC-",
   "moneyMarket": "HarvestMarket",
-  "interestModel": "LinearInterestModel",
+  "interestModel": "LinearDecayInterestModel",
   "interestOracle": "EMAOracle",
   "feeModel": "PercentageFeeModel",
   "MinDepositPeriod": 604800,

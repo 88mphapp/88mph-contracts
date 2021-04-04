@@ -1,6 +1,7 @@
-usePlugin('@nomiclabs/buidler-truffle5')
-usePlugin('solidity-coverage')
-usePlugin('buidler-deploy')
+require('@nomiclabs/hardhat-truffle5')
+require('solidity-coverage')
+require('hardhat-deploy')
+require('hardhat-gas-reporter')
 
 let secret
 
@@ -14,11 +15,13 @@ try {
 }
 
 module.exports = {
-  solc: {
+  solidity: {
     version: '0.5.17',
-    optimizer: {
-      enabled: true,
-      runs: 200
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
     }
   },
   namedAccounts: {
@@ -40,10 +43,11 @@ module.exports = {
       gas: 'auto',
       gasPrice: 84.0000001e9
     },
-    buidlerevm: {
+    hardhat: {
       blockGasLimit: 9950000,
-      gas: 'auto',
-      gasPrice: 'auto'
+      forking: {
+        url: 'https://eth-mainnet.alchemyapi.io/v2/pvGDp1uf8J7QZ7MXpLhYs_SnMnsE0TY5'
+      }
     },
     ganache: {
       url: 'http://localhost:8545',

@@ -1,12 +1,11 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract Vesting {
     using SafeERC20 for IERC20;
-    using SafeMath for uint256;
 
     struct Vest {
         uint256 amount;
@@ -18,7 +17,7 @@ contract Vesting {
 
     IERC20 public token;
 
-    constructor(address _token) public {
+    constructor(address _token) {
         token = IERC20(_token);
     }
 
@@ -38,7 +37,7 @@ contract Vesting {
             Vest({
                 amount: amount,
                 vestPeriodInSeconds: vestPeriodInSeconds,
-                creationTimestamp: now,
+                creationTimestamp: block.timestamp,
                 withdrawnAmount: 0
             })
         );
@@ -55,10 +54,11 @@ contract Vesting {
         }
 
         // update vest object
-        uint256 recordedWithdrawnAmount = accountVestList[account][vestIdx]
-            .withdrawnAmount;
-        accountVestList[account][vestIdx]
-            .withdrawnAmount = recordedWithdrawnAmount.add(withdrawnAmount);
+        uint256 recordedWithdrawnAmount =
+            accountVestList[account][vestIdx].withdrawnAmount;
+        accountVestList[account][vestIdx].withdrawnAmount =
+            recordedWithdrawnAmount +
+            withdrawnAmount;
 
         // transfer tokens to vest recipient
         token.safeTransfer(account, withdrawnAmount);
@@ -78,24 +78,24 @@ contract Vesting {
         returns (uint256)
     {
         // read vest data
-        Vest storage vest = accountVestList[account][vestIdx];
-        uint256 vestFullAmount = vest.amount;
-        uint256 vestCreationTimestamp = vest.creationTimestamp;
-        uint256 vestPeriodInSeconds = vest.vestPeriodInSeconds;
+        Vest storage vestObj = accountVestList[account][vestIdx];
+        uint256 vestFullAmount = vestObj.amount;
+        uint256 vestCreationTimestamp = vestObj.creationTimestamp;
+        uint256 vestPeriodInSeconds = vestObj.vestPeriodInSeconds;
 
         // compute vested amount
         uint256 vestedAmount;
-        if (now >= vestCreationTimestamp.add(vestPeriodInSeconds)) {
+        if (block.timestamp >= vestCreationTimestamp + vestPeriodInSeconds) {
             // vest period has passed, fully withdrawable
             vestedAmount = vestFullAmount;
         } else {
             // vest period has not passed, linearly unlock
-            vestedAmount = vestFullAmount
-                .mul(now.sub(vestCreationTimestamp))
-                .div(vestPeriodInSeconds);
+            vestedAmount =
+                (vestFullAmount * (block.timestamp - vestCreationTimestamp)) /
+                vestPeriodInSeconds;
         }
 
         // deduct already withdrawn amount and return
-        return vestedAmount.sub(vest.withdrawnAmount);
+        return vestedAmount - vestObj.withdrawnAmount;
     }
 }

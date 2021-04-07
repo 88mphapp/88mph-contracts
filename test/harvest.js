@@ -45,7 +45,7 @@ const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
 
 // Utilities
 // travel `time` seconds forward in time
-function timeTravel (time) {
+function timeTravel(time) {
   return new Promise((resolve, reject) => {
     web3.currentProvider.send({
       jsonrpc: '2.0',
@@ -59,15 +59,15 @@ function timeTravel (time) {
   })
 }
 
-async function latestBlockTimestamp () {
+async function latestBlockTimestamp() {
   return (await web3.eth.getBlock('latest')).timestamp
 }
 
-function calcFeeAmount (interestAmount) {
+function calcFeeAmount(interestAmount) {
   return interestAmount.times(0.2)
 }
 
-function applyFee (interestAmount) {
+function applyFee(interestAmount) {
   return interestAmount.minus(calcFeeAmount(interestAmount))
 }
 
@@ -87,11 +87,11 @@ function calcInterestAmount(depositAmount, interestRatePerSecond, depositPeriodI
 }
 
 // Converts a JS number into a string that doesn't use scientific notation
-function num2str (num) {
+function num2str(num) {
   return BigNumber(num).integerValue().toFixed()
 }
 
-function epsilonEq (curr, prev, ep) {
+function epsilonEq(curr, prev, ep) {
   const _epsilon = ep || epsilon
   return BigNumber(curr).eq(prev) ||
     (!BigNumber(prev).isZero() && BigNumber(curr).minus(prev).div(prev).abs().lt(_epsilon)) ||
@@ -142,7 +142,7 @@ contract('Harvest', accounts => {
     // Initialize FARM rewards
     farmToken = await ERC20Mock.new()
     const farmRewards = 1000 * STABLECOIN_PRECISION
-    harvestStaking = await HarvestStakingMock.new(vault.address, farmToken.address, Math.floor(Date.now() / 1e3))
+    harvestStaking = await HarvestStakingMock.new(vault.address, farmToken.address, Math.floor(Date.now() / 1e3 - 60))
     await farmToken.mint(harvestStaking.address, num2str(farmRewards))
     await harvestStaking.setRewardDistribution(acc0, true)
     await harvestStaking.notifyRewardAmount(num2str(farmRewards), { from: acc0 })

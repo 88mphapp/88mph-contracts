@@ -1,21 +1,19 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract MPHToken is ERC20, ERC20Burnable, Ownable {
-    string public constant name = "88mph.app";
-    string public constant symbol = "MPH";
-    uint8 public constant decimals = 18;
-    
-    bool public initialized;
-
-    function init() public {
-        require(!initialized, "MPHToken: initialized");
-        initialized = true;
-
-        _transferOwnership(msg.sender);
+contract MPHToken is
+    ERC20Upgradeable,
+    ERC20BurnableUpgradeable,
+    OwnableUpgradeable
+{
+    function init() public initializer {
+        __Ownable_init();
+        __ERC20Burnable_init();
+        __ERC20_init("88mph.app", "MPH");
     }
 
     function ownerMint(address account, uint256 amount)

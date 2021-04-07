@@ -1,31 +1,30 @@
-pragma solidity 0.5.17;
-pragma experimental ABIEncoderV2;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "../DInterest.sol";
 import "../NFT.sol";
 import "../rewards/MPHToken.sol";
 import "../models/fee/IFeeModel.sol";
 
-contract FractionalDeposit is ERC20, IERC721Receiver, Ownable {
-    using SafeMath for uint256;
+contract FractionalDeposit is
+    ERC20Upgradeable,
+    IERC721Receiver,
+    OwnableUpgradeable
+{
     using SafeERC20 for ERC20;
 
-    bool public initialized;
     DInterest public pool;
     NFT public nft;
     MPHToken public mph;
     uint256 public nftID;
     uint256 public mintMPHAmount;
     bool public active;
-    string public name;
-    string public symbol;
-    uint8 public decimals;
+    uint8 public _decimals;
 
     event WithdrawDeposit();
     event RedeemShares(
@@ -35,24 +34,20 @@ contract FractionalDeposit is ERC20, IERC721Receiver, Ownable {
     );
 
     function init(
-        address _owner,
         address _pool,
         address _mph,
         uint256 _nftID,
         string calldata _tokenName,
         string calldata _tokenSymbol
-    ) external {
-        require(!initialized, "FractionalDeposit: initialized");
-        initialized = true;
+    ) external initializer {
+        __ERC20_init(_tokenName, _tokenSymbol);
+        __Ownable_init();
 
-        _transferOwnership(_owner);
         pool = DInterest(_pool);
         mph = MPHToken(_mph);
         nft = NFT(pool.depositNFT());
         nftID = _nftID;
         active = true;
-        name = _tokenName;
-        symbol = _tokenSymbol;
 
         // ensure contract is owner of NFT
         require(
@@ -64,16 +59,21 @@ contract FractionalDeposit is ERC20, IERC721Receiver, Ownable {
         DInterest.Deposit memory deposit = pool.getDeposit(_nftID);
         require(deposit.active, "FractionalDeposit: deposit inactive");
         uint256 rawInterestOwed = deposit.interestOwed;
-        uint256 interestAfterFee = rawInterestOwed.sub(pool.feeModel().getFee(rawInterestOwed));
-        uint256 initialSupply = deposit.amount.add(interestAfterFee);
-        _mint(_owner, initialSupply);
+        uint256 interestAfterFee =
+            rawInterestOwed - pool.feeModel().getFee(rawInterestOwed);
+        uint256 initialSupply = deposit.amount + interestAfterFee;
+        _mint(msg.sender, initialSupply);
 
         // transfer MPH from msg.sender
         mintMPHAmount = deposit.mintMPHAmount;
         mph.transferFrom(msg.sender, address(this), mintMPHAmount);
 
         // set decimals to be the same as the underlying stablecoin
-        decimals = ERC20Detailed(address(pool.stablecoin())).decimals();
+        _decimals = ERC20(address(pool.stablecoin())).decimals();
+    }
+
+    function decimals() public view override returns (uint8) {
+        return _decimals;
     }
 
     function withdrawDeposit(uint256 fundingID) external {
@@ -98,9 +98,9 @@ contract FractionalDeposit is ERC20, IERC721Receiver, Ownable {
 
         ERC20 stablecoin = pool.stablecoin();
         uint256 stablecoinBalance = stablecoin.balanceOf(address(this));
-        redeemStablecoinAmount = amountInShares.mul(stablecoinBalance).div(
-            totalSupply()
-        );
+        redeemStablecoinAmount =
+            (amountInShares * stablecoinBalance) /
+            totalSupply();
         if (redeemStablecoinAmount > stablecoinBalance) {
             // prevent transferring too much
             redeemStablecoinAmount = stablecoinBalance;
@@ -134,28 +134,13 @@ contract FractionalDeposit is ERC20, IERC721Receiver, Ownable {
         emit WithdrawDeposit();
     }
 
-    /**
-     * @notice Handle the receipt of an NFT
-     * @dev The ERC721 smart contract calls this function on the recipient
-     * after a {IERC721-safeTransferFrom}. This function MUST return the function selector,
-     * otherwise the caller will revert the transaction. The selector to be
-     * returned can be obtained as `this.onERC721Received.selector`. This
-     * function MAY throw to revert and reject the transfer.
-     * Note: the ERC721 contract address is always the message sender.
-     * @param operator The address which called `safeTransferFrom` function
-     * @param from The address which previously owned the token
-     * @param tokenId The NFT identifier which is being transferred
-     * @param data Additional data with no specified format
-     * @return bytes4 `bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))`
-     */
     function onERC721Received(
-        address operator,
-        address from,
-        uint256 tokenId,
-        bytes memory data
-    ) public returns (bytes4) {
+        address, /*operator*/
+        address, /*from*/
+        uint256, /*tokenId*/
+        bytes memory /*data*/
+    ) public pure override returns (bytes4) {
         // only allow incoming transfer if not initialized
-        require(!initialized, "FractionalDeposit: initialized");
         return this.onERC721Received.selector;
     }
 }

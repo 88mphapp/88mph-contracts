@@ -1,9 +1,8 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
@@ -11,7 +10,6 @@ import "./imports/HarvestVault.sol";
 import "./imports/HarvestStaking.sol";
 
 contract HarvestMarket is IMoneyMarket, Ownable {
-    using SafeMath for uint256;
     using DecMath for uint256;
     using SafeERC20 for ERC20;
     using Address for address;
@@ -19,14 +17,14 @@ contract HarvestMarket is IMoneyMarket, Ownable {
     HarvestVault public vault;
     address public rewards;
     HarvestStaking public stakingPool;
-    ERC20 public stablecoin;
+    ERC20 public override stablecoin;
 
     constructor(
         address _vault,
         address _rewards,
         address _stakingPool,
         address _stablecoin
-    ) public {
+    ) {
         // Verify input addresses
         require(
             _vault.isContract() &&
@@ -42,7 +40,7 @@ contract HarvestMarket is IMoneyMarket, Ownable {
         stablecoin = ERC20(_stablecoin);
     }
 
-    function deposit(uint256 amount) external onlyOwner {
+    function deposit(uint256 amount) external override onlyOwner {
         require(amount > 0, "HarvestMarket: amount is 0");
 
         // Transfer `amount` stablecoin from `msg.sender`
@@ -61,7 +59,7 @@ contract HarvestMarket is IMoneyMarket, Ownable {
     }
 
     function withdraw(uint256 amountInUnderlying)
-        external
+        external override
         onlyOwner
         returns (uint256 actualAmountWithdrawn)
     {
@@ -85,26 +83,26 @@ contract HarvestMarket is IMoneyMarket, Ownable {
         }
     }
 
-    function claimRewards() external {
+    function claimRewards() external override {
         stakingPool.getReward();
         ERC20 rewardToken = ERC20(stakingPool.rewardToken());
         rewardToken.safeTransfer(rewards, rewardToken.balanceOf(address(this)));
     }
 
-    function totalValue() external returns (uint256) {
+    function totalValue() external view override returns (uint256) {
         uint256 sharePrice = vault.getPricePerFullShare();
-        uint256 shareBalance = vault.balanceOf(address(this)).add(stakingPool.balanceOf(address(this)));
+        uint256 shareBalance = vault.balanceOf(address(this)) + stakingPool.balanceOf(address(this));
         return shareBalance.decmul(sharePrice);
     }
 
-    function incomeIndex() external returns (uint256) {
+    function incomeIndex() external view override returns (uint256) {
         return vault.getPricePerFullShare();
     }
 
     /**
         Param setters
      */
-    function setRewards(address newValue) external onlyOwner {
+    function setRewards(address newValue) external override onlyOwner {
         require(newValue.isContract(), "HarvestMarket: not contract");
         rewards = newValue;
         emit ESetParamAddress(msg.sender, "rewards", newValue);

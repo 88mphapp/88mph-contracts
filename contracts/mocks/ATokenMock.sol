@@ -1,12 +1,10 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../libs/DecMath.sol";
 
-contract ATokenMock is ERC20, ERC20Detailed {
-    using SafeMath for uint256;
+contract ATokenMock is ERC20 {
     using DecMath for uint256;
 
     uint256 internal constant YEAR = 31556952; // Number of seconds in one Gregorian calendar year (365.2425 days)
@@ -18,8 +16,7 @@ contract ATokenMock is ERC20, ERC20Detailed {
     mapping(address => bool) public isUser;
 
     constructor(address _dai)
-        public
-        ERC20Detailed("aDAI", "aDAI", 18)
+        ERC20("aDAI", "aDAI")
     {
         dai = ERC20(_dai);
 
@@ -44,10 +41,10 @@ contract ATokenMock is ERC20, ERC20Detailed {
         address user;
         for (uint256 i = 0; i < users.length; i++) {
             user = users[i];
-            interest = balanceOf(user).mul(_seconds).mul(liquidityRate).div(YEAR.mul(10**27));
+            interest = balanceOf(user) * _seconds * liquidityRate / (YEAR * 10**27);
             _mint(user, interest);
         }
-        normalizedIncome = normalizedIncome.mul(_seconds).mul(liquidityRate).div(YEAR.mul(10**27)).add(normalizedIncome);
+        normalizedIncome += normalizedIncome * _seconds * liquidityRate / (YEAR * 10**27);
     }
 
     function setLiquidityRate(uint256 _liquidityRate) external {

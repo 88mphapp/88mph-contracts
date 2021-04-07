@@ -1,7 +1,7 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./MPHToken.sol";
 import "../models/issuance/IMPHIssuanceModel.sol";
@@ -9,7 +9,6 @@ import "./Vesting.sol";
 
 contract MPHMinter is Ownable {
     using Address for address;
-    using SafeMath for uint256;
 
     mapping(address => bool) public poolWhitelist;
 
@@ -59,7 +58,7 @@ contract MPHMinter is Ownable {
         address _devWallet,
         address _issuanceModel,
         address _vesting
-    ) public {
+    ) {
         mph = MPHToken(_mph);
         govTreasury = _govTreasury;
         devWallet = _devWallet;
@@ -148,13 +147,13 @@ contract MPHMinter is Ownable {
             return 0;
         }
         require(
-            takeBackAmount >= devReward.add(govReward),
+            takeBackAmount >= devReward + govReward,
             "MPHMinter: takeBackAmount < devReward + govReward"
         );
         mph.transferFrom(from, address(this), takeBackAmount);
         mph.transfer(devWallet, devReward);
         mph.transfer(govTreasury, govReward);
-        mph.burn(takeBackAmount.sub(devReward).sub(govReward));
+        mph.burn(takeBackAmount - devReward - govReward);
 
         emit TakeBackDepositorReward(msg.sender, from, takeBackAmount);
 

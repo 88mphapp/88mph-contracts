@@ -1,7 +1,7 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../../libs/DecMath.sol";
 import "./IMPHIssuanceModel.sol";
@@ -9,7 +9,6 @@ import "./IMPHIssuanceModel.sol";
 contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
     using Address for address;
     using DecMath for uint256;
-    using SafeMath for uint256;
 
     uint256 internal constant PRECISION = 10**18;
 
@@ -36,11 +35,11 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
     /**
         @notice The period over which the depositor reward will be vested, in seconds.
      */
-    mapping(address => uint256) public poolDepositorRewardVestPeriod;
+    mapping(address => uint256) public override poolDepositorRewardVestPeriod;
     /**
         @notice The period over which the funder reward will be vested, in seconds.
      */
-    mapping(address => uint256) public poolFunderRewardVestPeriod;
+    mapping(address => uint256) public override poolFunderRewardVestPeriod;
 
     /**
         @notice Multiplier used for calculating dev reward
@@ -59,7 +58,7 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
         uint256 newValue
     );
 
-    constructor(uint256 _devRewardMultiplier) public {
+    constructor(uint256 _devRewardMultiplier) {
         devRewardMultiplier = _devRewardMultiplier;
     }
 
@@ -81,15 +80,17 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
     )
         external
         view
+        override
         returns (
             uint256 depositorReward,
             uint256 devReward,
             uint256 govReward
         )
     {
-        uint256 mintAmount = depositAmount.mul(depositPeriodInSeconds).decmul(
-            poolDepositorRewardMintMultiplier[pool]
-        );
+        uint256 mintAmount =
+            (depositAmount * depositPeriodInSeconds).decmul(
+                poolDepositorRewardMintMultiplier[pool]
+            );
         depositorReward = mintAmount;
         devReward = mintAmount.decmul(devRewardMultiplier);
         govReward = 0;
@@ -112,6 +113,7 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
     )
         external
         view
+        override
         returns (
             uint256 takeBackAmount,
             uint256 devReward,
@@ -148,6 +150,7 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
     )
         external
         view
+        override
         returns (
             uint256 funderReward,
             uint256 devReward,
@@ -158,8 +161,7 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
             return (0, 0, 0);
         }
         funderReward = maturationTimestamp > fundingCreationTimestamp
-            ? depositAmount
-                .mul(maturationTimestamp.sub(fundingCreationTimestamp))
+            ? (depositAmount * (maturationTimestamp - fundingCreationTimestamp))
                 .decmul(poolFunderRewardMultiplier[pool])
             : 0;
         devReward = funderReward.decmul(devRewardMultiplier);

@@ -1,30 +1,28 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../IMoneyMarket.sol";
 import "./imports/ILendingPool.sol";
 import "./imports/ILendingPoolAddressesProvider.sol";
 
 contract AaveMarket is IMoneyMarket, Ownable {
-    using SafeMath for uint256;
     using SafeERC20 for ERC20;
     using Address for address;
 
     uint16 internal constant REFERRALCODE = 20; // Aave referral program code
 
     ILendingPoolAddressesProvider public provider; // Used for fetching the current address of LendingPool
-    ERC20 public stablecoin;
+    ERC20 public override stablecoin;
     ERC20 public aToken;
 
     constructor(
         address _provider,
         address _aToken,
         address _stablecoin
-    ) public {
+    ) {
         // Verify input addresses
         require(
             _provider.isContract() &&
@@ -38,7 +36,7 @@ contract AaveMarket is IMoneyMarket, Ownable {
         aToken = ERC20(_aToken);
     }
 
-    function deposit(uint256 amount) external onlyOwner {
+    function deposit(uint256 amount) external override onlyOwner {
         require(amount > 0, "AaveMarket: amount is 0");
 
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
@@ -60,6 +58,7 @@ contract AaveMarket is IMoneyMarket, Ownable {
 
     function withdraw(uint256 amountInUnderlying)
         external
+        override
         onlyOwner
         returns (uint256 actualAmountWithdrawn)
     {
@@ -78,16 +77,16 @@ contract AaveMarket is IMoneyMarket, Ownable {
         return amountInUnderlying;
     }
 
-    function claimRewards() external {}
+    function claimRewards() external override {}
 
-    function totalValue() external returns (uint256) {
+    function totalValue() external view override returns (uint256) {
         return aToken.balanceOf(address(this));
     }
 
-    function incomeIndex() external returns (uint256) {
+    function incomeIndex() external view override returns (uint256) {
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
         return lendingPool.getReserveNormalizedIncome(address(stablecoin));
     }
 
-    function setRewards(address newValue) external {}
+    function setRewards(address newValue) external override {}
 }

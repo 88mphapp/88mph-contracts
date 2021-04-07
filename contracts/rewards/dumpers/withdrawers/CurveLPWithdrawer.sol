@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.5.17;
+pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/access/roles/SignerRole.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../imports/Curve.sol";
 import "../../IRewards.sol";
+import "../AdminControlled.sol";
 
-contract CurveLPWithdrawer is SignerRole {
+contract CurveLPWithdrawer is AdminControlled {
     function curveWithdraw2(
         address lpTokenAddress,
         address curvePoolAddress,
         uint256[2] calldata minAmounts
-    ) external onlySigner {
+    ) external onlyAdmin {
         IERC20 lpToken = IERC20(lpTokenAddress);
         uint256 lpTokenBalance = lpToken.balanceOf(address(this));
         ICurveFi curvePool = ICurveFi(curvePoolAddress);
@@ -22,7 +22,7 @@ contract CurveLPWithdrawer is SignerRole {
         address lpTokenAddress,
         address curvePoolAddress,
         uint256[3] calldata minAmounts
-    ) external onlySigner {
+    ) external onlyAdmin {
         IERC20 lpToken = IERC20(lpTokenAddress);
         uint256 lpTokenBalance = lpToken.balanceOf(address(this));
         ICurveFi curvePool = ICurveFi(curvePoolAddress);
@@ -33,7 +33,7 @@ contract CurveLPWithdrawer is SignerRole {
         address lpTokenAddress,
         address curvePoolAddress,
         uint256[4] calldata minAmounts
-    ) external onlySigner {
+    ) external onlyAdmin {
         IERC20 lpToken = IERC20(lpTokenAddress);
         uint256 lpTokenBalance = lpToken.balanceOf(address(this));
         ICurveFi curvePool = ICurveFi(curvePoolAddress);
@@ -44,7 +44,7 @@ contract CurveLPWithdrawer is SignerRole {
         address lpTokenAddress,
         address curvePoolAddress,
         uint256[5] calldata minAmounts
-    ) external onlySigner {
+    ) external onlyAdmin {
         IERC20 lpToken = IERC20(lpTokenAddress);
         uint256 lpTokenBalance = lpToken.balanceOf(address(this));
         ICurveFi curvePool = ICurveFi(curvePoolAddress);
@@ -56,7 +56,7 @@ contract CurveLPWithdrawer is SignerRole {
         address curvePoolAddress,
         int128 coinIndex,
         uint256 minAmount
-    ) external onlySigner {
+    ) external onlyAdmin {
         IERC20 lpToken = IERC20(lpTokenAddress);
         uint256 lpTokenBalance = lpToken.balanceOf(address(this));
         Zap curvePool = Zap(curvePoolAddress);

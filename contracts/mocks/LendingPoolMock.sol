@@ -1,4 +1,5 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./ATokenMock.sol";
@@ -41,6 +42,7 @@ contract LendingPoolMock {
         // Transfer asset
         ERC20 token = ERC20(asset);
         token.transfer(to, amount);
+        return amount;
     }
 
     // The equivalent of exchangeRateStored() for Compound cTokens

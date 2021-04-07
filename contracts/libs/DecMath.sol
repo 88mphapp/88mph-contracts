@@ -1,18 +1,15 @@
-pragma solidity 0.5.17;
-
-import "@openzeppelin/contracts/math/SafeMath.sol";
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
 // Decimal math library
 library DecMath {
-    using SafeMath for uint256;
-
     uint256 internal constant PRECISION = 10**18;
 
     function decmul(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a.mul(b).div(PRECISION);
+        return a * b / PRECISION;
     }
 
     function decdiv(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a.mul(PRECISION).div(b);
+        return a * PRECISION / b;
     }
 }

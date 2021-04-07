@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.5.17;
+pragma solidity 0.8.3;
 
 // NOTE: Basically an alias for Vaults
 interface yERC20 {

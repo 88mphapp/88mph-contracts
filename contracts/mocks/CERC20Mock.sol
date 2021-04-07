@@ -18,24 +18,29 @@
     limitations under the License.
  */
 
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: Apache-2.0
+
+pragma solidity 0.8.3;
 
 // interfaces
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 
 
-contract CERC20Mock is ERC20, ERC20Detailed {
+contract CERC20Mock is ERC20 {
     address public dai;
 
     uint256 internal _supplyRate;
     uint256 internal _exchangeRate;
 
-    constructor(address _dai) public ERC20Detailed("cDAI", "cDAI", 8) {
+    constructor(address _dai) ERC20("cDAI", "cDAI") {
         dai = _dai;
-        uint256 daiDecimals = ERC20Detailed(_dai).decimals();
+        uint256 daiDecimals = ERC20(_dai).decimals();
         _exchangeRate = 2 * (10**(daiDecimals + 8)); // 1 cDAI = 0.02 DAI
         _supplyRate = 45290900000; // 10% supply rate per year
+    }
+
+    function decimals() public view virtual override returns (uint8) {
+        return 8;
     }
 
     function mint(uint256 amount) external returns (uint256) {
@@ -64,7 +69,7 @@ contract CERC20Mock is ERC20, ERC20Detailed {
         return _exchangeRate;
     }
 
-    function _setExchangeRateStored(uint256 _rate) external returns (uint256) {
+    function _setExchangeRateStored(uint256 _rate) external {
         _exchangeRate = _rate;
     }
 

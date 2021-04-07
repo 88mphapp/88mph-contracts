@@ -32,19 +32,19 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 */
 
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract IRewardDistributionRecipient is Ownable {
+abstract contract IRewardDistributionRecipient is Ownable {
     mapping(address => bool) public isRewardDistribution;
 
-    function notifyRewardAmount(uint256 reward) external;
+    function notifyRewardAmount(uint256 reward) external virtual;
 
     modifier onlyRewardDistribution() {
         require(
@@ -62,8 +62,7 @@ contract IRewardDistributionRecipient is Ownable {
     }
 }
 
-contract LPTokenWrapper {
-    using SafeMath for uint256;
+abstract contract LPTokenWrapper {
     using SafeERC20 for IERC20;
 
     IERC20 public stakeToken;
@@ -72,7 +71,7 @@ contract LPTokenWrapper {
 
     mapping(address => uint256) private _balances;
 
-    constructor(address _stakeToken) public {
+    constructor(address _stakeToken) {
         stakeToken = IERC20(_stakeToken);
     }
 
@@ -84,20 +83,22 @@ contract LPTokenWrapper {
         return _balances[account];
     }
 
-    function stake(uint256 amount) public {
-        _totalSupply = _totalSupply.add(amount);
-        _balances[msg.sender] = _balances[msg.sender].add(amount);
+    function stake(uint256 amount) public virtual {
+        _totalSupply += amount;
+        _balances[msg.sender] += amount;
         stakeToken.safeTransferFrom(msg.sender, address(this), amount);
     }
 
-    function withdraw(uint256 amount) public {
-        _totalSupply = _totalSupply.sub(amount);
-        _balances[msg.sender] = _balances[msg.sender].sub(amount);
+    function withdraw(uint256 amount) public virtual {
+        _totalSupply -= amount;
+        _balances[msg.sender] -= amount;
         stakeToken.safeTransfer(msg.sender, amount);
     }
 }
 
 contract HarvestStakingMock is LPTokenWrapper, IRewardDistributionRecipient {
+    using SafeERC20 for IERC20;
+
     IERC20 public rewardToken;
     uint256 public constant DURATION = 7 days;
 
@@ -134,7 +135,7 @@ contract HarvestStakingMock is LPTokenWrapper, IRewardDistributionRecipient {
         address _stakeToken,
         address _rewardToken,
         uint256 _starttime
-    ) public LPTokenWrapper(_stakeToken) {
+    ) LPTokenWrapper(_stakeToken) {
         rewardToken = IERC20(_rewardToken);
         starttime = _starttime;
     }
@@ -148,25 +149,27 @@ contract HarvestStakingMock is LPTokenWrapper, IRewardDistributionRecipient {
             return rewardPerTokenStored;
         }
         return
-            rewardPerTokenStored.add(
-                lastTimeRewardApplicable()
-                    .sub(lastUpdateTime)
-                    .mul(rewardRate)
-                    .mul(1e18)
-                    .div(totalSupply())
-            );
+            rewardPerTokenStored +
+            (((lastTimeRewardApplicable() - lastUpdateTime) *
+                rewardRate *
+                1e18) / totalSupply());
     }
 
     function earned(address account) public view returns (uint256) {
         return
-            balanceOf(account)
-                .mul(rewardPerToken().sub(userRewardPerTokenPaid[account]))
-                .div(1e18)
-                .add(rewards[account]);
+            (balanceOf(account) *
+                (rewardPerToken() - userRewardPerTokenPaid[account])) /
+            1e18 +
+            rewards[account];
     }
 
     // stake visibility is public as overriding LPTokenWrapper's stake() function
-    function stake(uint256 amount) public updateReward(msg.sender) checkStart {
+    function stake(uint256 amount)
+        public
+        override
+        updateReward(msg.sender)
+        checkStart
+    {
         require(amount > 0, "Rewards: cannot stake 0");
         super.stake(amount);
         emit Staked(msg.sender, amount);
@@ -174,6 +177,7 @@ contract HarvestStakingMock is LPTokenWrapper, IRewardDistributionRecipient {
 
     function withdraw(uint256 amount)
         public
+        override
         updateReward(msg.sender)
         checkStart
     {
@@ -198,30 +202,31 @@ contract HarvestStakingMock is LPTokenWrapper, IRewardDistributionRecipient {
 
     function notifyRewardAmount(uint256 reward)
         external
+        override
         onlyRewardDistribution
         updateReward(address(0))
     {
         // https://sips.synthetix.io/sips/sip-77
         require(reward > 0, "Rewards: reward == 0");
         require(
-            reward < uint256(-1) / 10**18,
+            reward < type(uint256).max / 10**18,
             "Rewards: rewards too large, would lock"
         );
         if (block.timestamp > starttime) {
             if (block.timestamp >= periodFinish) {
-                rewardRate = reward.div(DURATION);
+                rewardRate = reward / DURATION;
             } else {
-                uint256 remaining = periodFinish.sub(block.timestamp);
-                uint256 leftover = remaining.mul(rewardRate);
-                rewardRate = reward.add(leftover).div(DURATION);
+                uint256 remaining = periodFinish - block.timestamp;
+                uint256 leftover = remaining * rewardRate;
+                rewardRate = (reward + leftover) / DURATION;
             }
             lastUpdateTime = block.timestamp;
-            periodFinish = block.timestamp.add(DURATION);
+            periodFinish = block.timestamp + DURATION;
             emit RewardAdded(reward);
         } else {
-            rewardRate = reward.div(DURATION);
+            rewardRate = reward / DURATION;
             lastUpdateTime = starttime;
-            periodFinish = starttime.add(DURATION);
+            periodFinish = starttime + DURATION;
             emit RewardAdded(reward);
         }
     }

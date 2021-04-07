@@ -1,8 +1,8 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
@@ -19,14 +19,14 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
     ICERC20 public cToken;
     IComptroller public comptroller;
     address public rewards;
-    ERC20 public stablecoin;
+    ERC20 public override stablecoin;
 
     constructor(
         address _cToken,
         address _comptroller,
         address _rewards,
         address _stablecoin
-    ) public {
+    ) {
         // Verify input addresses
         require(
             _cToken.isContract() &&
@@ -42,7 +42,7 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
         stablecoin = ERC20(_stablecoin);
     }
 
-    function deposit(uint256 amount) external onlyOwner {
+    function deposit(uint256 amount) external override onlyOwner {
         require(amount > 0, "CompoundERC20Market: amount is 0");
 
         // Transfer `amount` stablecoin from `msg.sender`
@@ -57,7 +57,7 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
     }
 
     function withdraw(uint256 amountInUnderlying)
-        external
+        external override
         onlyOwner
         returns (uint256 actualAmountWithdrawn)
     {
@@ -78,27 +78,27 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
         return amountInUnderlying;
     }
 
-    function claimRewards() external {
+    function claimRewards() external override {
         comptroller.claimComp(address(this));
         ERC20 comp = ERC20(comptroller.getCompAddress());
         comp.safeTransfer(rewards, comp.balanceOf(address(this)));
     }
 
-    function totalValue() external returns (uint256) {
+    function totalValue() external override returns (uint256) {
         uint256 cTokenBalance = cToken.balanceOf(address(this));
         // Amount of stablecoin units that 1 unit of cToken can be exchanged for, scaled by 10^18
         uint256 cTokenPrice = cToken.exchangeRateCurrent();
         return cTokenBalance.decmul(cTokenPrice);
     }
 
-    function incomeIndex() external returns (uint256) {
+    function incomeIndex() external override returns (uint256) {
         return cToken.exchangeRateCurrent();
     }
 
     /**
         Param setters
      */
-    function setRewards(address newValue) external onlyOwner {
+    function setRewards(address newValue) external override onlyOwner {
         require(newValue.isContract(), "CompoundERC20Market: not contract");
         rewards = newValue;
         emit ESetParamAddress(msg.sender, "rewards", newValue);

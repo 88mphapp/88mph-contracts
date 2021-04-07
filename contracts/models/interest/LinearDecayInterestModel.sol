@@ -1,27 +1,31 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../libs/DecMath.sol";
+import "./IInterestModel.sol";
 
-contract LinearDecayInterestModel {
-    using SafeMath for uint256;
+contract LinearDecayInterestModel is IInterestModel {
     using DecMath for uint256;
 
     uint256 public constant PRECISION = 10**18;
     uint256 public multiplierIntercept;
     uint256 public multiplierSlope;
 
-    constructor(uint256 _multiplierIntercept, uint256 _multiplierSlope) public {
+    constructor(uint256 _multiplierIntercept, uint256 _multiplierSlope) {
         multiplierIntercept = _multiplierIntercept;
         multiplierSlope = _multiplierSlope;
     }
 
-    function getIRMultiplier(uint256 depositPeriodInSeconds) public view returns (uint256) {
-        uint256 multiplierDecrease = depositPeriodInSeconds.mul(multiplierSlope);
+    function getIRMultiplier(uint256 depositPeriodInSeconds)
+        public
+        view
+        returns (uint256)
+    {
+        uint256 multiplierDecrease = depositPeriodInSeconds * multiplierSlope;
         if (multiplierDecrease >= multiplierIntercept) {
             return 0;
         } else {
-            return multiplierIntercept.sub(multiplierDecrease);
+            return multiplierIntercept - multiplierDecrease;
         }
     }
 
@@ -31,13 +35,13 @@ contract LinearDecayInterestModel {
         uint256 moneyMarketInterestRatePerSecond,
         bool, /*surplusIsNegative*/
         uint256 /*surplusAmount*/
-    ) external view returns (uint256 interestAmount) {
+    ) external view override returns (uint256 interestAmount) {
         // interestAmount = depositAmount * moneyMarketInterestRatePerSecond * IRMultiplier * depositPeriodInSeconds
-        interestAmount = depositAmount
-            .mul(PRECISION)
-            .decmul(moneyMarketInterestRatePerSecond)
-            .decmul(getIRMultiplier(depositPeriodInSeconds))
-            .mul(depositPeriodInSeconds)
-            .div(PRECISION);
+        interestAmount =
+            ((depositAmount * PRECISION)
+                .decmul(moneyMarketInterestRatePerSecond)
+                .decmul(getIRMultiplier(depositPeriodInSeconds)) *
+                depositPeriodInSeconds) /
+            PRECISION;
     }
 }

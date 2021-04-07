@@ -1,14 +1,18 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 
-contract ERC20Mock is ERC20, ERC20Detailed("", "", 6) {
+contract ERC20Mock is ERC20("", "") {
     function mint(address to, uint256 amount) public {
         _mint(to, amount);
     }
 
-    function transfer(address recipient, uint256 amount) public returns (bool) {
+    function decimals() public pure override returns (uint8) {
+        return 6;
+    }
+
+    function transfer(address recipient, uint256 amount) public override returns (bool) {
         require(amount > 0, "ERC20Mock: amount 0");
         _transfer(_msgSender(), recipient, amount);
         return true;

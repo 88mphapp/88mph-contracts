@@ -127,7 +127,7 @@ contract('ZeroCouponBond', accounts => {
     // Initialize FARM rewards
     farmToken = await ERC20Mock.new()
     const farmRewards = 1000 * STABLECOIN_PRECISION
-    harvestStaking = await HarvestStakingMock.new(vault.address, farmToken.address, Math.floor(Date.now() / 1e3))
+    harvestStaking = await HarvestStakingMock.new(vault.address, farmToken.address, Math.floor(Date.now() / 1e3 - 60))
     await farmToken.mint(harvestStaking.address, num2str(farmRewards))
     await harvestStaking.setRewardDistribution(acc0, true)
     await harvestStaking.notifyRewardAmount(num2str(farmRewards), { from: acc0 })

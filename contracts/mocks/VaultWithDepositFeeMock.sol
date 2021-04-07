@@ -1,12 +1,10 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../libs/DecMath.sol";
 
-contract VaultWithDepositFeeMock is ERC20, ERC20Detailed {
-    using SafeMath for uint256;
+contract VaultWithDepositFeeMock is ERC20 {
     using DecMath for uint256;
 
     uint256 PRECISION = 10**18;
@@ -16,8 +14,7 @@ contract VaultWithDepositFeeMock is ERC20, ERC20Detailed {
     uint256 public feeCollected;
 
     constructor(address _underlying, uint256 _depositFee)
-        public
-        ERC20Detailed("yUSD", "yUSD", 18)
+        ERC20("yUSD", "yUSD")
     {
         underlying = ERC20(_underlying);
         depositFee = _depositFee;
@@ -25,13 +22,14 @@ contract VaultWithDepositFeeMock is ERC20, ERC20Detailed {
 
     function deposit(uint256 tokenAmount) public {
         uint256 sharePrice = getPricePerFullShare();
-        uint256 shareAmountAfterFee = tokenAmount.decdiv(sharePrice).decmul(PRECISION.sub(depositFee));
+        uint256 shareAmountAfterFee =
+            tokenAmount.decdiv(sharePrice).decmul(PRECISION - depositFee);
         uint256 tokenFee = tokenAmount.decmul(depositFee);
         _mint(msg.sender, shareAmountAfterFee);
 
         underlying.transferFrom(msg.sender, address(this), tokenAmount);
 
-        feeCollected = feeCollected.add(tokenFee);
+        feeCollected = feeCollected + tokenFee;
     }
 
     function withdraw(uint256 sharesAmount) public {
@@ -47,6 +45,9 @@ contract VaultWithDepositFeeMock is ERC20, ERC20Detailed {
         if (_totalSupply == 0) {
             return 10**18;
         }
-        return underlying.balanceOf(address(this)).sub(feeCollected).decdiv(_totalSupply);
+        return
+            (underlying.balanceOf(address(this)) - feeCollected).decdiv(
+                _totalSupply
+            );
     }
 }

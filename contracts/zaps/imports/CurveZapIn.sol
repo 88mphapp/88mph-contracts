@@ -1,4 +1,5 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
 interface CurveZapIn {
     /**
@@ -8,7 +9,7 @@ interface CurveZapIn {
         @param swapAddress Curve swap address for the pool
         @param incomingTokenQty The amount of fromToken to invest
         @param minPoolTokens The minimum acceptable quantity of tokens to receive. Reverts otherwise
-        @return Amount of Curve LP tokens received
+        @return crvTokensBought Amount of Curve LP tokens received
     */
     function ZapIn(
         address toWhomToIssue,

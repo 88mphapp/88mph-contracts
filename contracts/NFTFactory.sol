@@ -1,5 +1,5 @@
-pragma solidity 0.5.17;
-pragma experimental ABIEncoderV2;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
 import "./libs/CloneFactory.sol";
 import "./NFT.sol";
@@ -9,7 +9,7 @@ contract NFTFactory is CloneFactory {
 
     event CreateClone(address _clone);
 
-    constructor(address _template) public {
+    constructor(address _template) {
         template = _template;
     }
 
@@ -21,10 +21,10 @@ contract NFTFactory is CloneFactory {
 
         // initialize
         clone.init(
-            msg.sender,
             _tokenName,
             _tokenSymbol
         );
+        clone.transferOwnership(msg.sender);
 
         emit CreateClone(address(clone));
         return clone;

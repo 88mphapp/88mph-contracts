@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.5.17;
+pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/access/roles/SignerRole.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./imports/OneSplitAudit.sol";
 import "../IRewards.sol";
+import "./AdminControlled.sol";
 
-contract OneSplitDumper is SignerRole {
+contract OneSplitDumper is AdminControlled {
     using SafeERC20 for IERC20;
 
     OneSplitAudit public oneSplit;
@@ -18,7 +17,7 @@ contract OneSplitDumper is SignerRole {
         address _oneSplit,
         address _rewards,
         address _rewardToken
-    ) public {
+    ) {
         oneSplit = OneSplitAudit(_oneSplit);
         rewards = IRewards(_rewards);
         rewardToken = IERC20(_rewardToken);
@@ -44,7 +43,7 @@ contract OneSplitDumper is SignerRole {
         address tokenAddress,
         uint256 returnAmount,
         uint256[] calldata distribution
-    ) external onlySigner {
+    ) external onlyAdmin {
         // dump token for rewardToken
         IERC20 token = IERC20(tokenAddress);
         uint256 tokenBalance = token.balanceOf(address(this));
@@ -66,7 +65,7 @@ contract OneSplitDumper is SignerRole {
         );
     }
 
-    function notify() external onlySigner {
+    function notify() external onlyAdmin {
         uint256 balance = rewardToken.balanceOf(address(this));
         rewardToken.safeTransfer(address(rewards), balance);
         rewards.notifyRewardAmount(balance);

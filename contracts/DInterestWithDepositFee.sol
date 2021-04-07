@@ -1,12 +1,12 @@
-pragma solidity 0.5.17;
-pragma experimental ABIEncoderV2;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./libs/DecMath.sol";
 import "./moneymarkets/IMoneyMarket.sol";
 import "./models/fee/IFeeModel.sol";
@@ -27,7 +27,6 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
 
     // Constants
     uint256 internal constant PRECISION = 10**18;
-    uint256 internal constant ONE = 10**18;
     uint256 internal constant EXTRA_PRECISION = 10**27; // used for sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex
 
     // User deposit data
@@ -133,7 +132,7 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
         address _depositNFT, // Address of the NFT representing ownership of deposits (owner must be set to this DInterest contract)
         address _fundingNFT, // Address of the NFT representing ownership of fundings (owner must be set to this DInterest contract)
         address _mphMinter // Address of the contract for handling minting MPH to users
-    ) public {
+    ) {
         // Verify input addresses
         require(
             _moneyMarket.isContract() &&
@@ -158,13 +157,13 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
 
         // Ensure moneyMarket uses the same stablecoin
         require(
-            moneyMarket.stablecoin() == _stablecoin,
+            address(moneyMarket.stablecoin()) == _stablecoin,
             "DInterest: moneyMarket.stablecoin() != _stablecoin"
         );
 
         // Ensure interestOracle uses the same moneyMarket
         require(
-            interestOracle.moneyMarket() == _moneyMarket,
+            address(interestOracle.moneyMarket()) == _moneyMarket,
             "DInterest: interestOracle.moneyMarket() != _moneyMarket"
         );
 
@@ -224,7 +223,7 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
             amountList.length == maturationTimestampList.length,
             "DInterest: List lengths unequal"
         );
-        for (uint256 i = 0; i < amountList.length; i = i.add(1)) {
+        for (uint256 i = 0; i < amountList.length; i++) {
             _deposit(amountList[i], maturationTimestampList[i]);
         }
     }
@@ -237,7 +236,7 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
             depositIDList.length == fundingIDList.length,
             "DInterest: List lengths unequal"
         );
-        for (uint256 i = 0; i < depositIDList.length; i = i.add(1)) {
+        for (uint256 i = 0; i < depositIDList.length; i++) {
             _withdraw(depositIDList[i], fundingIDList[i], false);
         }
     }
@@ -250,7 +249,7 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
             depositIDList.length == fundingIDList.length,
             "DInterest: List lengths unequal"
         );
-        for (uint256 i = 0; i < depositIDList.length; i = i.add(1)) {
+        for (uint256 i = 0; i < depositIDList.length; i++) {
             _withdraw(depositIDList[i], fundingIDList[i], true);
         }
     }
@@ -277,15 +276,14 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
                 toDepositID: deposits.length,
                 recordedFundedDepositAmount: unfundedUserDepositAmount,
                 recordedMoneyMarketIncomeIndex: incomeIndex,
-                creationTimestamp: now
+                creationTimestamp: block.timestamp
             })
         );
 
         // Update relevant values
-        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex = sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex
-            .add(
-            unfundedUserDepositAmount.mul(EXTRA_PRECISION).div(incomeIndex)
-        );
+        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex +=
+            (unfundedUserDepositAmount * EXTRA_PRECISION) /
+            incomeIndex;
         latestFundedDepositID = deposits.length;
         unfundedUserDepositAmount = 0;
 
@@ -302,25 +300,21 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
             "DInterest: Invalid toDepositID"
         );
 
-        (bool isNegative, uint256 surplus) = surplus();
+        (bool isNegative, uint256 surplusMagnitude) = surplus();
         require(isNegative, "DInterest: No deficit available");
 
         uint256 totalDeficit = 0;
         uint256 totalSurplus = 0;
         uint256 totalDepositAndInterestToFund = 0;
         // Deposits with ID [latestFundedDepositID+1, toDepositID] will be funded
-        for (
-            uint256 id = latestFundedDepositID.add(1);
-            id <= toDepositID;
-            id = id.add(1)
-        ) {
+        for (uint256 id = latestFundedDepositID + 1; id <= toDepositID; id++) {
             Deposit storage depositEntry = _getDeposit(id);
             if (depositEntry.active) {
                 // Deposit still active, use current surplus
-                (isNegative, surplus) = surplusOfDeposit(id);
+                (isNegative, surplusMagnitude) = surplusOfDeposit(id);
             } else {
                 // Deposit has been withdrawn, use recorded final surplus
-                (isNegative, surplus) = (
+                (isNegative, surplusMagnitude) = (
                     depositEntry.finalSurplusIsNegative,
                     depositEntry.finalSurplusAmount
                 );
@@ -328,16 +322,16 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
 
             if (isNegative) {
                 // Add on deficit to total
-                totalDeficit = totalDeficit.add(surplus);
+                totalDeficit += surplusMagnitude;
             } else {
                 // Has surplus
-                totalSurplus = totalSurplus.add(surplus);
+                totalSurplus += surplusMagnitude;
             }
 
             if (depositEntry.active) {
-                totalDepositAndInterestToFund = totalDepositAndInterestToFund
-                    .add(depositEntry.amount)
-                    .add(depositEntry.interestOwed);
+                totalDepositAndInterestToFund +=
+                    depositEntry.amount +
+                    depositEntry.interestOwed;
             }
         }
         if (totalSurplus >= totalDeficit) {
@@ -345,7 +339,7 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
             revert("DInterest: Selected deposits in surplus");
         } else {
             // Deduct surplus from totalDeficit
-            totalDeficit = totalDeficit.sub(totalSurplus);
+            totalDeficit -= totalSurplus;
         }
 
         // Create funding struct
@@ -357,19 +351,16 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
                 toDepositID: toDepositID,
                 recordedFundedDepositAmount: totalDepositAndInterestToFund,
                 recordedMoneyMarketIncomeIndex: incomeIndex,
-                creationTimestamp: now
+                creationTimestamp: block.timestamp
             })
         );
 
         // Update relevant values
-        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex = sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex
-            .add(
-            totalDepositAndInterestToFund.mul(EXTRA_PRECISION).div(incomeIndex)
-        );
+        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex +=
+            (totalDepositAndInterestToFund * EXTRA_PRECISION) /
+            incomeIndex;
         latestFundedDepositID = toDepositID;
-        unfundedUserDepositAmount = unfundedUserDepositAmount.sub(
-            totalDepositAndInterestToFund
-        );
+        unfundedUserDepositAmount -= totalDepositAndInterestToFund;
 
         _fund(totalDeficit);
     }
@@ -382,26 +373,19 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
         require(funder == msg.sender, "DInterest: not funder");
         Funding storage f = _getFunding(fundingID);
         uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
-        interestAmount = f
-            .recordedFundedDepositAmount
-            .mul(currentMoneyMarketIncomeIndex)
-            .div(f.recordedMoneyMarketIncomeIndex)
-            .sub(f.recordedFundedDepositAmount);
+        interestAmount =
+            (f.recordedFundedDepositAmount * currentMoneyMarketIncomeIndex) /
+            f.recordedMoneyMarketIncomeIndex -
+            f.recordedFundedDepositAmount;
 
         // Update funding values
-        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex = sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex
-            .sub(
-            f.recordedFundedDepositAmount.mul(EXTRA_PRECISION).div(
-                f.recordedMoneyMarketIncomeIndex
-            )
-        );
+        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex -=
+            (f.recordedFundedDepositAmount * EXTRA_PRECISION) /
+            f.recordedMoneyMarketIncomeIndex;
         f.recordedMoneyMarketIncomeIndex = currentMoneyMarketIncomeIndex;
-        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex = sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex
-            .add(
-            f.recordedFundedDepositAmount.mul(EXTRA_PRECISION).div(
-                f.recordedMoneyMarketIncomeIndex
-            )
-        );
+        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex +=
+            (f.recordedFundedDepositAmount * EXTRA_PRECISION) /
+            f.recordedMoneyMarketIncomeIndex;
 
         // Send interest to funder
         if (interestAmount > 0) {
@@ -447,34 +431,29 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
         returns (uint256 interestOwed)
     {
         uint256 currentValue =
-            moneyMarket
-                .incomeIndex()
-                .mul(
-                sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex
-            )
-                .div(EXTRA_PRECISION);
+            (moneyMarket.incomeIndex() *
+                sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex) /
+                EXTRA_PRECISION;
         uint256 initialValue =
-            totalDeposit.add(totalInterestOwed).sub(unfundedUserDepositAmount);
+            totalDeposit + totalInterestOwed - unfundedUserDepositAmount;
         if (currentValue < initialValue) {
             return 0;
         }
-        return currentValue.sub(initialValue);
+        return currentValue - initialValue;
     }
 
     function surplus() public returns (bool isNegative, uint256 surplusAmount) {
         uint256 totalValue = moneyMarket.totalValue();
         uint256 totalOwed =
-            totalDeposit.add(totalInterestOwed).add(
-                totalInterestOwedToFunders()
-            );
+            totalDeposit + totalInterestOwed + totalInterestOwedToFunders();
         if (totalValue >= totalOwed) {
             // Locked value more than owed deposits, positive surplus
             isNegative = false;
-            surplusAmount = totalValue.sub(totalOwed);
+            surplusAmount = totalValue - totalOwed;
         } else {
             // Locked value less than owed deposits, negative surplus
             isNegative = true;
-            surplusAmount = totalOwed.sub(totalValue);
+            surplusAmount = totalOwed - totalValue;
         }
     }
 
@@ -485,18 +464,17 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
         Deposit storage depositEntry = _getDeposit(depositID);
         uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
         uint256 currentDepositValue =
-            depositEntry.amount.mul(currentMoneyMarketIncomeIndex).div(
-                depositEntry.initialMoneyMarketIncomeIndex
-            );
-        uint256 owed = depositEntry.amount.add(depositEntry.interestOwed);
+            (depositEntry.amount * currentMoneyMarketIncomeIndex) /
+                depositEntry.initialMoneyMarketIncomeIndex;
+        uint256 owed = depositEntry.amount + depositEntry.interestOwed;
         if (currentDepositValue >= owed) {
             // Locked value more than owed deposits, positive surplus
             isNegative = false;
-            surplusAmount = currentDepositValue.sub(owed);
+            surplusAmount = currentDepositValue - owed;
         } else {
             // Locked value less than owed deposits, negative surplus
             isNegative = true;
-            surplusAmount = owed.sub(currentDepositValue);
+            surplusAmount = owed - currentDepositValue;
         }
     }
 
@@ -517,7 +495,7 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
         view
         returns (Deposit memory)
     {
-        return deposits[depositID.sub(1)];
+        return deposits[depositID - 1];
     }
 
     function getFunding(uint256 fundingID)
@@ -525,7 +503,7 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
         view
         returns (Funding memory)
     {
-        return fundingList[fundingID.sub(1)];
+        return fundingList[fundingID - 1];
     }
 
     function moneyMarketIncomeIndex() external returns (uint256) {
@@ -551,7 +529,7 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
         require(newValue.isContract(), "DInterest: not contract");
         interestOracle = IInterestOracle(newValue);
         require(
-            interestOracle.moneyMarket() == address(moneyMarket),
+            interestOracle.moneyMarket() == moneyMarket,
             "DInterest: moneyMarket mismatch"
         );
         emit ESetParamAddress(msg.sender, "interestOracle", newValue);
@@ -603,48 +581,9 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
     }
 
     function setDepositFee(uint256 newValue) external onlyOwner {
-        require(
-            newValue < PRECISION,
-            "DInterest: invalid value"
-        );
+        require(newValue < PRECISION, "DInterest: invalid value");
         DepositFee = newValue;
         emit ESetParamUint(msg.sender, "DepositFee", newValue);
-    }
-
-    function setDepositNFTTokenURI(uint256 tokenId, string calldata newURI)
-        external
-        onlyOwner
-    {
-        depositNFT.setTokenURI(tokenId, newURI);
-    }
-
-    function setDepositNFTBaseURI(string calldata newURI) external onlyOwner {
-        depositNFT.setBaseURI(newURI);
-    }
-
-    function setDepositNFTContractURI(string calldata newURI)
-        external
-        onlyOwner
-    {
-        depositNFT.setContractURI(newURI);
-    }
-
-    function setFundingNFTTokenURI(uint256 tokenId, string calldata newURI)
-        external
-        onlyOwner
-    {
-        fundingNFT.setTokenURI(tokenId, newURI);
-    }
-
-    function setFundingNFTBaseURI(string calldata newURI) external onlyOwner {
-        fundingNFT.setBaseURI(newURI);
-    }
-
-    function setFundingNFTContractURI(string calldata newURI)
-        external
-        onlyOwner
-    {
-        fundingNFT.setContractURI(newURI);
     }
 
     /**
@@ -656,7 +595,7 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
         view
         returns (Deposit storage)
     {
-        return deposits[depositID.sub(1)];
+        return deposits[depositID - 1];
     }
 
     function _getFunding(uint256 fundingID)
@@ -664,7 +603,7 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
         view
         returns (Funding storage)
     {
-        return fundingList[fundingID.sub(1)];
+        return fundingList[fundingID - 1];
     }
 
     function _applyDepositFee(uint256 depositAmount)
@@ -672,7 +611,7 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
         view
         returns (uint256)
     {
-        return depositAmount.decmul(PRECISION.sub(DepositFee));
+        return depositAmount.decmul(PRECISION - DepositFee);
     }
 
     function _unapplyDepositFee(uint256 depositAmount)
@@ -680,7 +619,7 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
         view
         returns (uint256)
     {
-        return depositAmount.decdiv(PRECISION.sub(DepositFee));
+        return depositAmount.decdiv(PRECISION - DepositFee);
     }
 
     /**
@@ -695,7 +634,7 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
         );
 
         // Ensure deposit period is at least MinDepositPeriod
-        uint256 depositPeriod = maturationTimestamp.sub(now);
+        uint256 depositPeriod = maturationTimestamp - block.timestamp;
         require(
             depositPeriod >= MinDepositPeriod &&
                 depositPeriod <= MaxDepositPeriod,
@@ -706,20 +645,19 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
         uint256 amountAfterFee = _applyDepositFee(amount);
 
         // Update totalDeposit
-        totalDeposit = totalDeposit.add(amountAfterFee);
+        totalDeposit += amountAfterFee;
 
         // Calculate interest
-        uint256 interestAmount = calculateInterestAmount(amountAfterFee, depositPeriod);
+        uint256 interestAmount =
+            calculateInterestAmount(amountAfterFee, depositPeriod);
         require(interestAmount > 0, "DInterest: interestAmount == 0");
 
         // Update funding related data
-        uint256 id = deposits.length.add(1);
-        unfundedUserDepositAmount = unfundedUserDepositAmount.add(amountAfterFee).add(
-            interestAmount
-        );
+        uint256 id = deposits.length + 1;
+        unfundedUserDepositAmount += amountAfterFee + interestAmount;
 
         // Update totalInterestOwed
-        totalInterestOwed = totalInterestOwed.add(interestAmount);
+        totalInterestOwed += interestAmount;
 
         // Mint MPH for msg.sender
         uint256 mintMPHAmount =
@@ -741,7 +679,7 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
                 finalSurplusIsNegative: false,
                 finalSurplusAmount: 0,
                 mintMPHAmount: mintMPHAmount,
-                depositTimestamp: now
+                depositTimestamp: block.timestamp
             })
         );
 
@@ -778,20 +716,20 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
         depositEntry.active = false;
 
         if (early) {
-            // Verify `now < depositEntry.maturationTimestamp`
+            // Verify `block.timestamp < depositEntry.maturationTimestamp`
             require(
-                now < depositEntry.maturationTimestamp,
+                block.timestamp < depositEntry.maturationTimestamp,
                 "DInterest: Deposit mature, use withdraw() instead"
             );
-            // Verify `now > depositEntry.depositTimestamp`
+            // Verify `block.timestamp > depositEntry.depositTimestamp`
             require(
-                now > depositEntry.depositTimestamp,
+                block.timestamp > depositEntry.depositTimestamp,
                 "DInterest: Deposited in same block"
             );
         } else {
-            // Verify `now >= depositEntry.maturationTimestamp`
+            // Verify `block.timestamp >= depositEntry.maturationTimestamp`
             require(
-                now >= depositEntry.maturationTimestamp,
+                block.timestamp >= depositEntry.maturationTimestamp,
                 "DInterest: Deposit not mature"
             );
         }
@@ -823,10 +761,10 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
         }
 
         // Update totalDeposit
-        totalDeposit = totalDeposit.sub(depositEntry.amount);
+        totalDeposit -= depositEntry.amount;
 
         // Update totalInterestOwed
-        totalInterestOwed = totalInterestOwed.sub(depositEntry.interestOwed);
+        totalInterestOwed -= depositEntry.interestOwed;
 
         // Fetch the income index & surplus before withdrawal, to prevent our withdrawal from
         // increasing the income index when the money market vault total supply is extremely small
@@ -849,14 +787,14 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
             } else {
                 // Withdraw the principal & the interest from money market
                 feeAmount = feeModel.getFee(depositEntry.interestOwed);
-                withdrawAmount = depositEntry.amount.add(
-                    depositEntry.interestOwed
-                );
+                withdrawAmount =
+                    depositEntry.amount +
+                    depositEntry.interestOwed;
             }
             withdrawAmount = moneyMarket.withdraw(withdrawAmount);
 
             // Send `withdrawAmount - feeAmount` stablecoin to `msg.sender`
-            stablecoin.safeTransfer(msg.sender, withdrawAmount.sub(feeAmount));
+            stablecoin.safeTransfer(msg.sender, withdrawAmount - feeAmount);
 
             // Send `feeAmount` stablecoin to feeModel beneficiary
             if (feeAmount > 0) {
@@ -879,9 +817,9 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
             );
         } else {
             // Remove deposit from future deficit fundings
-            unfundedUserDepositAmount = unfundedUserDepositAmount.sub(
-                depositEntry.amount.add(depositEntry.interestOwed)
-            );
+            unfundedUserDepositAmount -=
+                depositEntry.amount +
+                depositEntry.interestOwed;
 
             // Record remaining surplus
             depositEntry.finalSurplusIsNegative = depositSurplusIsNegative;
@@ -906,35 +844,25 @@ contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
             "DInterest: Deposit not funded by fundingID"
         );
         uint256 interestAmount =
-            f
-                .recordedFundedDepositAmount
-                .mul(currentMoneyMarketIncomeIndex)
-                .div(f.recordedMoneyMarketIncomeIndex)
-                .sub(f.recordedFundedDepositAmount);
+            (f.recordedFundedDepositAmount * currentMoneyMarketIncomeIndex) /
+                f.recordedMoneyMarketIncomeIndex -
+                f.recordedFundedDepositAmount;
 
         // Update funding values
-        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex = sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex
-            .sub(
-            f.recordedFundedDepositAmount.mul(EXTRA_PRECISION).div(
-                f.recordedMoneyMarketIncomeIndex
-            )
-        );
-        f.recordedFundedDepositAmount = f.recordedFundedDepositAmount.sub(
-            depositAmount.add(depositInterestOwed)
-        );
+        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex -=
+            (f.recordedFundedDepositAmount * EXTRA_PRECISION) /
+            f.recordedMoneyMarketIncomeIndex;
+        f.recordedFundedDepositAmount -= depositAmount + depositInterestOwed;
         f.recordedMoneyMarketIncomeIndex = currentMoneyMarketIncomeIndex;
-        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex = sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex
-            .add(
-            f.recordedFundedDepositAmount.mul(EXTRA_PRECISION).div(
-                f.recordedMoneyMarketIncomeIndex
-            )
-        );
+        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex +=
+            (f.recordedFundedDepositAmount * EXTRA_PRECISION) /
+            f.recordedMoneyMarketIncomeIndex;
 
         // Send interest to funder
         address funder = fundingNFT.ownerOf(fundingID);
         uint256 transferToFunderAmount =
             (early && depositSurplusIsNegative)
-                ? interestAmount.add(depositSurplus)
+                ? interestAmount + depositSurplus
                 : interestAmount;
         if (transferToFunderAmount > 0) {
             transferToFunderAmount = moneyMarket.withdraw(

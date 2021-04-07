@@ -1,17 +1,15 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../libs/DecMath.sol";
 
-contract VaultMock is ERC20, ERC20Detailed {
-    using SafeMath for uint256;
+contract VaultMock is ERC20 {
     using DecMath for uint256;
 
     ERC20 public underlying;
 
-    constructor(address _underlying) public ERC20Detailed("yUSD", "yUSD", 18) {
+    constructor(address _underlying) ERC20("yUSD", "yUSD") {
         underlying = ERC20(_underlying);
     }
 

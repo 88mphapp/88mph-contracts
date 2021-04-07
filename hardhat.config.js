@@ -2,6 +2,9 @@ require('@nomiclabs/hardhat-truffle5')
 require('solidity-coverage')
 require('hardhat-deploy')
 require('hardhat-gas-reporter')
+require('@nomiclabs/hardhat-solhint')
+require('hardhat-spdx-license-identifier')
+require('hardhat-docgen')
 
 let secret
 
@@ -53,5 +56,15 @@ module.exports = {
       gas: 'auto',
       gasPrice: 30.0000001e9
     }
+  },
+  spdxLicenseIdentifier: {
+    runOnCompile: true
+  },
+  docgen: {
+    except: [
+      '^contracts/libs/',
+      '^contracts/mocks/',
+      '^contracts/rewards/Rewards.sol'
+    ]
   }
 }

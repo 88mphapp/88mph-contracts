@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /*
    ____            __   __        __   _
   / __/__ __ ___  / /_ / /  ___  / /_ (_)__ __
@@ -32,7 +34,6 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 */
 
-// SPDX-License-Identifier: MIT
 pragma solidity 0.8.3;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 /**
     Modified from https://github.com/bugduino/idle-contracts/blob/master/contracts/mocks/cDAIMock.sol
     at commit b85dafa8e55e053cb2d403fc4b28cfe86f2116d4
@@ -17,8 +19,6 @@
     See the License for the specific language governing permissions and
     limitations under the License.
  */
-
-// SPDX-License-Identifier: Apache-2.0
 
 pragma solidity 0.8.3;
 

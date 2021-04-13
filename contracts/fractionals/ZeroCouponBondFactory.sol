@@ -27,7 +27,6 @@ contract ZeroCouponBondFactory is CloneFactory {
         // initialize
         clone.init(
             _pool,
-            fractionalDepositFactory,
             _maturationTimetstamp,
             _tokenName,
             _tokenSymbol

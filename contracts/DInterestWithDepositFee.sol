@@ -19,7 +19,6 @@ import "./models/interest-oracle/IInterestOracle.sol";
 // Author: Zefram Lou
 // Contact: zefram@baconlabs.dev
 contract DInterestWithDepositFee is ReentrancyGuard, Ownable {
-    using SafeMath for uint256;
     using DecMath for uint256;
     using SafeERC20 for ERC20;
     using Address for address;

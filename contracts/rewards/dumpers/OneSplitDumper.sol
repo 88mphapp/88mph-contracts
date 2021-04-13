@@ -4,7 +4,7 @@ pragma solidity 0.8.3;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./imports/OneSplitAudit.sol";
 import "../IRewards.sol";
-import "./AdminControlled.sol";
+import "../../libs/AdminControlled.sol";
 
 contract OneSplitDumper is AdminControlled {
     using SafeERC20 for IERC20;

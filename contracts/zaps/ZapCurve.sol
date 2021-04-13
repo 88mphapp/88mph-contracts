@@ -3,12 +3,12 @@ pragma solidity 0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
 import "./imports/CurveZapIn.sol";
 import "../DInterest.sol";
-import "../NFT.sol";
+import "../ERC1155Token.sol";
 
-contract ZapCurve is IERC721Receiver {
+contract ZapCurve is ERC1155Receiver {
     using SafeERC20 for ERC20;
 
     modifier active {
@@ -19,6 +19,7 @@ contract ZapCurve is IERC721Receiver {
 
     CurveZapIn public constant zapper =
         CurveZapIn(0xf9A724c2607E5766a7Bbe530D6a7e173532F9f3a);
+    bytes internal constant NULL_BYTES = bytes("");
     bool public isActive;
 
     function zapCurveDeposit(
@@ -31,7 +32,7 @@ contract ZapCurve is IERC721Receiver {
     ) external active {
         DInterest poolContract = DInterest(pool);
         ERC20 stablecoin = poolContract.stablecoin();
-        NFT depositNFT = poolContract.depositNFT();
+        ERC1155Token depositMultitoken = poolContract.depositMultitoken();
 
         // zap into curve
         uint256 outputTokenAmount =
@@ -44,53 +45,30 @@ contract ZapCurve is IERC721Receiver {
 
         // create deposit
         stablecoin.safeIncreaseAllowance(pool, outputTokenAmount);
-        poolContract.deposit(outputTokenAmount, maturationTimestamp);
+        uint256 depositID =
+            poolContract.deposit(outputTokenAmount, maturationTimestamp);
 
-        // transfer deposit NFT to msg.sender
-        uint256 nftID = poolContract.depositsLength();
-        depositNFT.safeTransferFrom(address(this), msg.sender, nftID);
+        // transfer deposit multitokens to msg.sender
+        depositMultitoken.safeTransferFrom(
+            address(this),
+            msg.sender,
+            depositID,
+            depositMultitoken.balanceOf(address(this), depositID),
+            NULL_BYTES
+        );
     }
 
-    function zapCurveFundAll(
-        address pool,
-        address swapAddress,
-        address inputToken,
-        uint256 inputTokenAmount,
-        uint256 minOutputTokenAmount
-    ) external active {
-        DInterest poolContract = DInterest(pool);
-        ERC20 stablecoin = poolContract.stablecoin();
-        NFT fundingNFT = poolContract.fundingNFT();
-
-        // zap into curve
-        uint256 outputTokenAmount =
-            _zapTokenInCurve(
-                swapAddress,
-                inputToken,
-                inputTokenAmount,
-                minOutputTokenAmount
-            );
-
-        // create funding
-        stablecoin.safeIncreaseAllowance(pool, outputTokenAmount);
-        poolContract.fundAll();
-
-        // transfer funding NFT to msg.sender
-        uint256 nftID = poolContract.fundingListLength();
-        fundingNFT.safeTransferFrom(address(this), msg.sender, nftID);
-    }
-
-    function zapCurveFundMultiple(
+    function zapCurveFund(
         address pool,
         address swapAddress,
         address inputToken,
         uint256 inputTokenAmount,
         uint256 minOutputTokenAmount,
-        uint256 toDepositID
+        uint256 depositID
     ) external active {
         DInterest poolContract = DInterest(pool);
         ERC20 stablecoin = poolContract.stablecoin();
-        NFT fundingNFT = poolContract.fundingNFT();
+        ERC1155Token fundingMultitoken = poolContract.fundingMultitoken();
 
         // zap into curve
         uint256 outputTokenAmount =
@@ -103,21 +81,43 @@ contract ZapCurve is IERC721Receiver {
 
         // create funding
         stablecoin.safeIncreaseAllowance(pool, outputTokenAmount);
-        poolContract.fundMultiple(toDepositID);
+        uint256 fundingID = poolContract.fund(depositID, outputTokenAmount);
 
-        // transfer funding NFT to msg.sender
-        uint256 nftID = poolContract.fundingListLength();
-        fundingNFT.safeTransferFrom(address(this), msg.sender, nftID);
+        // transfer funding multitoken to msg.sender
+        fundingMultitoken.safeTransferFrom(
+            address(this),
+            msg.sender,
+            fundingID,
+            fundingMultitoken.balanceOf(address(this), fundingID),
+            NULL_BYTES
+        );
+        // transfer remaining stablecoins to msg.sender
+        stablecoin.safeTransfer(
+            msg.sender,
+            stablecoin.balanceOf(address(this))
+        );
     }
 
-    function onERC721Received(
+    function onERC1155Received(
         address, /*operator*/
         address, /*from*/
-        uint256, /*tokenId*/
-        bytes memory /*data*/
-    ) public view override returns (bytes4) {
+        uint256, /*id*/
+        uint256, /*value*/
+        bytes calldata /*data*/
+    ) external view override returns (bytes4) {
         require(isActive, "ZapCurve: inactive");
-        return this.onERC721Received.selector;
+        return this.onERC1155Received.selector;
+    }
+
+    function onERC1155BatchReceived(
+        address, /*operator*/
+        address, /*from*/
+        uint256[] calldata, /*ids*/
+        uint256[] calldata, /*values*/
+        bytes calldata /*data*/
+    ) external view override returns (bytes4) {
+        require(isActive, "ZapCurve: inactive");
+        return this.onERC1155BatchReceived.selector;
     }
 
     function _zapTokenInCurve(

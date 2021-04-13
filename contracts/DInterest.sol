@@ -9,62 +9,60 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./moneymarkets/IMoneyMarket.sol";
 import "./models/fee/IFeeModel.sol";
 import "./models/interest/IInterestModel.sol";
-import "./NFT.sol";
+import "./ERC1155Token.sol";
 import "./rewards/MPHMinter.sol";
 import "./models/interest-oracle/IInterestOracle.sol";
+import "./libs/DecMath.sol";
 
-// DeLorean Interest -- It's coming back from the future!
-// EL PSY CONGROO
-// Author: Zefram Lou
-// Contact: zefram@baconlabs.dev
+/**
+    @title DeLorean Interest -- It's coming back from the future!
+    @author Zefram Lou
+    @notice The main pool contract for fixed-rate deposits
+    @dev The contract to interact with for most actions
+ */
 contract DInterest is ReentrancyGuard, Ownable {
     using SafeERC20 for ERC20;
     using Address for address;
+    using DecMath for uint256;
 
     // Constants
-    uint256 internal constant EXTRA_PRECISION = 10**27; // used for sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex
+    uint256 internal constant PRECISION = 10**18;
+    uint256 internal constant EXTRA_PRECISION = 10**27; // used for sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex
 
     // User deposit data
-    // Each deposit has an ID used in the depositNFT, which is equal to its index in `deposits` plus 1
+    // Each deposit has an ID used in the depositMultitoken, which is equal to its index in `deposits` plus 1
     struct Deposit {
-        uint256 amount; // Amount of stablecoin deposited
+        uint256 interestRate; // interestAmount = interestRate * depositAmount
+        uint256 feeRate; // feeAmount = feeRate * interestAmount
+        uint256 mphRewardRate; // mphRewardAmount = mphRewardRate * depositAmount
         uint256 maturationTimestamp; // Unix timestamp after which the deposit may be withdrawn, in seconds
-        uint256 interestOwed; // Deficit incurred to the pool at time of deposit
-        uint256 initialMoneyMarketIncomeIndex; // Money market's income index at time of deposit
-        bool active; // True if not yet withdrawn, false if withdrawn
-        bool finalSurplusIsNegative;
-        uint256 finalSurplusAmount; // Surplus remaining after withdrawal
-        uint256 mintMPHAmount; // Amount of MPH minted to user
         uint256 depositTimestamp; // Unix timestamp at time of deposit, in seconds
+        uint256 sumOfRecordedPrincipalAmountDivRecordedIncomeIndex; // Scaled by EXTRA_PRECISION
+        uint256 averageRecordedIncomeIndex; // Average income index at time of deposit
+        uint256 fundingID;
     }
     Deposit[] internal deposits;
-    uint256 public latestFundedDepositID; // the ID of the most recently created deposit that was funded
-    uint256 public unfundedUserDepositAmount; // the deposited stablecoin amount (plus interest owed) whose deficit hasn't been funded
 
     // Funding data
-    // Each funding has an ID used in the fundingNFT, which is equal to its index in `fundingList` plus 1
+    // Each funding has an ID used in the fundingMultitoken, which is equal to its index in `fundingList` plus 1
     struct Funding {
-        // deposits with fromDepositID < ID <= toDepositID are funded
-        uint256 fromDepositID;
-        uint256 toDepositID;
-        uint256 recordedFundedDepositAmount; // the current stablecoin amount earning interest for the funder
+        uint256 depositID;
         uint256 recordedMoneyMarketIncomeIndex; // the income index at the last update (creation or withdrawal)
-        uint256 creationTimestamp; // Unix timestamp at time of deposit, in seconds
+        uint256 principalPerToken; // The amount of stablecoins that's earning interest for you per funding token you own. Scaled to 18 decimals regardless of stablecoin decimals.
     }
     Funding[] internal fundingList;
-    // the sum of (recordedFundedDepositAmount / recordedMoneyMarketIncomeIndex) of all fundings
-    uint256
-        public sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex;
+    // the sum of (recordedFundedPrincipalAmount / recordedMoneyMarketIncomeIndex) of all fundings
+    uint256 public sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex;
 
     // Params
-    uint256 public MinDepositPeriod; // Minimum deposit period, in seconds
     uint256 public MaxDepositPeriod; // Maximum deposit period, in seconds
-    uint256 public MinDepositAmount; // Minimum deposit amount for each deposit, in stablecoins
-    uint256 public MaxDepositAmount; // Maximum deposit amount for each deposit, in stablecoins
+    uint256 public MinDepositAmount; // Minimum deposit amount
 
     // Instance variables
     uint256 public totalDeposit;
     uint256 public totalInterestOwed;
+    uint256 public totalFeeOwed;
+    uint256 public totalFundedPrincipalAmount;
 
     // External smart contracts
     IMoneyMarket public moneyMarket;
@@ -72,8 +70,8 @@ contract DInterest is ReentrancyGuard, Ownable {
     IFeeModel public feeModel;
     IInterestModel public interestModel;
     IInterestOracle public interestOracle;
-    NFT public depositNFT;
-    NFT public fundingNFT;
+    ERC1155Token public depositMultitoken;
+    ERC1155Token public fundingMultitoken;
     MPHMinter public mphMinter;
 
     // Events
@@ -88,9 +86,9 @@ contract DInterest is ReentrancyGuard, Ownable {
     event EWithdraw(
         address indexed sender,
         uint256 indexed depositID,
-        uint256 indexed fundingID,
-        bool early,
-        uint256 takeBackMPHAmount
+        uint256 tokenAmount,
+        uint256 withdrawAmount,
+        uint256 feeAmount
     );
     event EFund(
         address indexed sender,
@@ -108,22 +106,16 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 newValue
     );
 
-    struct DepositLimit {
-        uint256 MinDepositPeriod;
-        uint256 MaxDepositPeriod;
-        uint256 MinDepositAmount;
-        uint256 MaxDepositAmount;
-    }
-
     constructor(
-        DepositLimit memory _depositLimit,
+        uint256 _MaxDepositPeriod,
+        uint256 _MinDepositAmount,
         address _moneyMarket, // Address of IMoneyMarket that's used for generating interest (owner must be set to this DInterest contract)
         address _stablecoin, // Address of the stablecoin used to store funds
         address _feeModel, // Address of the FeeModel contract that determines how fees are charged
         address _interestModel, // Address of the InterestModel contract that determines how much interest to offer
         address _interestOracle, // Address of the InterestOracle contract that provides the average interest rate
-        address _depositNFT, // Address of the NFT representing ownership of deposits (owner must be set to this DInterest contract)
-        address _fundingNFT, // Address of the NFT representing ownership of fundings (owner must be set to this DInterest contract)
+        address _depositMultitoken, // Address of the ERC1155 multitoken representing ownership of deposits (this DInterest contract must have mint & burn roles)
+        address _fundingMultitoken, // Address of the NFT representing ownership of fundings (owner must be set to this DInterest contract)
         address _mphMinter // Address of the contract for handling minting MPH to users
     ) {
         // Verify input addresses
@@ -133,8 +125,8 @@ contract DInterest is ReentrancyGuard, Ownable {
                 _feeModel.isContract() &&
                 _interestModel.isContract() &&
                 _interestOracle.isContract() &&
-                _depositNFT.isContract() &&
-                _fundingNFT.isContract() &&
+                _depositMultitoken.isContract() &&
+                _fundingMultitoken.isContract() &&
                 _mphMinter.isContract(),
             "DInterest: An input address is not a contract"
         );
@@ -144,8 +136,8 @@ contract DInterest is ReentrancyGuard, Ownable {
         feeModel = IFeeModel(_feeModel);
         interestModel = IInterestModel(_interestModel);
         interestOracle = IInterestOracle(_interestOracle);
-        depositNFT = NFT(_depositNFT);
-        fundingNFT = NFT(_fundingNFT);
+        depositMultitoken = ERC1155Token(_depositMultitoken);
+        fundingMultitoken = ERC1155Token(_fundingMultitoken);
         mphMinter = MPHMinter(_mphMinter);
 
         // Ensure moneyMarket uses the same stablecoin
@@ -160,89 +152,65 @@ contract DInterest is ReentrancyGuard, Ownable {
             "DInterest: interestOracle.moneyMarket() != _moneyMarket"
         );
 
-        // Verify input uint256 parameters
-        require(
-            _depositLimit.MaxDepositPeriod > 0 &&
-                _depositLimit.MaxDepositAmount > 0,
-            "DInterest: An input uint256 is 0"
-        );
-        require(
-            _depositLimit.MinDepositPeriod <= _depositLimit.MaxDepositPeriod,
-            "DInterest: Invalid DepositPeriod range"
-        );
-        require(
-            _depositLimit.MinDepositAmount <= _depositLimit.MaxDepositAmount,
-            "DInterest: Invalid DepositAmount range"
-        );
-
-        MinDepositPeriod = _depositLimit.MinDepositPeriod;
-        MaxDepositPeriod = _depositLimit.MaxDepositPeriod;
-        MinDepositAmount = _depositLimit.MinDepositAmount;
-        MaxDepositAmount = _depositLimit.MaxDepositAmount;
-        totalDeposit = 0;
+        MaxDepositPeriod = _MaxDepositPeriod;
+        MinDepositAmount = _MinDepositAmount;
     }
 
     /**
         Public actions
      */
 
-    function deposit(uint256 amount, uint256 maturationTimestamp)
+    function deposit(uint256 depositAmount, uint256 maturationTimestamp)
         external
         nonReentrant
+        returns (uint256 depositID)
     {
-        _deposit(amount, maturationTimestamp);
+        return _deposit(depositAmount, maturationTimestamp);
     }
 
-    function withdraw(uint256 depositID, uint256 fundingID)
+    function withdraw(uint256 depositID, uint256 tokenAmount)
         external
         nonReentrant
+        returns (uint256 withdrawnStablecoinAmount)
     {
-        _withdraw(depositID, fundingID, false);
-    }
-
-    function earlyWithdraw(uint256 depositID, uint256 fundingID)
-        external
-        nonReentrant
-    {
-        _withdraw(depositID, fundingID, true);
+        return _withdraw(depositID, tokenAmount);
     }
 
     function multiDeposit(
         uint256[] calldata amountList,
         uint256[] calldata maturationTimestampList
-    ) external nonReentrant {
+    ) external nonReentrant returns (uint256[] memory depositIDList) {
         require(
             amountList.length == maturationTimestampList.length,
             "DInterest: List lengths unequal"
         );
+        depositIDList = new uint256[](amountList.length);
         for (uint256 i = 0; i < amountList.length; i++) {
-            _deposit(amountList[i], maturationTimestampList[i]);
+            depositIDList[i] = _deposit(
+                amountList[i],
+                maturationTimestampList[i]
+            );
         }
     }
 
     function multiWithdraw(
         uint256[] calldata depositIDList,
-        uint256[] calldata fundingIDList
-    ) external nonReentrant {
+        uint256[] calldata tokenAmountList
+    )
+        external
+        nonReentrant
+        returns (uint256[] memory withdrawnStablecoinAmountList)
+    {
         require(
-            depositIDList.length == fundingIDList.length,
+            depositIDList.length == tokenAmountList.length,
             "DInterest: List lengths unequal"
         );
+        withdrawnStablecoinAmountList = new uint256[](depositIDList.length);
         for (uint256 i = 0; i < depositIDList.length; i++) {
-            _withdraw(depositIDList[i], fundingIDList[i], false);
-        }
-    }
-
-    function multiEarlyWithdraw(
-        uint256[] calldata depositIDList,
-        uint256[] calldata fundingIDList
-    ) external nonReentrant {
-        require(
-            depositIDList.length == fundingIDList.length,
-            "DInterest: List lengths unequal"
-        );
-        for (uint256 i = 0; i < depositIDList.length; i++) {
-            _withdraw(depositIDList[i], fundingIDList[i], true);
+            withdrawnStablecoinAmountList[i] = _withdraw(
+                depositIDList[i],
+                tokenAmountList[i]
+            );
         }
     }
 
@@ -250,140 +218,47 @@ contract DInterest is ReentrancyGuard, Ownable {
         Deficit funding
      */
 
-    function fundAll() external nonReentrant {
-        // Calculate current deficit
-        (bool isNegative, uint256 deficit) = surplus();
-        require(isNegative, "DInterest: No deficit available");
-        require(
-            !depositIsFunded(deposits.length),
-            "DInterest: All deposits funded"
-        );
-
-        // Create funding struct
-        uint256 incomeIndex = moneyMarket.incomeIndex();
-        require(incomeIndex > 0, "DInterest: incomeIndex == 0");
-        fundingList.push(
-            Funding({
-                fromDepositID: latestFundedDepositID,
-                toDepositID: deposits.length,
-                recordedFundedDepositAmount: unfundedUserDepositAmount,
-                recordedMoneyMarketIncomeIndex: incomeIndex,
-                creationTimestamp: block.timestamp
-            })
-        );
-
-        // Update relevant values
-        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex +=
-            (unfundedUserDepositAmount * EXTRA_PRECISION) /
-            incomeIndex;
-        latestFundedDepositID = deposits.length;
-        unfundedUserDepositAmount = 0;
-
-        _fund(deficit);
-    }
-
-    function fundMultiple(uint256 toDepositID) external nonReentrant {
-        require(
-            toDepositID > latestFundedDepositID,
-            "DInterest: Deposits already funded"
-        );
-        require(
-            toDepositID <= deposits.length,
-            "DInterest: Invalid toDepositID"
-        );
-
-        (bool isNegative, uint256 surplusMagnitude) = surplus();
-        require(isNegative, "DInterest: No deficit available");
-
-        uint256 totalDeficit = 0;
-        uint256 totalSurplus = 0;
-        uint256 totalDepositAndInterestToFund = 0;
-        // Deposits with ID [latestFundedDepositID+1, toDepositID] will be funded
-        for (uint256 id = latestFundedDepositID + 1; id <= toDepositID; id++) {
-            Deposit storage depositEntry = _getDeposit(id);
-            if (depositEntry.active) {
-                // Deposit still active, use current surplus
-                (isNegative, surplusMagnitude) = surplusOfDeposit(id);
-            } else {
-                // Deposit has been withdrawn, use recorded final surplus
-                (isNegative, surplusMagnitude) = (
-                    depositEntry.finalSurplusIsNegative,
-                    depositEntry.finalSurplusAmount
-                );
-            }
-
-            if (isNegative) {
-                // Add on deficit to total
-                totalDeficit += surplusMagnitude;
-            } else {
-                // Has surplus
-                totalSurplus += surplusMagnitude;
-            }
-
-            if (depositEntry.active) {
-                totalDepositAndInterestToFund +=
-                    depositEntry.amount +
-                    depositEntry.interestOwed;
-            }
-        }
-        if (totalSurplus >= totalDeficit) {
-            // Deposits selected have a surplus as a whole, revert
-            revert("DInterest: Selected deposits in surplus");
-        } else {
-            // Deduct surplus from totalDeficit
-            totalDeficit -= totalSurplus;
-        }
-
-        // Create funding struct
-        uint256 incomeIndex = moneyMarket.incomeIndex();
-        require(incomeIndex > 0, "DInterest: incomeIndex == 0");
-        fundingList.push(
-            Funding({
-                fromDepositID: latestFundedDepositID,
-                toDepositID: toDepositID,
-                recordedFundedDepositAmount: totalDepositAndInterestToFund,
-                recordedMoneyMarketIncomeIndex: incomeIndex,
-                creationTimestamp: block.timestamp
-            })
-        );
-
-        // Update relevant values
-        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex +=
-            (totalDepositAndInterestToFund * EXTRA_PRECISION) /
-            incomeIndex;
-        latestFundedDepositID = toDepositID;
-        unfundedUserDepositAmount -= totalDepositAndInterestToFund;
-
-        _fund(totalDeficit);
+    function fund(uint256 depositID, uint256 fundAmount)
+        external
+        nonReentrant
+        returns (uint256 fundingID)
+    {
+        return _fund(depositID, fundAmount);
     }
 
     function payInterestToFunder(uint256 fundingID)
         external
         returns (uint256 interestAmount)
     {
-        address funder = fundingNFT.ownerOf(fundingID);
-        require(funder == msg.sender, "DInterest: not funder");
         Funding storage f = _getFunding(fundingID);
+        uint256 recordedMoneyMarketIncomeIndex =
+            f.recordedMoneyMarketIncomeIndex;
         uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
-        interestAmount =
-            (f.recordedFundedDepositAmount * currentMoneyMarketIncomeIndex) /
-            f.recordedMoneyMarketIncomeIndex -
-            f.recordedFundedDepositAmount;
+        uint256 fundingTokenTotalSupply =
+            fundingMultitoken.totalSupply(fundingID);
+        uint256 recordedFundedPrincipalAmount =
+            fundingTokenTotalSupply.decmul(f.principalPerToken);
 
         // Update funding values
-        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex -=
-            (f.recordedFundedDepositAmount * EXTRA_PRECISION) /
-            f.recordedMoneyMarketIncomeIndex;
+        sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex =
+            sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex +
+            (recordedFundedPrincipalAmount * EXTRA_PRECISION) /
+            currentMoneyMarketIncomeIndex -
+            (recordedFundedPrincipalAmount * EXTRA_PRECISION) /
+            recordedMoneyMarketIncomeIndex;
         f.recordedMoneyMarketIncomeIndex = currentMoneyMarketIncomeIndex;
-        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex +=
-            (f.recordedFundedDepositAmount * EXTRA_PRECISION) /
-            f.recordedMoneyMarketIncomeIndex;
 
-        // Send interest to funder
+        // Compute interest to funders
+        interestAmount =
+            (recordedFundedPrincipalAmount * currentMoneyMarketIncomeIndex) /
+            recordedMoneyMarketIncomeIndex -
+            recordedFundedPrincipalAmount;
+
+        // Distribute interest to funders
         if (interestAmount > 0) {
             interestAmount = moneyMarket.withdraw(interestAmount);
             if (interestAmount > 0) {
-                stablecoin.safeTransfer(funder, interestAmount);
+                // TODO
             }
         }
     }
@@ -413,9 +288,9 @@ contract DInterest is ReentrancyGuard, Ownable {
     /**
         @notice Computes the floating interest amount owed to deficit funders, which will be paid out
                 when a funded deposit is withdrawn.
-                Formula: \sum_i recordedFundedDepositAmount_i * (incomeIndex / recordedMoneyMarketIncomeIndex_i - 1)
-                = incomeIndex * (\sum_i recordedFundedDepositAmount_i / recordedMoneyMarketIncomeIndex_i)
-                - (totalDeposit + totalInterestOwed - unfundedUserDepositAmount)
+                Formula: \sum_i recordedFundedPrincipalAmount_i * (incomeIndex / recordedMoneyMarketIncomeIndex_i - 1)
+                = incomeIndex * (\sum_i recordedFundedPrincipalAmount_i / recordedMoneyMarketIncomeIndex_i)
+                - \sum_i recordedFundedPrincipalAmount_i
                 where i refers to a funding
      */
     function totalInterestOwedToFunders()
@@ -424,10 +299,9 @@ contract DInterest is ReentrancyGuard, Ownable {
     {
         uint256 currentValue =
             (moneyMarket.incomeIndex() *
-                sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex) /
+                sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex) /
                 EXTRA_PRECISION;
-        uint256 initialValue =
-            totalDeposit + totalInterestOwed - unfundedUserDepositAmount;
+        uint256 initialValue = totalFundedPrincipalAmount;
         if (currentValue < initialValue) {
             return 0;
         }
@@ -437,7 +311,10 @@ contract DInterest is ReentrancyGuard, Ownable {
     function surplus() public returns (bool isNegative, uint256 surplusAmount) {
         uint256 totalValue = moneyMarket.totalValue();
         uint256 totalOwed =
-            totalDeposit + totalInterestOwed + totalInterestOwedToFunders();
+            totalDeposit +
+                totalInterestOwed +
+                totalFeeOwed +
+                totalInterestOwedToFunders();
         if (totalValue >= totalOwed) {
             // Locked value more than owed deposits, positive surplus
             isNegative = false;
@@ -455,10 +332,18 @@ contract DInterest is ReentrancyGuard, Ownable {
     {
         Deposit storage depositEntry = _getDeposit(depositID);
         uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
+        uint256 depositTokenTotalSupply =
+            depositMultitoken.totalSupply(depositID);
+        uint256 depositAmount =
+            depositTokenTotalSupply.decdiv(
+                depositEntry.interestRate + PRECISION
+            );
+        uint256 interestAmount = depositTokenTotalSupply - depositAmount;
+        uint256 feeAmount = interestAmount.decmul(depositEntry.feeRate);
         uint256 currentDepositValue =
-            (depositEntry.amount * currentMoneyMarketIncomeIndex) /
-                depositEntry.initialMoneyMarketIncomeIndex;
-        uint256 owed = depositEntry.amount + depositEntry.interestOwed;
+            (depositAmount * currentMoneyMarketIncomeIndex) /
+                depositEntry.averageRecordedIncomeIndex;
+        uint256 owed = depositAmount + interestAmount + feeAmount;
         if (currentDepositValue >= owed) {
             // Locked value more than owed deposits, positive surplus
             isNegative = false;
@@ -471,7 +356,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     }
 
     function depositIsFunded(uint256 id) public view returns (bool) {
-        return (id <= latestFundedDepositID);
+        return _getDeposit(id).fundingID > 0;
     }
 
     function depositsLength() external view returns (uint256) {
@@ -539,37 +424,16 @@ contract DInterest is ReentrancyGuard, Ownable {
         emit ESetParamAddress(msg.sender, "mphMinter", newValue);
     }
 
-    function setMinDepositPeriod(uint256 newValue) external onlyOwner {
-        require(newValue <= MaxDepositPeriod, "DInterest: invalid value");
-        MinDepositPeriod = newValue;
-        emit ESetParamUint(msg.sender, "MinDepositPeriod", newValue);
-    }
-
     function setMaxDepositPeriod(uint256 newValue) external onlyOwner {
-        require(
-            newValue >= MinDepositPeriod && newValue > 0,
-            "DInterest: invalid value"
-        );
+        require(newValue > 0, "DInterest: invalid value");
         MaxDepositPeriod = newValue;
         emit ESetParamUint(msg.sender, "MaxDepositPeriod", newValue);
     }
 
     function setMinDepositAmount(uint256 newValue) external onlyOwner {
-        require(
-            newValue <= MaxDepositAmount && newValue > 0,
-            "DInterest: invalid value"
-        );
+        require(newValue > 0, "DInterest: invalid value");
         MinDepositAmount = newValue;
         emit ESetParamUint(msg.sender, "MinDepositAmount", newValue);
-    }
-
-    function setMaxDepositAmount(uint256 newValue) external onlyOwner {
-        require(
-            newValue >= MinDepositAmount && newValue > 0,
-            "DInterest: invalid value"
-        );
-        MaxDepositAmount = newValue;
-        emit ESetParamUint(msg.sender, "MaxDepositAmount", newValue);
     }
 
     /**
@@ -592,279 +456,365 @@ contract DInterest is ReentrancyGuard, Ownable {
         return fundingList[fundingID - 1];
     }
 
+    function _depositMultitokenToPrincipal(
+        uint256 depositID,
+        uint256 multitokenAmount
+    ) internal view returns (uint256) {
+        Deposit storage depositEntry = _getDeposit(depositID);
+        uint256 depositInterestRate = depositEntry.interestRate;
+        return
+            multitokenAmount.decdiv(depositInterestRate + PRECISION).decmul(
+                depositInterestRate +
+                    depositInterestRate.decmul(depositEntry.feeRate) +
+                    PRECISION
+            );
+    }
+
     /**
         Internals
      */
 
-    function _deposit(uint256 amount, uint256 maturationTimestamp) internal {
-        // Ensure deposit amount is not more than maximum
+    function _deposit(uint256 depositAmount, uint256 maturationTimestamp)
+        internal
+        returns (uint256 depositID)
+    {
+        // Ensure input is valid
         require(
-            amount >= MinDepositAmount && amount <= MaxDepositAmount,
-            "DInterest: Deposit amount out of range"
+            depositAmount >= MinDepositAmount,
+            "DInterest: Deposit amount too small"
         );
-
-        // Ensure deposit period is at least MinDepositPeriod
         uint256 depositPeriod = maturationTimestamp - block.timestamp;
         require(
-            depositPeriod >= MinDepositPeriod &&
-                depositPeriod <= MaxDepositPeriod,
-            "DInterest: Deposit period out of range"
+            depositPeriod <= MaxDepositPeriod,
+            "DInterest: Deposit period too long"
         );
 
-        // Update totalDeposit
-        totalDeposit += amount;
-
         // Calculate interest
-        uint256 interestAmount = calculateInterestAmount(amount, depositPeriod);
+        uint256 interestAmount =
+            calculateInterestAmount(depositAmount, depositPeriod);
         require(interestAmount > 0, "DInterest: interestAmount == 0");
 
-        // Update funding related data
-        uint256 id = deposits.length + 1;
-        unfundedUserDepositAmount += amount + interestAmount;
-
-        // Update totalInterestOwed
-        totalInterestOwed += interestAmount;
+        // Calculate fee
+        uint256 feeAmount = feeModel.getFee(interestAmount);
+        interestAmount -= feeAmount;
 
         // Mint MPH for msg.sender
         uint256 mintMPHAmount =
             mphMinter.mintDepositorReward(
                 msg.sender,
-                amount,
+                depositAmount,
                 depositPeriod,
                 interestAmount
             );
 
-        // Record deposit data for `msg.sender`
+        // Record deposit data
+        uint256 incomeIndex = moneyMarket.incomeIndex();
         deposits.push(
             Deposit({
-                amount: amount,
+                interestRate: interestAmount.decdiv(depositAmount),
+                feeRate: feeAmount.decdiv(interestAmount),
+                mphRewardRate: mintMPHAmount.decdiv(depositAmount),
                 maturationTimestamp: maturationTimestamp,
-                interestOwed: interestAmount,
-                initialMoneyMarketIncomeIndex: moneyMarket.incomeIndex(),
-                active: true,
-                finalSurplusIsNegative: false,
-                finalSurplusAmount: 0,
-                mintMPHAmount: mintMPHAmount,
-                depositTimestamp: block.timestamp
+                depositTimestamp: block.timestamp,
+                fundingID: 0,
+                sumOfRecordedPrincipalAmountDivRecordedIncomeIndex: ((depositAmount +
+                    interestAmount +
+                    feeAmount) * EXTRA_PRECISION) / incomeIndex,
+                averageRecordedIncomeIndex: incomeIndex
             })
         );
 
-        // Transfer `amount` stablecoin to DInterest
-        stablecoin.safeTransferFrom(msg.sender, address(this), amount);
+        // Update global values
+        totalDeposit += depositAmount;
+        totalInterestOwed += interestAmount;
+        totalFeeOwed += feeAmount;
 
-        // Lend `amount` stablecoin to money market
-        stablecoin.safeIncreaseAllowance(address(moneyMarket), amount);
-        moneyMarket.deposit(amount);
+        // Transfer `depositAmount` stablecoin to DInterest
+        stablecoin.safeTransferFrom(msg.sender, address(this), depositAmount);
 
-        // Mint depositNFT
-        depositNFT.mint(msg.sender, id);
+        // Lend `depositAmount` stablecoin to money market
+        stablecoin.safeIncreaseAllowance(address(moneyMarket), depositAmount);
+        moneyMarket.deposit(depositAmount);
+
+        depositID = deposits.length;
+
+        // Mint depositMultitoken
+        depositMultitoken.mint(
+            msg.sender,
+            depositID,
+            depositAmount + interestAmount
+        );
 
         // Emit event
         emit EDeposit(
             msg.sender,
-            id,
-            amount,
+            depositID,
+            depositAmount,
             maturationTimestamp,
             interestAmount,
             mintMPHAmount
         );
     }
 
-    function _withdraw(
-        uint256 depositID,
-        uint256 fundingID,
-        bool early
-    ) internal {
-        Deposit storage depositEntry = _getDeposit(depositID);
-
-        // Verify deposit is active and set to inactive
-        require(depositEntry.active, "DInterest: Deposit not active");
-        depositEntry.active = false;
-
-        if (early) {
-            // Verify `block.timestamp < depositEntry.maturationTimestamp`
-            require(
-                block.timestamp < depositEntry.maturationTimestamp,
-                "DInterest: Deposit mature, use withdraw() instead"
-            );
-            // Verify `block.timestamp > depositEntry.depositTimestamp`
-            require(
-                block.timestamp > depositEntry.depositTimestamp,
-                "DInterest: Deposited in same block"
-            );
-        } else {
-            // Verify `block.timestamp >= depositEntry.maturationTimestamp`
-            require(
-                block.timestamp >= depositEntry.maturationTimestamp,
-                "DInterest: Deposit not mature"
-            );
-        }
-
-        // Verify msg.sender owns the depositNFT
+    function _withdraw(uint256 depositID, uint256 tokenAmount)
+        internal
+        returns (uint256 withdrawnStablecoinAmount)
+    {
+        // Verify input
+        require(tokenAmount > 0, "DInterest: 0 amount");
+        Deposit memory depositEntry = _getDeposit(depositID);
         require(
-            depositNFT.ownerOf(depositID) == msg.sender,
-            "DInterest: Sender doesn't own depositNFT"
+            block.timestamp > depositEntry.depositTimestamp,
+            "DInterest: Deposited in same block"
         );
 
-        // Restrict scope to prevent stack too deep error
-        {
-            // Take back MPH
-            uint256 takeBackMPHAmount =
-                mphMinter.takeBackDepositorReward(
-                    msg.sender,
-                    depositEntry.mintMPHAmount,
-                    early
-                );
+        // Load data to memory to save gas
+        uint256 depositTokenTotalSupply =
+            depositMultitoken.totalSupply(depositID);
 
-            // Emit event
-            emit EWithdraw(
-                msg.sender,
-                depositID,
-                fundingID,
-                early,
-                takeBackMPHAmount
+        // Compute token amounts
+        uint256 depositAmount =
+            tokenAmount.decdiv(depositEntry.interestRate + PRECISION);
+        uint256 interestAmount;
+        // Limit scope to avoid stack too deep error
+        {
+            uint256 currentTimestamp =
+                block.timestamp <= depositEntry.maturationTimestamp
+                    ? block.timestamp
+                    : depositEntry.maturationTimestamp;
+            uint256 fullInterestAmount = tokenAmount - depositAmount;
+            interestAmount =
+                (fullInterestAmount *
+                    (currentTimestamp - depositEntry.depositTimestamp)) /
+                (depositEntry.maturationTimestamp -
+                    depositEntry.depositTimestamp);
+
+            // Update global values
+            totalDeposit -= depositAmount;
+            totalInterestOwed -= fullInterestAmount;
+            totalFeeOwed -= fullInterestAmount.decmul(depositEntry.feeRate);
+        }
+        uint256 feeAmount = interestAmount.decmul(depositEntry.feeRate);
+
+        // Update deposit entry in storage
+        _getDeposit(depositID)
+            .sumOfRecordedPrincipalAmountDivRecordedIncomeIndex =
+            (depositEntry.sumOfRecordedPrincipalAmountDivRecordedIncomeIndex *
+                (depositTokenTotalSupply - tokenAmount)) /
+            depositTokenTotalSupply;
+
+        // If deposit was funded, compute funding interest payout
+        uint256 fundingInterestAmount;
+        if (depositEntry.fundingID > 0) {
+            Funding storage funding = _getFunding(depositEntry.fundingID);
+
+            // Compute funded deposit amount before withdrawal
+            uint256 fundingTokenTotalSupply =
+                fundingMultitoken.totalSupply(depositEntry.fundingID);
+            uint256 recordedFundedPrincipalAmount =
+                fundingTokenTotalSupply.decmul(funding.principalPerToken);
+
+            // Shrink funding principal per token value
+            // TODO: Fix for large proportion withdraws
+            funding.principalPerToken =
+                (funding.principalPerToken *
+                    (depositTokenTotalSupply - tokenAmount)) /
+                depositTokenTotalSupply;
+
+            // Compute interest payout + refund
+            // and update relevant state
+            fundingInterestAmount = _computeAndUpdateFundingInterestAfterWithdraw(
+                depositEntry.fundingID,
+                recordedFundedPrincipalAmount,
+                tokenAmount,
+                interestAmount
             );
         }
 
-        // Update totalDeposit
-        totalDeposit -= depositEntry.amount;
+        // Burn `tokenAmount` depositMultitoken
+        depositMultitoken.burn(msg.sender, depositID, tokenAmount);
 
-        // Update totalInterestOwed
-        totalInterestOwed -= depositEntry.interestOwed;
+        // Withdraw funds from money market
+        // Withdraws principal together with funding interest to save gas
+        uint256 withdrawAmount =
+            moneyMarket.withdraw(
+                depositAmount +
+                    interestAmount +
+                    feeAmount +
+                    fundingInterestAmount
+            );
 
-        // Fetch the income index & surplus before withdrawal, to prevent our withdrawal from
-        // increasing the income index when the money market vault total supply is extremely small
-        // (vault as in yEarn & Harvest vaults)
+        // We do this instead of `depositAmount + interestAmount` because `withdrawAmount` might
+        // be slightly less due to rounding
+        withdrawnStablecoinAmount =
+            withdrawAmount -
+            feeAmount -
+            fundingInterestAmount;
+        stablecoin.safeTransfer(msg.sender, withdrawnStablecoinAmount);
+
+        // Emit event
+        emit EWithdraw(
+            msg.sender,
+            depositID,
+            tokenAmount,
+            withdrawnStablecoinAmount,
+            feeAmount
+        );
+
+        // Send `feeAmount` stablecoin to feeModel beneficiary
+        if (feeAmount > 0) {
+            stablecoin.safeTransfer(feeModel.beneficiary(), feeAmount);
+        }
+
+        // Distribute `fundingInterestAmount` stablecoins to funders
+        if (fundingInterestAmount > 0) {
+            // TODO
+        }
+    }
+
+    function _fund(uint256 depositID, uint256 fundAmount)
+        internal
+        returns (uint256 fundingID)
+    {
+        Deposit storage depositEntry = _getDeposit(depositID);
+
+        (bool isNegative, uint256 surplusMagnitude) = surplus();
+        require(isNegative, "DInterest: No deficit available");
+
+        (isNegative, surplusMagnitude) = surplusOfDeposit(depositID);
+        require(isNegative, "DInterest: No deficit available");
+
+        if (fundAmount > surplusMagnitude) {
+            fundAmount = surplusMagnitude;
+        }
+
+        // Create funding struct if one doesn't exist
+        uint256 incomeIndex = moneyMarket.incomeIndex();
+        require(incomeIndex > 0, "DInterest: incomeIndex == 0");
+        uint256 totalPrincipal =
+            _depositMultitokenToPrincipal(
+                depositID,
+                depositMultitoken.totalSupply(depositID)
+            );
+        uint256 totalPrincipalToFund;
+        fundingID = depositEntry.fundingID;
+        if (fundingID == 0) {
+            // The first funder, create struct
+            fundingList.push(
+                Funding({
+                    depositID: depositID,
+                    recordedMoneyMarketIncomeIndex: incomeIndex,
+                    principalPerToken: PRECISION
+                })
+            );
+            fundingID = fundingList.length;
+            depositEntry.fundingID = fundingID;
+            totalPrincipalToFund =
+                (totalPrincipal * fundAmount) /
+                surplusMagnitude;
+
+            // Mint funding multitoken
+            fundingMultitoken.mint(msg.sender, fundingID, totalPrincipalToFund);
+        } else {
+            // Not the first funder
+            // Compute amount of principal to fund
+            uint256 principalPerToken =
+                _getFunding(fundingID).principalPerToken;
+            uint256 unfundedPrincipalAmount =
+                totalPrincipal -
+                    fundingMultitoken.totalSupply(fundingID).decmul(
+                        principalPerToken
+                    );
+            totalPrincipalToFund =
+                (unfundedPrincipalAmount * fundAmount) /
+                surplusMagnitude;
+
+            // Mint funding multitoken
+            fundingMultitoken.mint(
+                msg.sender,
+                fundingID,
+                totalPrincipalToFund.decdiv(principalPerToken)
+            );
+        }
+
+        // Update relevant values
+        sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex +=
+            (totalPrincipalToFund * EXTRA_PRECISION) /
+            incomeIndex;
+        totalFundedPrincipalAmount += totalPrincipalToFund;
+
+        // Transfer `fundAmount` stablecoins from msg.sender
+        stablecoin.safeTransferFrom(msg.sender, address(this), fundAmount);
+
+        // Deposit `fundAmount` stablecoins into moneyMarket
+        stablecoin.safeIncreaseAllowance(address(moneyMarket), fundAmount);
+        moneyMarket.deposit(fundAmount);
+
+        // Emit event
+        emit EFund(msg.sender, fundingID, fundAmount);
+    }
+
+    function _computeAndUpdateFundingInterestAfterWithdraw(
+        uint256 fundingID,
+        uint256 recordedFundedPrincipalAmount,
+        uint256 tokenAmount,
+        uint256 interestAmount
+    ) internal returns (uint256 fundingInterestAmount) {
+        Funding storage f = _getFunding(fundingID);
+        uint256 recordedMoneyMarketIncomeIndex =
+            f.recordedMoneyMarketIncomeIndex;
         uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
         require(
             currentMoneyMarketIncomeIndex > 0,
             "DInterest: currentMoneyMarketIncomeIndex == 0"
         );
-        (bool depositSurplusIsNegative, uint256 depositSurplus) =
-            surplusOfDeposit(depositID);
-
-        // Restrict scope to prevent stack too deep error
-        {
-            uint256 feeAmount;
-            uint256 withdrawAmount;
-            if (early) {
-                // Withdraw the principal of the deposit from money market
-                withdrawAmount = depositEntry.amount;
-            } else {
-                // Withdraw the principal & the interest from money market
-                feeAmount = feeModel.getFee(depositEntry.interestOwed);
-                withdrawAmount =
-                    depositEntry.amount +
-                    depositEntry.interestOwed;
-            }
-            withdrawAmount = moneyMarket.withdraw(withdrawAmount);
-
-            // Send `withdrawAmount - feeAmount` stablecoin to `msg.sender`
-            stablecoin.safeTransfer(msg.sender, withdrawAmount - feeAmount);
-
-            // Send `feeAmount` stablecoin to feeModel beneficiary
-            if (feeAmount > 0) {
-                stablecoin.safeTransfer(feeModel.beneficiary(), feeAmount);
-            }
-        }
-
-        // If deposit was funded, payout interest to funder
-        if (depositIsFunded(depositID)) {
-            _payInterestToFunder(
-                fundingID,
-                depositID,
-                depositEntry.amount,
-                depositEntry.maturationTimestamp,
-                depositEntry.interestOwed,
-                depositSurplusIsNegative,
-                depositSurplus,
-                currentMoneyMarketIncomeIndex,
-                early
+        uint256 currentFundedPrincipalAmount =
+            fundingMultitoken.totalSupply(fundingID).decdiv(
+                f.principalPerToken
             );
-        } else {
-            // Remove deposit from future deficit fundings
-            unfundedUserDepositAmount -=
-                depositEntry.amount +
-                depositEntry.interestOwed;
-
-            // Record remaining surplus
-            if (!early) {
-                depositEntry.finalSurplusIsNegative = depositSurplusIsNegative;
-                depositEntry.finalSurplusAmount = depositSurplus;
-            }
-        }
-    }
-
-    function _payInterestToFunder(
-        uint256 fundingID,
-        uint256 depositID,
-        uint256 depositAmount,
-        uint256 depositMaturationTimestamp,
-        uint256 depositInterestOwed,
-        bool depositSurplusIsNegative,
-        uint256 depositSurplus,
-        uint256 currentMoneyMarketIncomeIndex,
-        bool early
-    ) internal {
-        Funding storage f = _getFunding(fundingID);
-        require(
-            depositID > f.fromDepositID && depositID <= f.toDepositID,
-            "DInterest: Deposit not funded by fundingID"
-        );
-        uint256 interestAmount =
-            (f.recordedFundedDepositAmount * currentMoneyMarketIncomeIndex) /
-                f.recordedMoneyMarketIncomeIndex -
-                f.recordedFundedDepositAmount;
 
         // Update funding values
-        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex -=
-            (f.recordedFundedDepositAmount * EXTRA_PRECISION) /
-            f.recordedMoneyMarketIncomeIndex;
-        f.recordedFundedDepositAmount -= depositAmount + depositInterestOwed;
+        sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex =
+            sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex +
+            (currentFundedPrincipalAmount * EXTRA_PRECISION) /
+            currentMoneyMarketIncomeIndex -
+            (recordedFundedPrincipalAmount * EXTRA_PRECISION) /
+            recordedMoneyMarketIncomeIndex;
         f.recordedMoneyMarketIncomeIndex = currentMoneyMarketIncomeIndex;
-        sumOfRecordedFundedDepositAndInterestAmountDivRecordedIncomeIndex +=
-            (f.recordedFundedDepositAmount * EXTRA_PRECISION) /
-            f.recordedMoneyMarketIncomeIndex;
+        totalFundedPrincipalAmount -=
+            recordedFundedPrincipalAmount -
+            currentFundedPrincipalAmount;
 
-        // Send interest to funder
-        address funder = fundingNFT.ownerOf(fundingID);
-        uint256 transferToFunderAmount =
-            (early && depositSurplusIsNegative)
-                ? interestAmount + depositSurplus
-                : interestAmount;
-        if (transferToFunderAmount > 0) {
-            transferToFunderAmount = moneyMarket.withdraw(
-                transferToFunderAmount
+        // Compute interest to funders
+        fundingInterestAmount =
+            (recordedFundedPrincipalAmount * currentMoneyMarketIncomeIndex) /
+            recordedMoneyMarketIncomeIndex -
+            recordedFundedPrincipalAmount;
+
+        // Add refund to interestAmount
+        uint256 depositID = f.depositID;
+        uint256 depositAmount =
+            tokenAmount.decdiv(_getDeposit(depositID).interestRate + PRECISION);
+        fundingInterestAmount +=
+            ((_depositMultitokenToPrincipal(depositID, tokenAmount) -
+                depositAmount -
+                interestAmount -
+                interestAmount.decdiv(_getDeposit(depositID).feeRate)) *
+                recordedFundedPrincipalAmount) /
+            _depositMultitokenToPrincipal(
+                depositID,
+                depositMultitoken.totalSupply(depositID)
             );
-            if (transferToFunderAmount > 0) {
-                stablecoin.safeTransfer(funder, transferToFunderAmount);
-            }
-        }
 
         // Mint funder rewards
-        mphMinter.mintFunderReward(
+        // TODO
+        /*mphMinter.mintFunderReward(
             funder,
             depositAmount,
             f.creationTimestamp,
             depositMaturationTimestamp,
             interestAmount,
             early
-        );
-    }
-
-    function _fund(uint256 totalDeficit) internal {
-        // Transfer `totalDeficit` stablecoins from msg.sender
-        stablecoin.safeTransferFrom(msg.sender, address(this), totalDeficit);
-
-        // Deposit `totalDeficit` stablecoins into moneyMarket
-        stablecoin.safeIncreaseAllowance(address(moneyMarket), totalDeficit);
-        moneyMarket.deposit(totalDeficit);
-
-        // Mint fundingNFT
-        fundingNFT.mint(msg.sender, fundingList.length);
-
-        // Emit event
-        uint256 fundingID = fundingList.length;
-        emit EFund(msg.sender, fundingID, totalDeficit);
+        );*/
     }
 }

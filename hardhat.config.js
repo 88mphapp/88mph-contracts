@@ -1,10 +1,12 @@
 require('@nomiclabs/hardhat-truffle5')
+require('@nomiclabs/hardhat-web3')
 require('solidity-coverage')
 require('hardhat-deploy')
 require('hardhat-gas-reporter')
 require('@nomiclabs/hardhat-solhint')
 require('hardhat-spdx-license-identifier')
 require('hardhat-docgen')
+require('@nomiclabs/hardhat-etherscan')
 
 let secret
 
@@ -66,5 +68,11 @@ module.exports = {
       '^contracts/mocks/',
       '^contracts/rewards/Rewards.sol'
     ]
+  },
+  mocha: {
+    timeout: 60000
+  },
+  etherscan: {
+    apiKey: 'SCTNNP3MJK18WV84QIX6WPGMWIS8H1J9W7'
   }
 }

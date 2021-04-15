@@ -77,7 +77,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     event EDeposit(
         address indexed sender,
         uint256 indexed depositID,
-        uint256 amount,
+        uint256 depositAmount,
         uint256 interestAmount,
         uint256 feeAmount,
         uint256 mintMPHAmount,
@@ -86,10 +86,16 @@ contract DInterest is ReentrancyGuard, Ownable {
     event ETopupDeposit(
         address indexed sender,
         uint256 indexed depositID,
-        uint256 amount,
+        uint256 depositAmount,
         uint256 interestAmount,
         uint256 feeAmount,
         uint256 mintMPHAmount
+    );
+    event ERolloverDeposit(
+        address indexed sender,
+        uint256 indexed depositID,
+        uint256 indexed newDepositID,
+        uint256 depositAmount
     );
     event EWithdraw(
         address indexed sender,
@@ -173,7 +179,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         nonReentrant
         returns (uint256 depositID)
     {
-        return _deposit(depositAmount, maturationTimestamp);
+        return _deposit(depositAmount, maturationTimestamp, false);
     }
 
     function topupDeposit(uint256 depositID, uint256 depositAmount)
@@ -181,6 +187,13 @@ contract DInterest is ReentrancyGuard, Ownable {
         nonReentrant
     {
         _topupDeposit(depositID, depositAmount);
+    }
+
+    function rolloverDeposit(uint256 depositID, uint256 maturationTimestamp)
+        external
+        nonReentrant
+    {
+        _rolloverDeposit(depositID, maturationTimestamp);
     }
 
     function withdraw(uint256 depositID, uint256 tokenAmount)
@@ -203,7 +216,8 @@ contract DInterest is ReentrancyGuard, Ownable {
         for (uint256 i = 0; i < amountList.length; i++) {
             depositIDList[i] = _deposit(
                 amountList[i],
-                maturationTimestampList[i]
+                maturationTimestampList[i],
+                false
             );
         }
     }
@@ -218,6 +232,19 @@ contract DInterest is ReentrancyGuard, Ownable {
         );
         for (uint256 i = 0; i < depositIDList.length; i++) {
             _topupDeposit(depositIDList[i], depositAmountList[i]);
+        }
+    }
+
+    function multiRolloverDeposit(
+        uint256[] calldata depositIDList,
+        uint256[] calldata maturationTimestampList
+    ) external nonReentrant {
+        require(
+            depositIDList.length == maturationTimestampList.length,
+            "DInterest: List lengths unequal"
+        );
+        for (uint256 i = 0; i < depositIDList.length; i++) {
+            _rolloverDeposit(depositIDList[i], maturationTimestampList[i]);
         }
     }
 
@@ -532,10 +559,11 @@ contract DInterest is ReentrancyGuard, Ownable {
         Internals
      */
 
-    function _deposit(uint256 depositAmount, uint256 maturationTimestamp)
-        internal
-        returns (uint256 depositID)
-    {
+    function _deposit(
+        uint256 depositAmount,
+        uint256 maturationTimestamp,
+        bool rollover
+    ) internal returns (uint256 depositID) {
         // Ensure input is valid
         require(
             depositAmount >= MinDepositAmount,
@@ -585,8 +613,16 @@ contract DInterest is ReentrancyGuard, Ownable {
         totalInterestOwed += interestAmount;
         totalFeeOwed += feeAmount;
 
-        // Transfer `depositAmount` stablecoin to DInterest
-        stablecoin.safeTransferFrom(msg.sender, address(this), depositAmount);
+        // Only transfer funds from sender if it's not a rollover
+        // because if it is the funds are already in the contract
+        if (!rollover) {
+            // Transfer `depositAmount` stablecoin to DInterest
+            stablecoin.safeTransferFrom(
+                msg.sender,
+                address(this),
+                depositAmount
+            );
+        }
 
         // Lend `depositAmount` stablecoin to money market
         stablecoin.safeIncreaseAllowance(address(moneyMarket), depositAmount);
@@ -620,6 +656,7 @@ contract DInterest is ReentrancyGuard, Ownable {
             "DInterest: not owner"
         );
 
+        // underflow check prevents topups after maturation
         uint256 depositPeriod =
             depositEntry.maturationTimestamp - block.timestamp;
 
@@ -706,6 +743,32 @@ contract DInterest is ReentrancyGuard, Ownable {
             interestAmount,
             feeAmount,
             mintMPHAmount
+        );
+    }
+
+    function _rolloverDeposit(uint256 depositID, uint256 maturationTimestamp)
+        internal
+        returns (uint256 newDepositID)
+    {
+        // withdraw from existing deposit
+        uint256 withdrawnStablecoinAmount =
+            _withdraw(
+                depositID,
+                depositMultitoken.balanceOf(msg.sender, depositID)
+            );
+
+        // deposit funds into a new deposit
+        newDepositID = _deposit(
+            withdrawnStablecoinAmount,
+            maturationTimestamp,
+            true
+        );
+
+        emit ERolloverDeposit(
+            msg.sender,
+            depositID,
+            newDepositID,
+            withdrawnStablecoinAmount
         );
     }
 

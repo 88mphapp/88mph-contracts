@@ -1,6 +1,6 @@
-# 88mph-contracts
+# 88mph-contracts-v3
 
-Ethereum smart contracts for 88mph, an upfront interest lending protocol.
+Ethereum smart contracts for 88mph, a fixed-rate interest lending protocol.
 
 Documentation may be found at [88mph.app/docs/smartcontract](https://88mph.app/docs/smartcontract/)
 
@@ -10,7 +10,7 @@ After cloning the repo, in the project root directory, run the following to run 
 
 ```
 npm install
-npx buidler test
+npx hardhat test
 ```
 
 ### Test coverage
@@ -18,7 +18,7 @@ npx buidler test
 After doing the above, run the following to generate test coverage information using `solidity-coverage`:
 
 ```
-npx buidler coverage
+npx hardhat coverage
 ```
 
 ## Deploying

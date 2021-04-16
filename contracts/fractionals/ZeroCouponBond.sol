@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155ReceiverUpgradeable.sol";
-import "../ERC1155Token.sol";
+import "../tokens/DepositMultitoken.sol";
 import "../DInterest.sol";
 
 contract ZeroCouponBond is
@@ -20,7 +20,7 @@ contract ZeroCouponBond is
 
     DInterest public pool;
     ERC20 public stablecoin;
-    ERC1155Token public depositMultitoken;
+    DepositMultitoken public depositMultitoken;
     uint256 public maturationTimestamp;
     uint8 public _decimals;
 

@@ -4,16 +4,23 @@ pragma solidity 0.8.3;
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-contract ERC1155Token is ERC1155Upgradeable, AccessControlUpgradeable {
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+abstract contract ERC1155Base is ERC1155Upgradeable, AccessControlUpgradeable {
+    bytes32 public constant MINTER_BURNER_ROLE =
+        keccak256("MINTER_BURNER_ROLE");
     bytes32 public constant METADATA_ROLE = keccak256("METADATA_ROLE");
     bytes internal constant NULL_BYTES = bytes("");
 
     mapping(uint256 => uint256) private _totalSupply;
 
-    function init(address admin, string calldata uri) external initializer {
+    function __ERC1155Base_init(address admin, string memory uri)
+        internal
+        initializer
+    {
         __ERC1155_init(uri);
+        __ERC1155Base_init_unchained(admin);
+    }
+
+    function __ERC1155Base_init_unchained(address admin) internal initializer {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
@@ -23,8 +30,8 @@ contract ERC1155Token is ERC1155Upgradeable, AccessControlUpgradeable {
         uint256 amount
     ) external {
         require(
-            hasRole(MINTER_ROLE, _msgSender()),
-            "ERC1155Token: must have minter role to mint"
+            hasRole(MINTER_BURNER_ROLE, _msgSender()),
+            "ERC1155Base: must have minter-burner role to mint"
         );
 
         _mint(to, id, amount, NULL_BYTES);
@@ -36,8 +43,8 @@ contract ERC1155Token is ERC1155Upgradeable, AccessControlUpgradeable {
         uint256[] calldata amounts
     ) external {
         require(
-            hasRole(MINTER_ROLE, _msgSender()),
-            "ERC1155Token: must have minter role to mint"
+            hasRole(MINTER_BURNER_ROLE, _msgSender()),
+            "ERC1155Base: must have minter-burner role to mint"
         );
 
         _mintBatch(to, ids, amounts, NULL_BYTES);
@@ -49,8 +56,8 @@ contract ERC1155Token is ERC1155Upgradeable, AccessControlUpgradeable {
         uint256 amount
     ) external {
         require(
-            hasRole(BURNER_ROLE, _msgSender()),
-            "ERC1155Token: must have burner role to burn"
+            hasRole(MINTER_BURNER_ROLE, _msgSender()),
+            "ERC1155Base: must have minter-burner role to burn"
         );
 
         _burn(account, id, amount);
@@ -62,8 +69,8 @@ contract ERC1155Token is ERC1155Upgradeable, AccessControlUpgradeable {
         uint256[] calldata amounts
     ) external {
         require(
-            hasRole(BURNER_ROLE, _msgSender()),
-            "ERC1155Token: must have burner role to burn"
+            hasRole(MINTER_BURNER_ROLE, _msgSender()),
+            "ERC1155Base: must have minter-burner role to burn"
         );
 
         _burnBatch(account, ids, amounts);
@@ -72,13 +79,13 @@ contract ERC1155Token is ERC1155Upgradeable, AccessControlUpgradeable {
     function setURI(string calldata newuri) external {
         require(
             hasRole(METADATA_ROLE, _msgSender()),
-            "ERC1155Token: must have metadata role to set URI"
+            "ERC1155Base: must have metadata role to set URI"
         );
 
         _setURI(newuri);
     }
 
-    function totalSupply(uint256 id) external view returns (uint256) {
+    function totalSupply(uint256 id) public view returns (uint256) {
         return _totalSupply[id];
     }
 

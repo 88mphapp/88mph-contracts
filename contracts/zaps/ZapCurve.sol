@@ -6,7 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
 import "./imports/CurveZapIn.sol";
 import "../DInterest.sol";
-import "../ERC1155Token.sol";
+import "../tokens/DepositMultitoken.sol";
+import "../tokens/FundingMultitoken.sol";
 
 contract ZapCurve is ERC1155Receiver {
     using SafeERC20 for ERC20;
@@ -32,7 +33,7 @@ contract ZapCurve is ERC1155Receiver {
     ) external active {
         DInterest poolContract = DInterest(pool);
         ERC20 stablecoin = poolContract.stablecoin();
-        ERC1155Token depositMultitoken = poolContract.depositMultitoken();
+        DepositMultitoken depositMultitoken = poolContract.depositMultitoken();
 
         // zap into curve
         uint256 outputTokenAmount =
@@ -68,7 +69,7 @@ contract ZapCurve is ERC1155Receiver {
     ) external active {
         DInterest poolContract = DInterest(pool);
         ERC20 stablecoin = poolContract.stablecoin();
-        ERC1155Token fundingMultitoken = poolContract.fundingMultitoken();
+        FundingMultitoken fundingMultitoken = poolContract.fundingMultitoken();
 
         // zap into curve
         uint256 outputTokenAmount =

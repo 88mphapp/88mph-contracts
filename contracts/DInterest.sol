@@ -9,7 +9,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./moneymarkets/IMoneyMarket.sol";
 import "./models/fee/IFeeModel.sol";
 import "./models/interest/IInterestModel.sol";
-import "./ERC1155Token.sol";
+import "./tokens/DepositMultitoken.sol";
+import "./tokens/FundingMultitoken.sol";
 import "./rewards/MPHMinter.sol";
 import "./models/interest-oracle/IInterestOracle.sol";
 import "./libs/DecMath.sol";
@@ -28,6 +29,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     // Constants
     uint256 internal constant PRECISION = 10**18;
     uint256 internal constant EXTRA_PRECISION = 10**27; // used for sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex
+    uint256 internal constant PRINCIPAL_PER_TOKEN_PRECISION = 2**128; // used for funding.principalPerToken
 
     // User deposit data
     // Each deposit has an ID used in the depositMultitoken, which is equal to its index in `deposits` plus 1
@@ -69,8 +71,8 @@ contract DInterest is ReentrancyGuard, Ownable {
     IFeeModel public feeModel;
     IInterestModel public interestModel;
     IInterestOracle public interestOracle;
-    ERC1155Token public depositMultitoken;
-    ERC1155Token public fundingMultitoken;
+    DepositMultitoken public depositMultitoken;
+    FundingMultitoken public fundingMultitoken;
     MPHMinter public mphMinter;
 
     // Events
@@ -150,8 +152,8 @@ contract DInterest is ReentrancyGuard, Ownable {
         feeModel = IFeeModel(_feeModel);
         interestModel = IInterestModel(_interestModel);
         interestOracle = IInterestOracle(_interestOracle);
-        depositMultitoken = ERC1155Token(_depositMultitoken);
-        fundingMultitoken = ERC1155Token(_fundingMultitoken);
+        depositMultitoken = DepositMultitoken(_depositMultitoken);
+        fundingMultitoken = FundingMultitoken(_fundingMultitoken);
         mphMinter = MPHMinter(_mphMinter);
 
         // Ensure moneyMarket uses the same stablecoin
@@ -292,7 +294,8 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 fundingTokenTotalSupply =
             fundingMultitoken.totalSupply(fundingID);
         uint256 recordedFundedPrincipalAmount =
-            fundingTokenTotalSupply.decmul(f.principalPerToken);
+            (fundingTokenTotalSupply * f.principalPerToken) /
+                PRINCIPAL_PER_TOKEN_PRECISION;
 
         // Update funding values
         sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex =
@@ -313,7 +316,14 @@ contract DInterest is ReentrancyGuard, Ownable {
         if (interestAmount > 0) {
             interestAmount = moneyMarket.withdraw(interestAmount);
             if (interestAmount > 0) {
-                // TODO
+                stablecoin.safeIncreaseAllowance(
+                    address(fundingMultitoken),
+                    interestAmount
+                );
+                fundingMultitoken.distributeDividends(
+                    fundingID,
+                    interestAmount
+                );
             }
         }
     }
@@ -425,9 +435,8 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 principalPerToken = _getFunding(fundingID).principalPerToken;
         uint256 unfundedPrincipalAmount =
             totalPrincipal -
-                fundingMultitoken.totalSupply(fundingID).decmul(
-                    principalPerToken
-                );
+                (fundingMultitoken.totalSupply(fundingID) * principalPerToken) /
+                PRINCIPAL_PER_TOKEN_PRECISION;
         surplusAmount =
             (surplusAmount * unfundedPrincipalAmount) /
             totalPrincipal;
@@ -794,6 +803,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 interestAmount;
         // Limit scope to avoid stack too deep error
         {
+            // TODO: fix for topped-up deposits
             uint256 currentTimestamp =
                 block.timestamp <= depositEntry.maturationTimestamp
                     ? block.timestamp
@@ -821,10 +831,10 @@ contract DInterest is ReentrancyGuard, Ownable {
             uint256 fundingTokenTotalSupply =
                 fundingMultitoken.totalSupply(depositEntry.fundingID);
             uint256 recordedFundedPrincipalAmount =
-                fundingTokenTotalSupply.decmul(funding.principalPerToken);
+                (fundingTokenTotalSupply * funding.principalPerToken) /
+                    PRINCIPAL_PER_TOKEN_PRECISION;
 
             // Shrink funding principal per token value
-            // TODO: Fix for large proportion withdraws
             funding.principalPerToken =
                 (funding.principalPerToken *
                     (depositTokenTotalSupply - tokenAmount)) /
@@ -871,7 +881,14 @@ contract DInterest is ReentrancyGuard, Ownable {
 
         // Distribute `fundingInterestAmount` stablecoins to funders
         if (fundingInterestAmount > 0) {
-            // TODO
+            stablecoin.safeIncreaseAllowance(
+                address(fundingMultitoken),
+                fundingInterestAmount
+            );
+            fundingMultitoken.distributeDividends(
+                depositEntry.fundingID,
+                fundingInterestAmount
+            );
         }
     }
 
@@ -907,7 +924,7 @@ contract DInterest is ReentrancyGuard, Ownable {
                 Funding({
                     depositID: depositID,
                     recordedMoneyMarketIncomeIndex: incomeIndex,
-                    principalPerToken: PRECISION
+                    principalPerToken: PRINCIPAL_PER_TOKEN_PRECISION
                 })
             );
             fundingID = fundingList.length;
@@ -923,9 +940,9 @@ contract DInterest is ReentrancyGuard, Ownable {
                 _getFunding(fundingID).principalPerToken;
             uint256 unfundedPrincipalAmount =
                 totalPrincipal -
-                    fundingMultitoken.totalSupply(fundingID).decmul(
-                        principalPerToken
-                    );
+                    (fundingMultitoken.totalSupply(fundingID) *
+                        principalPerToken) /
+                    PRINCIPAL_PER_TOKEN_PRECISION;
             surplusMagnitude =
                 (surplusMagnitude * unfundedPrincipalAmount) /
                 totalPrincipal;
@@ -935,7 +952,9 @@ contract DInterest is ReentrancyGuard, Ownable {
             totalPrincipalToFund =
                 (unfundedPrincipalAmount * fundAmount) /
                 surplusMagnitude;
-            mintTokenAmount = totalPrincipalToFund.decdiv(principalPerToken);
+            mintTokenAmount =
+                (totalPrincipalToFund * PRINCIPAL_PER_TOKEN_PRECISION) /
+                principalPerToken;
         }
         // Mint funding multitoken
         fundingMultitoken.mint(msg.sender, fundingID, mintTokenAmount);
@@ -972,9 +991,8 @@ contract DInterest is ReentrancyGuard, Ownable {
             "DInterest: currentMoneyMarketIncomeIndex == 0"
         );
         uint256 currentFundedPrincipalAmount =
-            fundingMultitoken.totalSupply(fundingID).decdiv(
-                f.principalPerToken
-            );
+            (fundingMultitoken.totalSupply(fundingID) * f.principalPerToken) /
+                PRINCIPAL_PER_TOKEN_PRECISION;
 
         // Update funding values
         sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex =
@@ -1029,7 +1047,8 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 fundingTokenTotalSupply =
             fundingMultitoken.totalSupply(fundingID);
         uint256 recordedFundedPrincipalAmount =
-            fundingTokenTotalSupply.decmul(f.principalPerToken);
+            (fundingTokenTotalSupply * f.principalPerToken) /
+                PRINCIPAL_PER_TOKEN_PRECISION;
         uint256 recordedMoneyMarketIncomeIndex =
             f.recordedMoneyMarketIncomeIndex;
         uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();

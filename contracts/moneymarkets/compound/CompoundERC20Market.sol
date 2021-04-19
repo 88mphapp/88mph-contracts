@@ -1,32 +1,34 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
 import "./imports/ICERC20.sol";
 import "./imports/IComptroller.sol";
 
-contract CompoundERC20Market is IMoneyMarket, Ownable {
+contract CompoundERC20Market is IMoneyMarket, OwnableUpgradeable {
     using DecMath for uint256;
-    using SafeERC20 for ERC20;
-    using Address for address;
+    using SafeERC20Upgradeable for ERC20Upgradeable;
+    using AddressUpgradeable for address;
 
     uint256 internal constant ERRCODE_OK = 0;
 
     ICERC20 public cToken;
     IComptroller public comptroller;
     address public rewards;
-    ERC20 public override stablecoin;
+    ERC20Upgradeable public override stablecoin;
 
-    constructor(
+    function init(
         address _cToken,
         address _comptroller,
         address _rewards,
         address _stablecoin
-    ) {
+    ) external initializer {
+        __Ownable_init();
+
         // Verify input addresses
         require(
             _cToken.isContract() &&
@@ -39,7 +41,7 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
         cToken = ICERC20(_cToken);
         comptroller = IComptroller(_comptroller);
         rewards = _rewards;
-        stablecoin = ERC20(_stablecoin);
+        stablecoin = ERC20Upgradeable(_stablecoin);
     }
 
     function deposit(uint256 amount) external override onlyOwner {
@@ -57,7 +59,8 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
     }
 
     function withdraw(uint256 amountInUnderlying)
-        external override
+        external
+        override
         onlyOwner
         returns (uint256 actualAmountWithdrawn)
     {
@@ -80,7 +83,7 @@ contract CompoundERC20Market is IMoneyMarket, Ownable {
 
     function claimRewards() external override {
         comptroller.claimComp(address(this));
-        ERC20 comp = ERC20(comptroller.getCompAddress());
+        ERC20Upgradeable comp = ERC20Upgradeable(comptroller.getCompAddress());
         comp.safeTransfer(rewards, comp.balanceOf(address(this)));
     }
 

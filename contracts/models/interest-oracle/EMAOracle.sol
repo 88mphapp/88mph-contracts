@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../../libs/DecMath.sol";
 import "./IInterestOracle.sol";
 
-contract EMAOracle is IInterestOracle {
+contract EMAOracle is IInterestOracle, Initializable {
     using DecMath for uint256;
 
     uint256 internal constant PRECISION = 10**18;
@@ -28,13 +29,13 @@ contract EMAOracle is IInterestOracle {
      */
     IMoneyMarket public override moneyMarket;
 
-    constructor(
+    function init(
         uint256 _emaInitial,
         uint256 _updateInterval,
         uint256 _smoothingFactor,
         uint256 _averageWindowInIntervals,
         address _moneyMarket
-    ) {
+    ) external initializer {
         emaStored = _emaInitial;
         UPDATE_INTERVAL = _updateInterval;
         lastUpdateTimestamp = block.timestamp;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 // Interface for money market protocols (Compound, Aave, bZx, etc.)
 interface IMoneyMarket {
@@ -17,7 +17,7 @@ interface IMoneyMarket {
 
     function incomeIndex() external returns (uint256); // Used for calculating the interest generated (e.g. cDai's price for the Compound market)
 
-    function stablecoin() external view returns (ERC20);
+    function stablecoin() external view returns (ERC20Upgradeable);
 
     function setRewards(address newValue) external;
 

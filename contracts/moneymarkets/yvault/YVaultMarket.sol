@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
 import "./imports/Vault.sol";
 
-contract YVaultMarket is IMoneyMarket, Ownable {
+contract YVaultMarket is IMoneyMarket, OwnableUpgradeable {
     using DecMath for uint256;
-    using SafeERC20 for ERC20;
-    using Address for address;
+    using SafeERC20Upgradeable for ERC20Upgradeable;
+    using AddressUpgradeable for address;
 
     Vault public vault;
-    ERC20 public override stablecoin;
+    ERC20Upgradeable public override stablecoin;
 
-    constructor(address _vault, address _stablecoin) {
+    function init(address _vault, address _stablecoin) external initializer {
         // Verify input addresses
         require(
             _vault.isContract() && _stablecoin.isContract(),
@@ -24,7 +24,7 @@ contract YVaultMarket is IMoneyMarket, Ownable {
         );
 
         vault = Vault(_vault);
-        stablecoin = ERC20(_stablecoin);
+        stablecoin = ERC20Upgradeable(_stablecoin);
     }
 
     function deposit(uint256 amount) external override onlyOwner {

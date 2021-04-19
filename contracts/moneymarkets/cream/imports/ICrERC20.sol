@@ -2,9 +2,8 @@
 pragma solidity 0.8.3;
 
 
-// Compound finance ERC20 market interface
-// Documentation: https://compound.finance/docs/ctokens
-interface ICERC20 {
+// Cream ERC20 market interface
+interface ICrERC20 {
     function transfer(address dst, uint256 amount) external returns (bool);
 
     function transferFrom(address src, address dst, uint256 amount)

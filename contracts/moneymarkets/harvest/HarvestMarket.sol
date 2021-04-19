@@ -1,30 +1,32 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
 import "./imports/HarvestVault.sol";
 import "./imports/HarvestStaking.sol";
 
-contract HarvestMarket is IMoneyMarket, Ownable {
+contract HarvestMarket is IMoneyMarket, OwnableUpgradeable {
     using DecMath for uint256;
-    using SafeERC20 for ERC20;
-    using Address for address;
+    using SafeERC20Upgradeable for ERC20Upgradeable;
+    using AddressUpgradeable for address;
 
     HarvestVault public vault;
     address public rewards;
     HarvestStaking public stakingPool;
-    ERC20 public override stablecoin;
+    ERC20Upgradeable public override stablecoin;
 
-    constructor(
+    function init(
         address _vault,
         address _rewards,
         address _stakingPool,
         address _stablecoin
-    ) {
+    ) external initializer {
+        __Ownable_init();
+
         // Verify input addresses
         require(
             _vault.isContract() &&
@@ -37,7 +39,7 @@ contract HarvestMarket is IMoneyMarket, Ownable {
         vault = HarvestVault(_vault);
         rewards = _rewards;
         stakingPool = HarvestStaking(_stakingPool);
-        stablecoin = ERC20(_stablecoin);
+        stablecoin = ERC20Upgradeable(_stablecoin);
     }
 
     function deposit(uint256 amount) external override onlyOwner {
@@ -85,7 +87,7 @@ contract HarvestMarket is IMoneyMarket, Ownable {
 
     function claimRewards() external override {
         stakingPool.getReward();
-        ERC20 rewardToken = ERC20(stakingPool.rewardToken());
+        ERC20Upgradeable rewardToken = ERC20Upgradeable(stakingPool.rewardToken());
         rewardToken.safeTransfer(rewards, rewardToken.balanceOf(address(this)));
     }
 

@@ -6,9 +6,19 @@ import "./libs/CloneFactory.sol";
 import "./tokens/FundingMultitoken.sol";
 import "./tokens/NFT.sol";
 import "./zero-coupon-bond/ZeroCouponBond.sol";
+import "./models/interest-oracle/EMAOracle.sol";
+import "./moneymarkets/aave/AaveMarket.sol";
+import "./moneymarkets/compound/CompoundERC20Market.sol";
+import "./moneymarkets/cream/CreamERC20Market.sol";
+import "./moneymarkets/harvest/HarvestMarket.sol";
+import "./moneymarkets/yvault/YVaultMarket.sol";
 
 contract Factory is CloneFactory {
-    event CreateClone(string indexed contractName, address template, address _clone);
+    event CreateClone(
+        string indexed contractName,
+        address template,
+        address _clone
+    );
 
     function createNFT(
         address template,
@@ -18,10 +28,7 @@ contract Factory is CloneFactory {
         NFT clone = NFT(createClone(template));
 
         // initialize
-        clone.init(
-            _tokenName,
-            _tokenSymbol
-        );
+        clone.init(_tokenName, _tokenSymbol);
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("NFT", template, address(clone));
@@ -52,14 +59,112 @@ contract Factory is CloneFactory {
         ZeroCouponBond clone = ZeroCouponBond(createClone(template));
 
         // initialize
-        clone.init(
-            _pool,
-            _maturationTimetstamp,
-            _tokenName,
-            _tokenSymbol
-        );
+        clone.init(_pool, _maturationTimetstamp, _tokenName, _tokenSymbol);
 
         emit CreateClone("ZeroCouponBond", template, address(clone));
+        return clone;
+    }
+
+    function createEMAOracle(
+        address template,
+        uint256 _emaInitial,
+        uint256 _updateInterval,
+        uint256 _smoothingFactor,
+        uint256 _averageWindowInIntervals,
+        address _moneyMarket
+    ) external returns (EMAOracle) {
+        EMAOracle clone = EMAOracle(createClone(template));
+
+        // initialize
+        clone.init(
+            _emaInitial,
+            _updateInterval,
+            _smoothingFactor,
+            _averageWindowInIntervals,
+            _moneyMarket
+        );
+
+        emit CreateClone("EMAOracle", template, address(clone));
+        return clone;
+    }
+
+    function createAaveMarket(
+        address template,
+        address _provider,
+        address _aToken,
+        address _stablecoin
+    ) external returns (AaveMarket) {
+        AaveMarket clone = AaveMarket(createClone(template));
+
+        // initialize
+        clone.init(_provider, _aToken, _stablecoin);
+        clone.transferOwnership(msg.sender);
+
+        emit CreateClone("AaveMarket", template, address(clone));
+        return clone;
+    }
+
+    function createCompoundERC20Market(
+        address template,
+        address _cToken,
+        address _comptroller,
+        address _rewards,
+        address _stablecoin
+    ) external returns (CompoundERC20Market) {
+        CompoundERC20Market clone = CompoundERC20Market(createClone(template));
+
+        // initialize
+        clone.init(_cToken, _comptroller, _rewards, _stablecoin);
+        clone.transferOwnership(msg.sender);
+
+        emit CreateClone("CompoundERC20Market", template, address(clone));
+        return clone;
+    }
+
+    function createCreamERC20Market(
+        address template,
+        address _cToken,
+        address _stablecoin
+    ) external returns (CreamERC20Market) {
+        CreamERC20Market clone = CreamERC20Market(createClone(template));
+
+        // initialize
+        clone.init(_cToken, _stablecoin);
+        clone.transferOwnership(msg.sender);
+
+        emit CreateClone("CreamERC20Market", template, address(clone));
+        return clone;
+    }
+
+    function createHarvestMarket(
+        address template,
+        address _vault,
+        address _rewards,
+        address _stakingPool,
+        address _stablecoin
+    ) external returns (HarvestMarket) {
+        HarvestMarket clone = HarvestMarket(createClone(template));
+
+        // initialize
+        clone.init(_vault, _rewards, _stakingPool, _stablecoin);
+        clone.transferOwnership(msg.sender);
+
+        emit CreateClone("HarvestMarket", template, address(clone));
+        return clone;
+    }
+
+    function createYVaultMarket(
+        address template,
+        address _vault,
+        address _stablecoin
+    ) external returns (YVaultMarket) {
+        YVaultMarket clone = YVaultMarket(createClone(template));
+
+        // initialize
+        clone.init(_vault, _stablecoin);
+        clone.transferOwnership(msg.sender);
+
+        emit CreateClone("YVaultMarket", template, address(clone));
         return clone;
     }
 

@@ -1,32 +1,34 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
-import "./imports/ICERC20.sol";
+import "./imports/ICrERC20.sol";
 
-contract CreamERC20Market is IMoneyMarket, Ownable {
+contract CreamERC20Market is IMoneyMarket, OwnableUpgradeable {
     using DecMath for uint256;
-    using SafeERC20 for ERC20;
-    using Address for address;
+    using SafeERC20Upgradeable for ERC20Upgradeable;
+    using AddressUpgradeable for address;
 
     uint256 internal constant ERRCODE_OK = 0;
 
-    ICERC20 public cToken;
-    ERC20 public override stablecoin;
+    ICrERC20 public cToken;
+    ERC20Upgradeable public override stablecoin;
 
-    constructor(address _cToken, address _stablecoin) {
+    function init(address _cToken, address _stablecoin) external initializer {
+        __Ownable_init();
+
         // Verify input addresses
         require(
             _cToken.isContract() && _stablecoin.isContract(),
             "CreamERC20Market: An input address is not a contract"
         );
 
-        cToken = ICERC20(_cToken);
-        stablecoin = ERC20(_stablecoin);
+        cToken = ICrERC20(_cToken);
+        stablecoin = ERC20Upgradeable(_stablecoin);
     }
 
     function deposit(uint256 amount) external override onlyOwner {
@@ -44,7 +46,8 @@ contract CreamERC20Market is IMoneyMarket, Ownable {
     }
 
     function withdraw(uint256 amountInUnderlying)
-        external override
+        external
+        override
         onlyOwner
         returns (uint256 actualAmountWithdrawn)
     {

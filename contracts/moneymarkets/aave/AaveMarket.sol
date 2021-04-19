@@ -1,28 +1,30 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../IMoneyMarket.sol";
 import "./imports/ILendingPool.sol";
 import "./imports/ILendingPoolAddressesProvider.sol";
 
-contract AaveMarket is IMoneyMarket, Ownable {
-    using SafeERC20 for ERC20;
-    using Address for address;
+contract AaveMarket is IMoneyMarket, OwnableUpgradeable {
+    using SafeERC20Upgradeable for ERC20Upgradeable;
+    using AddressUpgradeable for address;
 
     uint16 internal constant REFERRALCODE = 20; // Aave referral program code
 
     ILendingPoolAddressesProvider public provider; // Used for fetching the current address of LendingPool
-    ERC20 public override stablecoin;
-    ERC20 public aToken;
+    ERC20Upgradeable public override stablecoin;
+    ERC20Upgradeable public aToken;
 
-    constructor(
+    function init(
         address _provider,
         address _aToken,
         address _stablecoin
-    ) {
+    ) external initializer {
+        __Ownable_init();
+
         // Verify input addresses
         require(
             _provider.isContract() &&
@@ -32,8 +34,8 @@ contract AaveMarket is IMoneyMarket, Ownable {
         );
 
         provider = ILendingPoolAddressesProvider(_provider);
-        stablecoin = ERC20(_stablecoin);
-        aToken = ERC20(_aToken);
+        stablecoin = ERC20Upgradeable(_stablecoin);
+        aToken = ERC20Upgradeable(_aToken);
     }
 
     function deposit(uint256 amount) external override onlyOwner {

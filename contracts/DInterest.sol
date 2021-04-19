@@ -29,7 +29,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     // Constants
     uint256 internal constant PRECISION = 10**18;
     uint256 internal constant EXTRA_PRECISION = 10**27; // used for sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex
-    uint256 internal constant PRINCIPAL_PER_TOKEN_PRECISION = 2**128; // used for funding.principalPerToken
+    uint256 internal constant ULTRA_PRECISION = 2**128; // used for funding.principalPerToken and deposit.interestRateMultiplierIntercept
 
     // User deposit data
     // Each deposit has an ID used in the depositMultitoken, which is equal to its index in `deposits` plus 1
@@ -39,7 +39,9 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 mphRewardRate; // mphRewardAmount = mphRewardRate * depositAmount
         uint256 maturationTimestamp; // Unix timestamp after which the deposit may be withdrawn, in seconds
         uint256 depositTimestamp; // Unix timestamp at time of deposit, in seconds
-        uint256 averageRecordedIncomeIndex; // Average income index at time of deposit
+        uint256 averageRecordedIncomeIndex; // Average income index at time of deposit, used for computing deposit surplus
+        uint256 lastTopupTimestamp; // Unix timestamp of the last topup
+        uint256 interestRateMultiplierIntercept; // the interest rate multiplier at the time of the last topup
         uint256 fundingID;
     }
     Deposit[] internal deposits;
@@ -294,8 +296,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 fundingTokenTotalSupply =
             fundingMultitoken.totalSupply(fundingID);
         uint256 recordedFundedPrincipalAmount =
-            (fundingTokenTotalSupply * f.principalPerToken) /
-                PRINCIPAL_PER_TOKEN_PRECISION;
+            (fundingTokenTotalSupply * f.principalPerToken) / ULTRA_PRECISION;
 
         // Update funding values
         sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex =
@@ -436,7 +437,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 unfundedPrincipalAmount =
             totalPrincipal -
                 (fundingMultitoken.totalSupply(fundingID) * principalPerToken) /
-                PRINCIPAL_PER_TOKEN_PRECISION;
+                ULTRA_PRECISION;
         surplusAmount =
             (surplusAmount * unfundedPrincipalAmount) /
             totalPrincipal;
@@ -479,6 +480,55 @@ contract DInterest is ReentrancyGuard, Ownable {
 
     function moneyMarketIncomeIndex() external returns (uint256) {
         return moneyMarket.incomeIndex();
+    }
+
+    function withdrawableAmountOfDeposit(
+        uint256 depositID,
+        uint256 tokenAmount,
+        uint256 timestamp
+    ) external view returns (uint256 withdrawableAmount, uint256 feeAmount) {
+        // Verify input
+        Deposit memory depositEntry = _getDeposit(depositID);
+        if (
+            tokenAmount == 0 ||
+            timestamp <= depositEntry.depositTimestamp ||
+            timestamp <= depositEntry.lastTopupTimestamp
+        ) {
+            return (0, 0);
+        }
+
+        // Load data to memory to save gas
+        uint256 depositTokenTotalSupply =
+            depositMultitoken.totalSupply(depositID);
+
+        // Compute token amounts
+        uint256 depositAmount =
+            tokenAmount.decdiv(depositEntry.interestRate + PRECISION);
+        uint256 interestAmount;
+        // Limit scope to avoid stack too deep error
+        {
+            uint256 currentTimestamp =
+                timestamp <= depositEntry.maturationTimestamp
+                    ? timestamp
+                    : depositEntry.maturationTimestamp;
+            uint256 fullInterestAmount = tokenAmount - depositAmount;
+            interestAmount =
+                (fullInterestAmount *
+                    (currentTimestamp - depositEntry.depositTimestamp)) /
+                (depositEntry.maturationTimestamp -
+                    depositEntry.depositTimestamp);
+            interestAmount =
+                (interestAmount *
+                    _getInterestRateMultiplier(
+                        depositEntry.interestRateMultiplierIntercept,
+                        depositEntry.maturationTimestamp,
+                        currentTimestamp,
+                        depositEntry.lastTopupTimestamp
+                    )) /
+                ULTRA_PRECISION;
+        }
+        feeAmount = interestAmount.decmul(depositEntry.feeRate);
+        withdrawableAmount = depositAmount + interestAmount;
     }
 
     /**
@@ -564,6 +614,19 @@ contract DInterest is ReentrancyGuard, Ownable {
             );
     }
 
+    function _getInterestRateMultiplier(
+        uint256 interestRateMultiplierIntercept,
+        uint256 maturationTimestamp,
+        uint256 currentTimestamp,
+        uint256 lastTopupTimestamp
+    ) internal pure returns (uint256) {
+        return
+            ((PRECISION - interestRateMultiplierIntercept) *
+                (currentTimestamp - lastTopupTimestamp)) /
+            (maturationTimestamp - lastTopupTimestamp) +
+            interestRateMultiplierIntercept;
+    }
+
     /**
         Internals
      */
@@ -613,7 +676,9 @@ contract DInterest is ReentrancyGuard, Ownable {
                 maturationTimestamp: maturationTimestamp,
                 depositTimestamp: block.timestamp,
                 fundingID: 0,
-                averageRecordedIncomeIndex: incomeIndex
+                averageRecordedIncomeIndex: incomeIndex,
+                lastTopupTimestamp: block.timestamp,
+                interestRateMultiplierIntercept: ULTRA_PRECISION
             })
         );
 
@@ -723,6 +788,16 @@ contract DInterest is ReentrancyGuard, Ownable {
         depositEntry.averageRecordedIncomeIndex =
             ((depositAmount + currentDepositAmount) * EXTRA_PRECISION) /
             sumOfRecordedDepositAmountDivRecordedIncomeIndex;
+        depositEntry.interestRateMultiplierIntercept =
+            (_getInterestRateMultiplier(
+                depositEntry.interestRateMultiplierIntercept,
+                depositEntry.maturationTimestamp,
+                block.timestamp,
+                depositEntry.lastTopupTimestamp
+            ) * currentInterestAmount) /
+            (interestAmount + currentInterestAmount);
+        depositEntry.lastTopupTimestamp = block.timestamp;
+
         deposits[depositID - 1] = depositEntry;
 
         // Update global values
@@ -803,7 +878,6 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 interestAmount;
         // Limit scope to avoid stack too deep error
         {
-            // TODO: fix for topped-up deposits
             uint256 currentTimestamp =
                 block.timestamp <= depositEntry.maturationTimestamp
                     ? block.timestamp
@@ -814,6 +888,15 @@ contract DInterest is ReentrancyGuard, Ownable {
                     (currentTimestamp - depositEntry.depositTimestamp)) /
                 (depositEntry.maturationTimestamp -
                     depositEntry.depositTimestamp);
+            interestAmount =
+                (interestAmount *
+                    _getInterestRateMultiplier(
+                        depositEntry.interestRateMultiplierIntercept,
+                        depositEntry.maturationTimestamp,
+                        currentTimestamp,
+                        depositEntry.lastTopupTimestamp
+                    )) /
+                ULTRA_PRECISION;
 
             // Update global values
             totalDeposit -= depositAmount;
@@ -832,7 +915,7 @@ contract DInterest is ReentrancyGuard, Ownable {
                 fundingMultitoken.totalSupply(depositEntry.fundingID);
             uint256 recordedFundedPrincipalAmount =
                 (fundingTokenTotalSupply * funding.principalPerToken) /
-                    PRINCIPAL_PER_TOKEN_PRECISION;
+                    ULTRA_PRECISION;
 
             // Shrink funding principal per token value
             funding.principalPerToken =
@@ -924,7 +1007,7 @@ contract DInterest is ReentrancyGuard, Ownable {
                 Funding({
                     depositID: depositID,
                     recordedMoneyMarketIncomeIndex: incomeIndex,
-                    principalPerToken: PRINCIPAL_PER_TOKEN_PRECISION
+                    principalPerToken: ULTRA_PRECISION
                 })
             );
             fundingID = fundingList.length;
@@ -942,7 +1025,7 @@ contract DInterest is ReentrancyGuard, Ownable {
                 totalPrincipal -
                     (fundingMultitoken.totalSupply(fundingID) *
                         principalPerToken) /
-                    PRINCIPAL_PER_TOKEN_PRECISION;
+                    ULTRA_PRECISION;
             surplusMagnitude =
                 (surplusMagnitude * unfundedPrincipalAmount) /
                 totalPrincipal;
@@ -953,7 +1036,7 @@ contract DInterest is ReentrancyGuard, Ownable {
                 (unfundedPrincipalAmount * fundAmount) /
                 surplusMagnitude;
             mintTokenAmount =
-                (totalPrincipalToFund * PRINCIPAL_PER_TOKEN_PRECISION) /
+                (totalPrincipalToFund * ULTRA_PRECISION) /
                 principalPerToken;
         }
         // Mint funding multitoken
@@ -992,7 +1075,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         );
         uint256 currentFundedPrincipalAmount =
             (fundingMultitoken.totalSupply(fundingID) * f.principalPerToken) /
-                PRINCIPAL_PER_TOKEN_PRECISION;
+                ULTRA_PRECISION;
 
         // Update funding values
         sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex =
@@ -1020,7 +1103,7 @@ contract DInterest is ReentrancyGuard, Ownable {
             ((_depositMultitokenToPrincipal(depositID, tokenAmount) -
                 depositAmount -
                 interestAmount -
-                interestAmount.decdiv(_getDeposit(depositID).feeRate)) *
+                interestAmount.decmul(_getDeposit(depositID).feeRate)) *
                 recordedFundedPrincipalAmount) /
             _depositMultitokenToPrincipal(
                 depositID,
@@ -1047,8 +1130,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 fundingTokenTotalSupply =
             fundingMultitoken.totalSupply(fundingID);
         uint256 recordedFundedPrincipalAmount =
-            (fundingTokenTotalSupply * f.principalPerToken) /
-                PRINCIPAL_PER_TOKEN_PRECISION;
+            (fundingTokenTotalSupply * f.principalPerToken) / ULTRA_PRECISION;
         uint256 recordedMoneyMarketIncomeIndex =
             f.recordedMoneyMarketIncomeIndex;
         uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();

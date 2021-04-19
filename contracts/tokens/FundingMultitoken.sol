@@ -33,7 +33,15 @@ contract FundingMultitoken is ERC1155DividendToken {
         _distributeDividends(tokenID, amount);
     }
 
-    function withdrawDividend(uint256 tokenID, address user) external {
+    function withdrawDividend(uint256 tokenID) external {
+        _withdrawDividend(tokenID, msg.sender);
+    }
+
+    function withdrawDividendFor(uint256 tokenID, address user) external {
+        require(
+            hasRole(DIVIDEND_ROLE, _msgSender()),
+            "FundingMultitoken: must have dividend role"
+        );
         _withdrawDividend(tokenID, user);
     }
 }

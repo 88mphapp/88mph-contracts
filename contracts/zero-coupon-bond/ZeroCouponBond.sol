@@ -5,22 +5,20 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155ReceiverUpgradeable.sol";
-import "../tokens/DepositMultitoken.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721ReceiverUpgradeable.sol";
+import "../tokens/NFT.sol";
 import "../DInterest.sol";
 
 contract ZeroCouponBond is
     ERC20Upgradeable,
     ReentrancyGuardUpgradeable,
-    ERC1155ReceiverUpgradeable
+    IERC721ReceiverUpgradeable
 {
     using SafeERC20 for ERC20;
 
-    bytes internal constant NULL_BYTES = bytes("");
-
     DInterest public pool;
     ERC20 public stablecoin;
-    DepositMultitoken public depositMultitoken;
+    NFT public depositNFT;
     uint256 public maturationTimestamp;
     uint8 public _decimals;
 
@@ -40,11 +38,10 @@ contract ZeroCouponBond is
     ) external initializer {
         __ERC20_init(_tokenName, _tokenSymbol);
         __ReentrancyGuard_init();
-        __ERC1155Receiver_init();
 
         pool = DInterest(_pool);
         stablecoin = pool.stablecoin();
-        depositMultitoken = pool.depositMultitoken();
+        depositNFT = pool.depositNFT();
         maturationTimestamp = _maturationTimestamp;
 
         // set decimals to be the same as the underlying stablecoin
@@ -55,7 +52,7 @@ contract ZeroCouponBond is
         return _decimals;
     }
 
-    function mint(uint256 depositID, uint256 depositMultitokenAmount)
+    function mint(uint256 depositID, uint256 depositVirtualTokenAmount)
         external
         nonReentrant
     {
@@ -67,23 +64,17 @@ contract ZeroCouponBond is
             "ZeroCouponBonds: maturation too late"
         );
 
-        // transfer deposit multitoken from `msg.sender`
-        depositMultitoken.safeTransferFrom(
-            msg.sender,
-            address(this),
-            depositID,
-            depositMultitokenAmount,
-            NULL_BYTES
-        );
+        // transfer deposit NFT from `msg.sender`
+        depositNFT.safeTransferFrom(msg.sender, address(this), depositID);
 
         // mint zero coupon bonds to `msg.sender`
-        _mint(msg.sender, depositMultitokenAmount);
+        _mint(msg.sender, depositVirtualTokenAmount);
 
-        emit Mint(msg.sender, depositID, depositMultitokenAmount);
+        emit Mint(msg.sender, depositID, depositVirtualTokenAmount);
     }
 
     function redeemDeposit(uint256 depositID) external nonReentrant {
-        uint256 balance = depositMultitoken.balanceOf(address(this), depositID);
+        uint256 balance = pool.getDeposit(depositID).virtualTokenTotalSupply;
         pool.withdraw(depositID, balance);
 
         emit RedeemDeposit(msg.sender, depositID);
@@ -113,31 +104,12 @@ contract ZeroCouponBond is
         emit RedeemStablecoin(msg.sender, actualRedeemedAmount);
     }
 
-    function onERC1155Received(
+    function onERC721Received(
         address, /*operator*/
         address, /*from*/
-        uint256, /*id*/
-        uint256, /*value*/
-        bytes calldata /*data*/
-    ) external view override returns (bytes4) {
-        require(
-            msg.sender == address(depositMultitoken),
-            "ZeroCouponBond: not deposit multitoken"
-        );
-        return this.onERC1155Received.selector;
-    }
-
-    function onERC1155BatchReceived(
-        address, /*operator*/
-        address, /*from*/
-        uint256[] calldata, /*ids*/
-        uint256[] calldata, /*values*/
-        bytes calldata /*data*/
-    ) external view override returns (bytes4) {
-        require(
-            msg.sender == address(depositMultitoken),
-            "ZeroCouponBond: not deposit multitoken"
-        );
-        return this.onERC1155BatchReceived.selector;
+        uint256, /*tokenId*/
+        bytes memory /*data*/
+    ) external pure override returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 }

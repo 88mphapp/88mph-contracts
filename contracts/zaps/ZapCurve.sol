@@ -4,12 +4,13 @@ pragma solidity 0.8.3;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./imports/CurveZapIn.sol";
 import "../DInterest.sol";
-import "../tokens/DepositMultitoken.sol";
+import "../tokens/NFT.sol";
 import "../tokens/FundingMultitoken.sol";
 
-contract ZapCurve is ERC1155Receiver {
+contract ZapCurve is ERC1155Receiver, IERC721Receiver {
     using SafeERC20 for ERC20;
 
     modifier active {
@@ -33,7 +34,7 @@ contract ZapCurve is ERC1155Receiver {
     ) external active {
         DInterest poolContract = DInterest(pool);
         ERC20 stablecoin = poolContract.stablecoin();
-        DepositMultitoken depositMultitoken = poolContract.depositMultitoken();
+        NFT depositNFT = poolContract.depositNFT();
 
         // zap into curve
         uint256 outputTokenAmount =
@@ -50,13 +51,7 @@ contract ZapCurve is ERC1155Receiver {
             poolContract.deposit(outputTokenAmount, maturationTimestamp);
 
         // transfer deposit multitokens to msg.sender
-        depositMultitoken.safeTransferFrom(
-            address(this),
-            msg.sender,
-            depositID,
-            depositMultitoken.balanceOf(address(this), depositID),
-            NULL_BYTES
-        );
+        depositNFT.safeTransferFrom(address(this), msg.sender, depositID);
     }
 
     function zapCurveFund(
@@ -119,6 +114,16 @@ contract ZapCurve is ERC1155Receiver {
     ) external view override returns (bytes4) {
         require(isActive, "ZapCurve: inactive");
         return this.onERC1155BatchReceived.selector;
+    }
+
+    function onERC721Received(
+        address, /*operator*/
+        address, /*from*/
+        uint256, /*tokenId*/
+        bytes memory /*data*/
+    ) external view override returns (bytes4) {
+        require(isActive, "ZapCurve: inactive");
+        return this.onERC721Received.selector;
     }
 
     function _zapTokenInCurve(

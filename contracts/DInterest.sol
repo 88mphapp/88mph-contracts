@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./moneymarkets/IMoneyMarket.sol";
 import "./models/fee/IFeeModel.sol";
 import "./models/interest/IInterestModel.sol";
-import "./tokens/DepositMultitoken.sol";
+import "./tokens/NFT.sol";
 import "./tokens/FundingMultitoken.sol";
 import "./rewards/MPHMinter.sol";
 import "./models/interest-oracle/IInterestOracle.sol";
@@ -32,8 +32,9 @@ contract DInterest is ReentrancyGuard, Ownable {
     uint256 internal constant ULTRA_PRECISION = 2**128; // used for funding.principalPerToken and deposit.interestRateMultiplierIntercept
 
     // User deposit data
-    // Each deposit has an ID used in the depositMultitoken, which is equal to its index in `deposits` plus 1
+    // Each deposit has an ID used in the depositNFT, which is equal to its index in `deposits` plus 1
     struct Deposit {
+        uint256 virtualTokenTotalSupply; // depositAmount + interestAmount, behaves like a zero coupon bond
         uint256 interestRate; // interestAmount = interestRate * depositAmount
         uint256 feeRate; // feeAmount = feeRate * interestAmount
         uint256 mphRewardRate; // mphRewardAmount = mphRewardRate * depositAmount
@@ -73,7 +74,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     IFeeModel public feeModel;
     IInterestModel public interestModel;
     IInterestOracle public interestOracle;
-    DepositMultitoken public depositMultitoken;
+    NFT public depositNFT;
     FundingMultitoken public fundingMultitoken;
     MPHMinter public mphMinter;
 
@@ -132,8 +133,8 @@ contract DInterest is ReentrancyGuard, Ownable {
         address _feeModel, // Address of the FeeModel contract that determines how fees are charged
         address _interestModel, // Address of the InterestModel contract that determines how much interest to offer
         address _interestOracle, // Address of the InterestOracle contract that provides the average interest rate
-        address _depositMultitoken, // Address of the ERC1155 multitoken representing ownership of deposits (this DInterest contract must have mint & burn roles)
-        address _fundingMultitoken, // Address of the NFT representing ownership of fundings (owner must be set to this DInterest contract)
+        address _depositNFT, // Address of the NFT representing ownership of deposits (owner must be set to this DInterest contract)
+        address _fundingMultitoken, // Address of the ERC1155 multitoken representing ownership of fundings (this DInterest contract must have the minter-burner role)
         address _mphMinter // Address of the contract for handling minting MPH to users
     ) {
         // Verify input addresses
@@ -143,7 +144,7 @@ contract DInterest is ReentrancyGuard, Ownable {
                 _feeModel.isContract() &&
                 _interestModel.isContract() &&
                 _interestOracle.isContract() &&
-                _depositMultitoken.isContract() &&
+                _depositNFT.isContract() &&
                 _fundingMultitoken.isContract() &&
                 _mphMinter.isContract(),
             "DInterest: An input address is not a contract"
@@ -154,7 +155,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         feeModel = IFeeModel(_feeModel);
         interestModel = IInterestModel(_interestModel);
         interestOracle = IInterestOracle(_interestOracle);
-        depositMultitoken = DepositMultitoken(_depositMultitoken);
+        depositNFT = NFT(_depositNFT);
         fundingMultitoken = FundingMultitoken(_fundingMultitoken);
         mphMinter = MPHMinter(_mphMinter);
 
@@ -398,8 +399,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     {
         Deposit storage depositEntry = _getDeposit(depositID);
         uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
-        uint256 depositTokenTotalSupply =
-            depositMultitoken.totalSupply(depositID);
+        uint256 depositTokenTotalSupply = depositEntry.virtualTokenTotalSupply;
         uint256 depositAmount =
             depositTokenTotalSupply.decdiv(
                 depositEntry.interestRate + PRECISION
@@ -428,9 +428,9 @@ contract DInterest is ReentrancyGuard, Ownable {
         (isNegative, surplusAmount) = rawSurplusOfDeposit(depositID);
 
         uint256 totalPrincipal =
-            _depositMultitokenToPrincipal(
+            _depositVirtualTokenToPrincipal(
                 depositID,
-                depositMultitoken.totalSupply(depositID)
+                _getDeposit(depositID).virtualTokenTotalSupply
             );
         uint256 fundingID = _getDeposit(depositID).fundingID;
         uint256 principalPerToken = _getFunding(fundingID).principalPerToken;
@@ -496,10 +496,6 @@ contract DInterest is ReentrancyGuard, Ownable {
         ) {
             return (0, 0);
         }
-
-        // Load data to memory to save gas
-        uint256 depositTokenTotalSupply =
-            depositMultitoken.totalSupply(depositID);
 
         // Compute token amounts
         uint256 depositAmount =
@@ -580,6 +576,17 @@ contract DInterest is ReentrancyGuard, Ownable {
         emit ESetParamUint(msg.sender, "MinDepositAmount", newValue);
     }
 
+    function setDepositNFTBaseURI(string calldata newURI) external onlyOwner {
+        depositNFT.setBaseURI(newURI);
+    }
+
+    function setDepositNFTContractURI(string calldata newURI)
+        external
+        onlyOwner
+    {
+        depositNFT.setContractURI(newURI);
+    }
+
     /**
         Internal getters
      */
@@ -600,14 +607,14 @@ contract DInterest is ReentrancyGuard, Ownable {
         return fundingList[fundingID - 1];
     }
 
-    function _depositMultitokenToPrincipal(
+    function _depositVirtualTokenToPrincipal(
         uint256 depositID,
-        uint256 multitokenAmount
+        uint256 virtualTokenAmount
     ) internal view returns (uint256) {
         Deposit storage depositEntry = _getDeposit(depositID);
         uint256 depositInterestRate = depositEntry.interestRate;
         return
-            multitokenAmount.decdiv(depositInterestRate + PRECISION).decmul(
+            virtualTokenAmount.decdiv(depositInterestRate + PRECISION).decmul(
                 depositInterestRate +
                     depositInterestRate.decmul(depositEntry.feeRate) +
                     PRECISION
@@ -670,6 +677,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 incomeIndex = moneyMarket.incomeIndex();
         deposits.push(
             Deposit({
+                virtualTokenTotalSupply: depositAmount + interestAmount,
                 interestRate: interestAmount.decdiv(depositAmount),
                 feeRate: feeAmount.decdiv(interestAmount),
                 mphRewardRate: mintMPHAmount.decdiv(depositAmount),
@@ -704,12 +712,8 @@ contract DInterest is ReentrancyGuard, Ownable {
 
         depositID = deposits.length;
 
-        // Mint depositMultitoken
-        depositMultitoken.mint(
-            msg.sender,
-            depositID,
-            depositAmount + interestAmount
-        );
+        // Mint depositNFT
+        depositNFT.mint(msg.sender, depositID);
 
         // Emit event
         emit EDeposit(
@@ -726,7 +730,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     function _topupDeposit(uint256 depositID, uint256 depositAmount) internal {
         Deposit memory depositEntry = _getDeposit(depositID);
         require(
-            depositMultitoken.balanceOf(msg.sender, depositID) > 0,
+            depositNFT.ownerOf(depositID) == msg.sender,
             "DInterest: not owner"
         );
 
@@ -754,14 +758,13 @@ contract DInterest is ReentrancyGuard, Ownable {
             );
 
         // Record deposit data
-        uint256 depositTokenTotalSupply =
-            depositMultitoken.totalSupply(depositID);
         uint256 currentDepositAmount =
-            depositTokenTotalSupply.decdiv(
+            depositEntry.virtualTokenTotalSupply.decdiv(
                 depositEntry.interestRate + PRECISION
             );
         uint256 currentInterestAmount =
-            depositTokenTotalSupply - currentDepositAmount;
+            depositEntry.virtualTokenTotalSupply - currentDepositAmount;
+        depositEntry.virtualTokenTotalSupply += depositAmount + interestAmount;
         depositEntry.interestRate =
             (PRECISION *
                 interestAmount +
@@ -812,13 +815,6 @@ contract DInterest is ReentrancyGuard, Ownable {
         stablecoin.safeIncreaseAllowance(address(moneyMarket), depositAmount);
         moneyMarket.deposit(depositAmount);
 
-        // Mint depositMultitoken
-        depositMultitoken.mint(
-            msg.sender,
-            depositID,
-            depositAmount + interestAmount
-        );
-
         // Emit event
         emit ETopupDeposit(
             msg.sender,
@@ -838,7 +834,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 withdrawnStablecoinAmount =
             _withdraw(
                 depositID,
-                depositMultitoken.balanceOf(msg.sender, depositID)
+                _getDeposit(depositID).virtualTokenTotalSupply
             );
 
         // deposit funds into a new deposit
@@ -867,10 +863,6 @@ contract DInterest is ReentrancyGuard, Ownable {
             block.timestamp > depositEntry.depositTimestamp,
             "DInterest: Deposited in same block"
         );
-
-        // Load data to memory to save gas
-        uint256 depositTokenTotalSupply =
-            depositMultitoken.totalSupply(depositID);
 
         // Compute token amounts
         uint256 depositAmount =
@@ -920,8 +912,8 @@ contract DInterest is ReentrancyGuard, Ownable {
             // Shrink funding principal per token value
             funding.principalPerToken =
                 (funding.principalPerToken *
-                    (depositTokenTotalSupply - tokenAmount)) /
-                depositTokenTotalSupply;
+                    (depositEntry.virtualTokenTotalSupply - tokenAmount)) /
+                depositEntry.virtualTokenTotalSupply;
 
             // Compute interest payout + refund
             // and update relevant state
@@ -933,8 +925,8 @@ contract DInterest is ReentrancyGuard, Ownable {
             );
         }
 
-        // Burn `tokenAmount` depositMultitoken
-        depositMultitoken.burn(msg.sender, depositID, tokenAmount);
+        // Burn `tokenAmount` deposit virtual tokens
+        _getDeposit(depositID).virtualTokenTotalSupply -= tokenAmount;
 
         // Withdraw funds from money market
         // Withdraws principal together with funding interest to save gas
@@ -994,9 +986,9 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 incomeIndex = moneyMarket.incomeIndex();
         require(incomeIndex > 0, "DInterest: incomeIndex == 0");
         uint256 totalPrincipal =
-            _depositMultitokenToPrincipal(
+            _depositVirtualTokenToPrincipal(
                 depositID,
-                depositMultitoken.totalSupply(depositID)
+                depositEntry.virtualTokenTotalSupply
             );
         uint256 totalPrincipalToFund;
         fundingID = depositEntry.fundingID;
@@ -1100,14 +1092,14 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 depositAmount =
             tokenAmount.decdiv(_getDeposit(depositID).interestRate + PRECISION);
         fundingInterestAmount +=
-            ((_depositMultitokenToPrincipal(depositID, tokenAmount) -
+            ((_depositVirtualTokenToPrincipal(depositID, tokenAmount) -
                 depositAmount -
                 interestAmount -
                 interestAmount.decmul(_getDeposit(depositID).feeRate)) *
                 recordedFundedPrincipalAmount) /
-            _depositMultitokenToPrincipal(
+            _depositVirtualTokenToPrincipal(
                 depositID,
-                depositMultitoken.totalSupply(depositID)
+                _getDeposit(depositID).virtualTokenTotalSupply
             );
 
         // Mint funder rewards

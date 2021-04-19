@@ -10,7 +10,7 @@ import "./libs/DecMath.sol";
 import "./moneymarkets/IMoneyMarket.sol";
 import "./models/fee/IFeeModel.sol";
 import "./models/interest/IInterestModel.sol";
-import "./NFT.sol";
+import "./tokens/NFT.sol";
 import "./rewards/MPHMinter.sol";
 import "./models/interest-oracle/IInterestOracle.sol";
 

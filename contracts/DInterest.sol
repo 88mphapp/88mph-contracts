@@ -722,16 +722,15 @@ contract DInterest is ReentrancyGuard, Ownable {
 
         // Mint MPH for msg.sender
         // TODO
-        uint256 mintMPHAmount =
+        uint256 mintMPHAmount;/* =
             mphMinter.mintDepositorReward(
                 msg.sender,
                 depositAmount,
                 depositPeriod,
                 interestAmount
-            );
+            );*/
 
         // Record deposit data
-        uint256 incomeIndex = moneyMarket.incomeIndex();
         deposits.push(
             Deposit({
                 virtualTokenTotalSupply: depositAmount + interestAmount,
@@ -741,7 +740,7 @@ contract DInterest is ReentrancyGuard, Ownable {
                 maturationTimestamp: maturationTimestamp,
                 depositTimestamp: block.timestamp,
                 fundingID: 0,
-                averageRecordedIncomeIndex: incomeIndex,
+                averageRecordedIncomeIndex: moneyMarket.incomeIndex(),
                 lastTopupTimestamp: block.timestamp,
                 interestRateMultiplierIntercept: ULTRA_PRECISION
             })

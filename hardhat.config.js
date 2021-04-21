@@ -49,9 +49,11 @@ module.exports = {
       gasPrice: 84.0000001e9
     },
     hardhat: {
+      /*
       forking: {
         url: 'https://eth-mainnet.alchemyapi.io/v2/pvGDp1uf8J7QZ7MXpLhYs_SnMnsE0TY5'
       }
+      */
     }
   },
   spdxLicenseIdentifier: {
@@ -64,7 +66,7 @@ module.exports = {
       '^contracts/rewards/Rewards.sol'
     ],
     clear: true,
-    runOnCompile: true
+    runOnCompile: false
   },
   mocha: {
     timeout: 60000

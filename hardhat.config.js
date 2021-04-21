@@ -52,11 +52,6 @@ module.exports = {
       forking: {
         url: 'https://eth-mainnet.alchemyapi.io/v2/pvGDp1uf8J7QZ7MXpLhYs_SnMnsE0TY5'
       }
-    },
-    ganache: {
-      url: 'http://localhost:8545',
-      gas: 'auto',
-      gasPrice: 30.0000001e9
     }
   },
   spdxLicenseIdentifier: {
@@ -67,7 +62,9 @@ module.exports = {
       '^contracts/libs/',
       '^contracts/mocks/',
       '^contracts/rewards/Rewards.sol'
-    ]
+    ],
+    clear: true,
+    runOnCompile: true
   },
   mocha: {
     timeout: 60000

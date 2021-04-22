@@ -75,7 +75,7 @@ contract ZeroCouponBond is
 
     function redeemDeposit(uint256 depositID) external nonReentrant {
         uint256 balance = pool.getDeposit(depositID).virtualTokenTotalSupply;
-        pool.withdraw(depositID, balance);
+        pool.withdraw(depositID, balance, false);
 
         emit RedeemDeposit(msg.sender, depositID);
     }

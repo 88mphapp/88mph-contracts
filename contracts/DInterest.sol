@@ -47,8 +47,6 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 maturationTimestamp; // Unix timestamp after which the deposit may be withdrawn, in seconds
         uint256 depositTimestamp; // Unix timestamp at time of deposit, in seconds
         uint256 averageRecordedIncomeIndex; // Average income index at time of deposit, used for computing deposit surplus
-        uint256 lastTopupTimestamp; // Unix timestamp of the last topup
-        uint256 interestRateMultiplierIntercept; // the interest rate multiplier at the time of the last topup
         uint256 fundingID; // The ID of the associated Funding struct. 0 if not funded.
     }
     Deposit[] internal deposits;
@@ -254,14 +252,15 @@ contract DInterest is ReentrancyGuard, Ownable {
              yields 1 stablecoin. The total supply is given by deposit.virtualTokenTotalSupply
         @param depositID the deposit to withdraw from
         @param virtualTokenAmount the amount of virtual tokens to withdraw
+        @param early True if intend to withdraw before maturation, false otherwise
         @return withdrawnStablecoinAmount the amount of stablecoins withdrawn
      */
-    function withdraw(uint256 depositID, uint256 virtualTokenAmount)
-        external
-        nonReentrant
-        returns (uint256 withdrawnStablecoinAmount)
-    {
-        return _withdraw(depositID, virtualTokenAmount);
+    function withdraw(
+        uint256 depositID,
+        uint256 virtualTokenAmount,
+        bool early
+    ) external nonReentrant returns (uint256 withdrawnStablecoinAmount) {
+        return _withdraw(depositID, virtualTokenAmount, early);
     }
 
     /**
@@ -363,21 +362,24 @@ contract DInterest is ReentrancyGuard, Ownable {
      */
     function multiWithdraw(
         uint256[] calldata depositIDList,
-        uint256[] calldata virtualTokenAmountList
+        uint256[] calldata virtualTokenAmountList,
+        bool[] calldata earlyList
     )
         external
         nonReentrant
         returns (uint256[] memory withdrawnStablecoinAmountList)
     {
         require(
-            depositIDList.length == virtualTokenAmountList.length,
+            depositIDList.length == virtualTokenAmountList.length &&
+                depositIDList.length == earlyList.length,
             "DInterest: List lengths unequal"
         );
         withdrawnStablecoinAmountList = new uint256[](depositIDList.length);
         for (uint256 i = 0; i < depositIDList.length; i++) {
             withdrawnStablecoinAmountList[i] = _withdraw(
                 depositIDList[i],
-                virtualTokenAmountList[i]
+                virtualTokenAmountList[i],
+                earlyList[i]
             );
         }
     }
@@ -585,8 +587,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         Deposit memory depositEntry = _getDeposit(depositID);
         if (
             virtualTokenAmount == 0 ||
-            timestamp <= depositEntry.depositTimestamp ||
-            timestamp <= depositEntry.lastTopupTimestamp
+            timestamp <= depositEntry.depositTimestamp
         ) {
             return (0, 0);
         }
@@ -594,29 +595,10 @@ contract DInterest is ReentrancyGuard, Ownable {
         // Compute token amounts
         uint256 depositAmount =
             virtualTokenAmount.decdiv(depositEntry.interestRate + PRECISION);
-        uint256 interestAmount;
-        // Limit scope to avoid stack too deep error
-        {
-            uint256 currentTimestamp =
-                timestamp <= depositEntry.maturationTimestamp
-                    ? timestamp
-                    : depositEntry.maturationTimestamp;
-            uint256 fullInterestAmount = virtualTokenAmount - depositAmount;
-            interestAmount =
-                (fullInterestAmount *
-                    (currentTimestamp - depositEntry.depositTimestamp)) /
-                (depositEntry.maturationTimestamp -
-                    depositEntry.depositTimestamp);
-            interestAmount =
-                (interestAmount *
-                    _getInterestRateMultiplier(
-                        depositEntry.interestRateMultiplierIntercept,
-                        depositEntry.maturationTimestamp,
-                        currentTimestamp,
-                        depositEntry.lastTopupTimestamp
-                    )) /
-                ULTRA_PRECISION;
-        }
+        uint256 interestAmount =
+            timestamp >= depositEntry.maturationTimestamp
+                ? virtualTokenAmount - depositAmount
+                : 0;
         feeAmount = interestAmount.decmul(depositEntry.feeRate);
         withdrawableAmount = depositAmount + interestAmount;
     }
@@ -722,7 +704,7 @@ contract DInterest is ReentrancyGuard, Ownable {
 
         // Mint MPH for msg.sender
         // TODO
-        uint256 mintMPHAmount;/* =
+        uint256 mintMPHAmount; /* =
             mphMinter.mintDepositorReward(
                 msg.sender,
                 depositAmount,
@@ -740,9 +722,7 @@ contract DInterest is ReentrancyGuard, Ownable {
                 maturationTimestamp: maturationTimestamp,
                 depositTimestamp: block.timestamp,
                 fundingID: 0,
-                averageRecordedIncomeIndex: moneyMarket.incomeIndex(),
-                lastTopupTimestamp: block.timestamp,
-                interestRateMultiplierIntercept: ULTRA_PRECISION
+                averageRecordedIncomeIndex: moneyMarket.incomeIndex()
             })
         );
 
@@ -852,15 +832,6 @@ contract DInterest is ReentrancyGuard, Ownable {
         depositEntry.averageRecordedIncomeIndex =
             ((depositAmount + currentDepositAmount) * EXTRA_PRECISION) /
             sumOfRecordedDepositAmountDivRecordedIncomeIndex;
-        depositEntry.interestRateMultiplierIntercept =
-            (_getInterestRateMultiplier(
-                depositEntry.interestRateMultiplierIntercept,
-                depositEntry.maturationTimestamp,
-                block.timestamp,
-                depositEntry.lastTopupTimestamp
-            ) * currentInterestAmount) /
-            (interestAmount + currentInterestAmount);
-        depositEntry.lastTopupTimestamp = block.timestamp;
 
         deposits[depositID - 1] = depositEntry;
 
@@ -896,10 +867,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     {
         // withdraw from existing deposit
         uint256 withdrawnStablecoinAmount =
-            _withdraw(
-                depositID,
-                _getDeposit(depositID).virtualTokenTotalSupply
-            );
+            _withdraw(depositID, type(uint256).max, false);
 
         // deposit funds into a new deposit
         newDepositID = _deposit(
@@ -919,10 +887,11 @@ contract DInterest is ReentrancyGuard, Ownable {
     /**
         @dev See {withdraw}
      */
-    function _withdraw(uint256 depositID, uint256 virtualTokenAmount)
-        internal
-        returns (uint256 withdrawnStablecoinAmount)
-    {
+    function _withdraw(
+        uint256 depositID,
+        uint256 virtualTokenAmount,
+        bool early
+    ) internal returns (uint256 withdrawnStablecoinAmount) {
         // Verify input
         require(virtualTokenAmount > 0, "DInterest: 0 amount");
         Deposit memory depositEntry = _getDeposit(depositID);
@@ -930,39 +899,33 @@ contract DInterest is ReentrancyGuard, Ownable {
             block.timestamp > depositEntry.depositTimestamp,
             "DInterest: Deposited in same block"
         );
+        if (early) {
+            require(
+                block.timestamp < depositEntry.maturationTimestamp,
+                "DInterest: mature"
+            );
+        } else {
+            require(
+                block.timestamp >= depositEntry.maturationTimestamp,
+                "DInterest: immature"
+            );
+        }
+
+        // Check if withdrawing all funds
+        if (virtualTokenAmount == type(uint256).max) {
+            virtualTokenAmount = depositEntry.virtualTokenTotalSupply;
+        }
 
         // Compute token amounts
         uint256 depositAmount =
             virtualTokenAmount.decdiv(depositEntry.interestRate + PRECISION);
-        uint256 interestAmount;
-        // Limit scope to avoid stack too deep error
-        {
-            uint256 currentTimestamp =
-                block.timestamp <= depositEntry.maturationTimestamp
-                    ? block.timestamp
-                    : depositEntry.maturationTimestamp;
-            uint256 fullInterestAmount = virtualTokenAmount - depositAmount;
-            interestAmount =
-                (fullInterestAmount *
-                    (currentTimestamp - depositEntry.depositTimestamp)) /
-                (depositEntry.maturationTimestamp -
-                    depositEntry.depositTimestamp);
-            interestAmount =
-                (interestAmount *
-                    _getInterestRateMultiplier(
-                        depositEntry.interestRateMultiplierIntercept,
-                        depositEntry.maturationTimestamp,
-                        currentTimestamp,
-                        depositEntry.lastTopupTimestamp
-                    )) /
-                ULTRA_PRECISION;
-
-            // Update global values
-            totalDeposit -= depositAmount;
-            totalInterestOwed -= fullInterestAmount;
-            totalFeeOwed -= fullInterestAmount.decmul(depositEntry.feeRate);
-        }
+        uint256 interestAmount = early ? 0 : virtualTokenAmount - depositAmount;
         uint256 feeAmount = interestAmount.decmul(depositEntry.feeRate);
+
+        // Update global values
+        totalDeposit -= depositAmount;
+        totalInterestOwed -= virtualTokenAmount - depositAmount;
+        totalFeeOwed -= (virtualTokenAmount - depositAmount).decmul(depositEntry.feeRate);
 
         // If deposit was funded, compute funding interest payout
         uint256 fundingInterestAmount;
@@ -1289,31 +1252,6 @@ contract DInterest is ReentrancyGuard, Ownable {
                     depositInterestRate.decmul(depositEntry.feeRate) +
                     PRECISION
             );
-    }
-
-    /**
-        @dev Computes the multiplier used for determining the amount of interest to
-             give when a deposit is being withdrawn. It is a linear function in time
-             that takes `interestRateMultiplierIntercept` at time `lastTopupTimestamp`
-             and PRECISION at time `maturationTimestamp`. The value at time `currentTimestamp`
-             is returned.
-        @param interestRateMultiplierIntercept The multiplier at the last topup time
-        @param maturationTimestamp The maturation Unix timestamp, in seconds
-        @param currentTimestamp The timestamp to query the function at, in seconds
-        @param lastTopupTimestamp The Unix timestamp of the last topup, in seconds
-        @return The multiplier
-     */
-    function _getInterestRateMultiplier(
-        uint256 interestRateMultiplierIntercept,
-        uint256 maturationTimestamp,
-        uint256 currentTimestamp,
-        uint256 lastTopupTimestamp
-    ) internal pure returns (uint256) {
-        return
-            ((PRECISION - interestRateMultiplierIntercept) *
-                (currentTimestamp - lastTopupTimestamp)) /
-            (maturationTimestamp - lastTopupTimestamp) +
-            interestRateMultiplierIntercept;
     }
 
     /**

@@ -73,5 +73,9 @@ module.exports = {
   },
   etherscan: {
     apiKey: 'SCTNNP3MJK18WV84QIX6WPGMWIS8H1J9W7'
+  },
+  gasReporter: {
+    currency: 'USD',
+    coinmarketcap: 'b0c64afd-6aca-4201-8779-db8dc03e9793'
   }
 }

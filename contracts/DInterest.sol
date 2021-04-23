@@ -925,7 +925,9 @@ contract DInterest is ReentrancyGuard, Ownable {
         // Update global values
         totalDeposit -= depositAmount;
         totalInterestOwed -= virtualTokenAmount - depositAmount;
-        totalFeeOwed -= (virtualTokenAmount - depositAmount).decmul(depositEntry.feeRate);
+        totalFeeOwed -= (virtualTokenAmount - depositAmount).decmul(
+            depositEntry.feeRate
+        );
 
         // If deposit was funded, compute funding interest payout
         uint256 fundingInterestAmount;
@@ -938,13 +940,28 @@ contract DInterest is ReentrancyGuard, Ownable {
             uint256 recordedFundedPrincipalAmount =
                 (fundingTokenTotalSupply * funding.principalPerToken) /
                     ULTRA_PRECISION;
+            uint256 totalPrincipal =
+                _depositVirtualTokenToPrincipal(
+                    depositID,
+                    depositEntry.virtualTokenTotalSupply
+                );
 
             // Shrink funding principal per token value
-            funding.principalPerToken =
-                (funding.principalPerToken *
-                    (depositEntry.virtualTokenTotalSupply -
-                        virtualTokenAmount)) /
-                depositEntry.virtualTokenTotalSupply;
+            uint256 totalPrincipalDecrease =
+                virtualTokenAmount +
+                    (virtualTokenAmount - depositAmount).decmul(
+                        depositEntry.feeRate
+                    );
+            if (
+                totalPrincipal <=
+                totalPrincipalDecrease + recordedFundedPrincipalAmount
+            ) {
+                // Not enough unfunded principal, need to decrease funding principal per token value
+                funding.principalPerToken =
+                    (funding.principalPerToken *
+                        (totalPrincipal - totalPrincipalDecrease)) /
+                    recordedFundedPrincipalAmount;
+            }
 
             // Compute interest payout + refund
             // and update relevant state

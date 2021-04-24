@@ -40,10 +40,11 @@ const DIVIDEND_ROLE = web3.utils.soliditySha3('DIVIDEND_ROLE')
 const epsilon = 1e-4
 const INF = BigNumber(2).pow(256).minus(1).toFixed()
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
+const DEFAULT_SALT = '0x0000000000000000000000000000000000000000000000000000000000000000'
 
 // Utilities
 // travel `time` seconds forward in time
-function timeTravel (time) {
+function timeTravel(time) {
   return new Promise((resolve, reject) => {
     web3.currentProvider.send({
       jsonrpc: '2.0',
@@ -57,19 +58,19 @@ function timeTravel (time) {
   })
 }
 
-async function latestBlockTimestamp () {
+async function latestBlockTimestamp() {
   return (await web3.eth.getBlock('latest')).timestamp
 }
 
-function calcFeeAmount (interestAmount) {
+function calcFeeAmount(interestAmount) {
   return interestAmount.times(0.2)
 }
 
-function applyFee (interestAmount) {
+function applyFee(interestAmount) {
   return interestAmount.minus(calcFeeAmount(interestAmount))
 }
 
-function getIRMultiplier (depositPeriodInSeconds) {
+function getIRMultiplier(depositPeriodInSeconds) {
   const multiplierDecrease = BigNumber(depositPeriodInSeconds).times(multiplierSlope)
   if (multiplierDecrease.gte(multiplierIntercept)) {
     return 0
@@ -78,30 +79,30 @@ function getIRMultiplier (depositPeriodInSeconds) {
   }
 }
 
-function calcInterestAmount (depositAmount, interestRatePerSecond, depositPeriodInSeconds, applyFee) {
+function calcInterestAmount(depositAmount, interestRatePerSecond, depositPeriodInSeconds, applyFee) {
   const IRMultiplier = getIRMultiplier(depositPeriodInSeconds)
   const interestBeforeFee = BigNumber(depositAmount).times(depositPeriodInSeconds).times(interestRatePerSecond).times(IRMultiplier)
   return applyFee ? interestBeforeFee.minus(calcFeeAmount(interestBeforeFee)) : interestBeforeFee
 }
 
 // Converts a JS number into a string that doesn't use scientific notation
-function num2str (num) {
+function num2str(num) {
   return BigNumber(num).integerValue().toFixed()
 }
 
-function epsilonEq (curr, prev, ep) {
+function epsilonEq(curr, prev, ep) {
   const _epsilon = ep || epsilon
   return BigNumber(curr).eq(prev) ||
     (!BigNumber(prev).isZero() && BigNumber(curr).minus(prev).div(prev).abs().lt(_epsilon)) ||
     (!BigNumber(curr).isZero() && BigNumber(prev).minus(curr).div(curr).abs().lt(_epsilon))
 }
 
-function assertEpsilonEq (a, b, message) {
+function assertEpsilonEq(a, b, message) {
   assert(epsilonEq(a, b), `assertEpsilonEq error, a=${BigNumber(a).toString()}, b=${BigNumber(b).toString()}, message=${message}`)
 }
 
-async function factoryReceiptToContract (receipt, contractArtifact) {
-  return await contractArtifact.at(receipt.logs[receipt.logs.length - 1].args._clone)
+async function factoryReceiptToContract(receipt, contractArtifact) {
+  return await contractArtifact.at(receipt.logs[receipt.logs.length - 1].args.clone)
 }
 
 const aaveMoneyMarketModule = () => {
@@ -129,7 +130,7 @@ const aaveMoneyMarketModule = () => {
 
     // Initialize the money market
     const marketTemplate = await AaveMarket.new()
-    const marketReceipt = await factory.createAaveMarket(marketTemplate.address, lendingPoolAddressesProvider.address, aToken.address, stablecoin.address)
+    const marketReceipt = await factory.createAaveMarket(marketTemplate.address, DEFAULT_SALT, lendingPoolAddressesProvider.address, aToken.address, stablecoin.address)
     return await factoryReceiptToContract(marketReceipt, AaveMarket)
   }
 
@@ -167,7 +168,7 @@ const compoundERC20MoneyMarketModule = () => {
 
     // Initialize the money market
     const marketTemplate = await CompoundERC20Market.new()
-    const marketReceipt = await factory.createCompoundERC20Market(marketTemplate.address, cToken.address, comptroller.address, rewards.address, stablecoin.address)
+    const marketReceipt = await factory.createCompoundERC20Market(marketTemplate.address, DEFAULT_SALT, cToken.address, comptroller.address, rewards.address, stablecoin.address)
     return await factoryReceiptToContract(marketReceipt, CompoundERC20Market)
   }
 
@@ -202,7 +203,7 @@ const creamERC20MoneyMarketModule = () => {
 
     // Initialize the money market
     const marketTemplate = await CreamERC20Market.new()
-    const marketReceipt = await factory.createCreamERC20Market(marketTemplate.address, cToken.address, stablecoin.address)
+    const marketReceipt = await factory.createCreamERC20Market(marketTemplate.address, DEFAULT_SALT, cToken.address, stablecoin.address)
     return await factoryReceiptToContract(marketReceipt, CreamERC20Market)
   }
 
@@ -244,7 +245,7 @@ const harvestMoneyMarketModule = () => {
 
     // Initialize the money market
     const marketTemplate = await HarvestMarket.new()
-    const marketReceipt = await factory.createHarvestMarket(marketTemplate.address, vault.address, rewards.address, harvestStaking.address, stablecoin.address)
+    const marketReceipt = await factory.createHarvestMarket(marketTemplate.address, DEFAULT_SALT, vault.address, rewards.address, harvestStaking.address, stablecoin.address)
     return await factoryReceiptToContract(marketReceipt, HarvestMarket)
   }
 
@@ -275,7 +276,7 @@ const yvaultMoneyMarketModule = () => {
 
     // Initialize the money market
     const marketTemplate = await YVaultMarket.new()
-    const marketReceipt = await factory.createYVaultMarket(marketTemplate.address, vault.address, stablecoin.address)
+    const marketReceipt = await factory.createYVaultMarket(marketTemplate.address, DEFAULT_SALT, vault.address, stablecoin.address)
     return await factoryReceiptToContract(marketReceipt, YVaultMarket)
   }
 
@@ -379,15 +380,15 @@ contract('DInterest', accounts => {
 
         // Initialize the NFTs
         const nftTemplate = await NFT.new()
-        const depositNFTReceipt = await factory.createNFT(nftTemplate.address, '88mph Deposit', '88mph-Deposit')
+        const depositNFTReceipt = await factory.createNFT(nftTemplate.address, DEFAULT_SALT, '88mph Deposit', '88mph-Deposit')
         depositNFT = await factoryReceiptToContract(depositNFTReceipt, NFT)
         const fundingMultitokenTemplate = await FundingMultitoken.new()
-        const fundingNFTReceipt = await factory.createFundingMultitoken(fundingMultitokenTemplate.address, stablecoin.address, 'https://api.88mph.app/funding-metadata/')
+        const fundingNFTReceipt = await factory.createFundingMultitoken(fundingMultitokenTemplate.address, DEFAULT_SALT, stablecoin.address, 'https://api.88mph.app/funding-metadata/')
         fundingMultitoken = await factoryReceiptToContract(fundingNFTReceipt, FundingMultitoken)
 
         // Initialize the interest oracle
         const interestOracleTemplate = await EMAOracle.new()
-        const interestOracleReceipt = await factory.createEMAOracle(interestOracleTemplate.address, num2str(INIT_INTEREST_RATE * PRECISION / YEAR_IN_SEC), EMAUpdateInterval, EMASmoothingFactor, EMAAverageWindowInIntervals, market.address)
+        const interestOracleReceipt = await factory.createEMAOracle(interestOracleTemplate.address, DEFAULT_SALT, num2str(INIT_INTEREST_RATE * PRECISION / YEAR_IN_SEC), EMAUpdateInterval, EMASmoothingFactor, EMAAverageWindowInIntervals, market.address)
         interestOracle = await factoryReceiptToContract(interestOracleReceipt, EMAOracle)
 
         // Initialize the DInterest pool

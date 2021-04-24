@@ -47,7 +47,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
 
         // create deposit
         stablecoin.safeIncreaseAllowance(pool, outputTokenAmount);
-        uint256 depositID =
+        (uint256 depositID, ) =
             poolContract.deposit(outputTokenAmount, maturationTimestamp);
 
         // transfer deposit multitokens to msg.sender

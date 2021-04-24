@@ -109,8 +109,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     event ERolloverDeposit(
         address indexed sender,
         uint256 indexed depositID,
-        uint256 indexed newDepositID,
-        uint256 depositAmount
+        uint256 indexed newDepositID
     );
     event EWithdraw(
         address indexed sender,
@@ -207,11 +206,12 @@ contract DInterest is ReentrancyGuard, Ownable {
         @param depositAmount The amount of deposit, in stablecoin
         @param maturationTimestamp The Unix timestamp of maturation, in seconds
         @return depositID The ID of the created deposit
+        @return interestAmount The amount of fixed-rate interest
      */
     function deposit(uint256 depositAmount, uint256 maturationTimestamp)
         external
         nonReentrant
-        returns (uint256 depositID)
+        returns (uint256 depositID, uint256 interestAmount)
     {
         return _deposit(depositAmount, maturationTimestamp, false);
     }
@@ -241,7 +241,7 @@ contract DInterest is ReentrancyGuard, Ownable {
     function rolloverDeposit(uint256 depositID, uint256 maturationTimestamp)
         external
         nonReentrant
-        returns (uint256 newDepositID)
+        returns (uint256 newDepositID, uint256 interestAmount)
     {
         return _rolloverDeposit(depositID, maturationTimestamp);
     }
@@ -302,14 +302,22 @@ contract DInterest is ReentrancyGuard, Ownable {
     function multiDeposit(
         uint256[] calldata depositAmountList,
         uint256[] calldata maturationTimestampList
-    ) external nonReentrant returns (uint256[] memory depositIDList) {
+    )
+        external
+        nonReentrant
+        returns (
+            uint256[] memory depositIDList,
+            uint256[] memory interestAmountList
+        )
+    {
         require(
             depositAmountList.length == maturationTimestampList.length,
             "DInterest: List lengths unequal"
         );
         depositIDList = new uint256[](depositAmountList.length);
+        interestAmountList = new uint256[](depositAmountList.length);
         for (uint256 i = 0; i < depositAmountList.length; i++) {
-            depositIDList[i] = _deposit(
+            (depositIDList[i], interestAmountList[i]) = _deposit(
                 depositAmountList[i],
                 maturationTimestampList[i],
                 false
@@ -343,14 +351,22 @@ contract DInterest is ReentrancyGuard, Ownable {
     function multiRolloverDeposit(
         uint256[] calldata depositIDList,
         uint256[] calldata maturationTimestampList
-    ) external nonReentrant returns (uint256[] memory newDepositIDList) {
+    )
+        external
+        nonReentrant
+        returns (
+            uint256[] memory newDepositIDList,
+            uint256[] memory interestAmountList
+        )
+    {
         require(
             depositIDList.length == maturationTimestampList.length,
             "DInterest: List lengths unequal"
         );
         newDepositIDList = new uint256[](depositIDList.length);
+        interestAmountList = new uint256[](depositIDList.length);
         for (uint256 i = 0; i < depositIDList.length; i++) {
-            newDepositIDList[i] = _rolloverDeposit(
+            (newDepositIDList[i], interestAmountList[i]) = _rolloverDeposit(
                 depositIDList[i],
                 maturationTimestampList[i]
             );
@@ -681,7 +697,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         uint256 depositAmount,
         uint256 maturationTimestamp,
         bool rollover
-    ) internal returns (uint256 depositID) {
+    ) internal returns (uint256 depositID, uint256 interestAmount) {
         // Ensure input is valid
         require(
             depositAmount >= MinDepositAmount,
@@ -694,8 +710,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         );
 
         // Calculate interest
-        uint256 interestAmount =
-            calculateInterestAmount(depositAmount, depositPeriod);
+        interestAmount = calculateInterestAmount(depositAmount, depositPeriod);
         require(interestAmount > 0, "DInterest: interestAmount == 0");
 
         // Calculate fee
@@ -863,25 +878,20 @@ contract DInterest is ReentrancyGuard, Ownable {
      */
     function _rolloverDeposit(uint256 depositID, uint256 maturationTimestamp)
         internal
-        returns (uint256 newDepositID)
+        returns (uint256 newDepositID, uint256 interestAmount)
     {
         // withdraw from existing deposit
         uint256 withdrawnStablecoinAmount =
             _withdraw(depositID, type(uint256).max, false);
 
         // deposit funds into a new deposit
-        newDepositID = _deposit(
+        (newDepositID, interestAmount) = _deposit(
             withdrawnStablecoinAmount,
             maturationTimestamp,
             true
         );
 
-        emit ERolloverDeposit(
-            msg.sender,
-            depositID,
-            newDepositID,
-            withdrawnStablecoinAmount
-        );
+        emit ERolloverDeposit(msg.sender, depositID, newDepositID);
     }
 
     /**

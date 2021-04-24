@@ -20,19 +20,17 @@ contract ZeroCouponBond is
     ERC20 public stablecoin;
     NFT public depositNFT;
     uint256 public maturationTimestamp;
+    uint256 public depositID;
     uint8 public _decimals;
 
-    event Mint(
-        address indexed sender,
-        uint256 indexed depositID,
-        uint256 amount
-    );
-    event RedeemDeposit(address indexed sender, uint256 indexed depositID);
+    event WithdrawDeposit();
     event RedeemStablecoin(address indexed sender, uint256 amount);
 
     function init(
+        address _creator,
         address _pool,
         uint256 _maturationTimestamp,
+        uint256 _initialDepositAmount,
         string calldata _tokenName,
         string calldata _tokenSymbol
     ) external initializer {
@@ -46,62 +44,70 @@ contract ZeroCouponBond is
 
         // set decimals to be the same as the underlying stablecoin
         _decimals = ERC20(address(pool.stablecoin())).decimals();
+
+        // create deposit
+        stablecoin.safeTransferFrom(
+            _creator,
+            address(this),
+            _initialDepositAmount
+        );
+        stablecoin.safeApprove(address(pool), type(uint256).max);
+        uint256 interestAmount;
+        (depositID, interestAmount) = pool.deposit(
+            _initialDepositAmount,
+            maturationTimestamp
+        );
+        _mint(_creator, _initialDepositAmount + interestAmount);
     }
 
     function decimals() public view override returns (uint8) {
         return _decimals;
     }
 
-    function mint(uint256 depositID, uint256 depositVirtualTokenAmount)
-        external
-        nonReentrant
-    {
-        // ensure the deposit's maturation time is on or before that of the ZCB
-        DInterest.Deposit memory depositStruct = pool.getDeposit(depositID);
-        uint256 depositMaturationTimestamp = depositStruct.maturationTimestamp;
-        require(
-            depositMaturationTimestamp <= maturationTimestamp,
-            "ZeroCouponBonds: maturation too late"
-        );
+    function mint(uint256 depositAmount) external nonReentrant {
+        // transfer stablecoins from `msg.sender`
+        stablecoin.safeTransferFrom(msg.sender, address(this), depositAmount);
 
-        // transfer deposit NFT from `msg.sender`
-        depositNFT.safeTransferFrom(msg.sender, address(this), depositID);
+        // topup deposit
+        uint256 interestAmount = pool.topupDeposit(depositID, depositAmount);
 
         // mint zero coupon bonds to `msg.sender`
-        _mint(msg.sender, depositVirtualTokenAmount);
-
-        emit Mint(msg.sender, depositID, depositVirtualTokenAmount);
+        _mint(msg.sender, depositAmount + interestAmount);
     }
 
-    function redeemDeposit(uint256 depositID) external nonReentrant {
+    function withdrawDeposit() external nonReentrant {
         uint256 balance = pool.getDeposit(depositID).virtualTokenTotalSupply;
+        require(balance > 0, "ZeroCouponBond: already withdrawn");
         pool.withdraw(depositID, balance, false);
 
-        emit RedeemDeposit(msg.sender, depositID);
+        emit WithdrawDeposit();
     }
 
-    function redeemStablecoin(uint256 amount)
+    function redeemStablecoin(uint256 amount, bool withdrawDepositIfNeeded)
         external
         nonReentrant
-        returns (uint256 actualRedeemedAmount)
     {
         require(
             block.timestamp >= maturationTimestamp,
             "ZeroCouponBond: not mature"
         );
 
-        uint256 stablecoinBalance = stablecoin.balanceOf(address(this));
-        actualRedeemedAmount = amount > stablecoinBalance
-            ? stablecoinBalance
-            : amount;
+        if (withdrawDepositIfNeeded) {
+            uint256 balance =
+                pool.getDeposit(depositID).virtualTokenTotalSupply;
+            if (balance > 0) {
+                pool.withdraw(depositID, balance, false);
+                emit WithdrawDeposit();
+            }
+        }
 
-        // burn `actualRedeemedAmount` zero coupon bonds from `msg.sender`
-        _burn(msg.sender, actualRedeemedAmount);
+        // burn `amount` zero coupon bonds from `msg.sender`
+        _burn(msg.sender, amount);
 
-        // transfer `actualRedeemedAmount` stablecoins to `msg.sender`
-        stablecoin.safeTransfer(msg.sender, actualRedeemedAmount);
+        // transfer `amount` stablecoins to `msg.sender`
+        stablecoin.safeTransfer(msg.sender, amount);
 
-        emit RedeemStablecoin(msg.sender, actualRedeemedAmount);
+        emit RedeemStablecoin(msg.sender, amount);
     }
 
     function onERC721Received(

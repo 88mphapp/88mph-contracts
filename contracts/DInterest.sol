@@ -14,6 +14,7 @@ import "./tokens/FundingMultitoken.sol";
 import "./rewards/MPHMinter.sol";
 import "./models/interest-oracle/IInterestOracle.sol";
 import "./libs/DecMath.sol";
+import "hardhat/console.sol";
 
 /**
     @title DeLorean Interest -- It's coming back from the future!
@@ -967,6 +968,7 @@ contract DInterest is ReentrancyGuard, Ownable {
                 totalPrincipalDecrease + recordedFundedPrincipalAmount
             ) {
                 // Not enough unfunded principal, need to decrease funding principal per token value
+                // TODO: handle cases where principalPerToken becomes 0
                 funding.principalPerToken =
                     (funding.principalPerToken *
                         (totalPrincipal - totalPrincipalDecrease)) /
@@ -978,8 +980,7 @@ contract DInterest is ReentrancyGuard, Ownable {
             fundingInterestAmount = _computeAndUpdateFundingInterestAfterWithdraw(
                 depositEntry.fundingID,
                 recordedFundedPrincipalAmount,
-                virtualTokenAmount,
-                interestAmount
+                early
             );
         }
 
@@ -1071,6 +1072,9 @@ contract DInterest is ReentrancyGuard, Ownable {
             mintTokenAmount = totalPrincipalToFund;
         } else {
             // Not the first funder
+            // Trigger interest payment for existing funders
+            _payInterestToFunders(fundingID);
+
             // Compute amount of principal to fund
             uint256 principalPerToken =
                 _getFunding(fundingID).principalPerToken;
@@ -1165,15 +1169,13 @@ contract DInterest is ReentrancyGuard, Ownable {
              struct associated with the floating-rate bond.
         @param fundingID The ID of the floating-rate bond
         @param recordedFundedPrincipalAmount The amount of principal funded before the withdrawal
-        @param virtualTokenAmount The amount of virtual tokens being burnt
-        @param interestAmount The amount of interest that will be withdrawn to msg.sender
-        @param fundingInterestAmount The amount of interest to distribute to the floating-rate bond holders
+        @param early True if withdrawing before maturation, false otherwise
+        @return fundingInterestAmount The amount of interest to distribute to the floating-rate bond holders
      */
     function _computeAndUpdateFundingInterestAfterWithdraw(
         uint256 fundingID,
         uint256 recordedFundedPrincipalAmount,
-        uint256 virtualTokenAmount,
-        uint256 interestAmount
+        bool early
     ) internal returns (uint256 fundingInterestAmount) {
         Funding storage f = _getFunding(fundingID);
         uint256 recordedMoneyMarketIncomeIndex =
@@ -1188,12 +1190,27 @@ contract DInterest is ReentrancyGuard, Ownable {
                 ULTRA_PRECISION;
 
         // Update funding values
-        sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex =
-            sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex +
-            (currentFundedPrincipalAmount * EXTRA_PRECISION) /
-            currentMoneyMarketIncomeIndex -
-            (recordedFundedPrincipalAmount * EXTRA_PRECISION) /
-            recordedMoneyMarketIncomeIndex;
+        {
+            uint256 currentFundedPrincipalAmountDivRecordedIncomeIndex =
+                (currentFundedPrincipalAmount * EXTRA_PRECISION) /
+                    currentMoneyMarketIncomeIndex;
+            uint256 recordedFundedPrincipalAmountDivRecordedIncomeIndex =
+                (recordedFundedPrincipalAmount * EXTRA_PRECISION) /
+                    recordedMoneyMarketIncomeIndex;
+            if (
+                sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex +
+                    currentFundedPrincipalAmountDivRecordedIncomeIndex >=
+                recordedFundedPrincipalAmountDivRecordedIncomeIndex
+            ) {
+                sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex =
+                    sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex +
+                    currentFundedPrincipalAmountDivRecordedIncomeIndex -
+                    recordedFundedPrincipalAmountDivRecordedIncomeIndex;
+            } else {
+                sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex = 0;
+            }
+        }
+
         f.recordedMoneyMarketIncomeIndex = currentMoneyMarketIncomeIndex;
         totalFundedPrincipalAmount -=
             recordedFundedPrincipalAmount -
@@ -1206,21 +1223,20 @@ contract DInterest is ReentrancyGuard, Ownable {
             recordedFundedPrincipalAmount;
 
         // Add refund to interestAmount
-        uint256 depositID = f.depositID;
-        uint256 depositAmount =
-            virtualTokenAmount.decdiv(
-                _getDeposit(depositID).interestRate + PRECISION
+        if (early) {
+            Deposit memory depositEntity = _getDeposit(f.depositID);
+            fundingInterestAmount += (recordedFundedPrincipalAmount -
+                currentFundedPrincipalAmount)
+                .decdiv(
+                PRECISION +
+                    depositEntity.interestRate +
+                    depositEntity.interestRate.decmul(depositEntity.feeRate)
+            )
+                .decmul(
+                depositEntity.interestRate +
+                    depositEntity.interestRate.decmul(depositEntity.feeRate)
             );
-        fundingInterestAmount +=
-            ((_depositVirtualTokenToPrincipal(depositID, virtualTokenAmount) -
-                depositAmount -
-                interestAmount -
-                interestAmount.decmul(_getDeposit(depositID).feeRate)) *
-                recordedFundedPrincipalAmount) /
-            _depositVirtualTokenToPrincipal(
-                depositID,
-                _getDeposit(depositID).virtualTokenTotalSupply
-            );
+        }
 
         // Mint funder rewards
         // TODO

@@ -44,7 +44,7 @@ const DEFAULT_SALT = '0x00000000000000000000000000000000000000000000000000000000
 
 // Utilities
 // travel `time` seconds forward in time
-function timeTravel(time) {
+function timeTravel (time) {
   return new Promise((resolve, reject) => {
     web3.currentProvider.send({
       jsonrpc: '2.0',
@@ -58,19 +58,19 @@ function timeTravel(time) {
   })
 }
 
-async function latestBlockTimestamp() {
+async function latestBlockTimestamp () {
   return (await web3.eth.getBlock('latest')).timestamp
 }
 
-function calcFeeAmount(interestAmount) {
+function calcFeeAmount (interestAmount) {
   return interestAmount.times(0.2)
 }
 
-function applyFee(interestAmount) {
+function applyFee (interestAmount) {
   return interestAmount.minus(calcFeeAmount(interestAmount))
 }
 
-function getIRMultiplier(depositPeriodInSeconds) {
+function getIRMultiplier (depositPeriodInSeconds) {
   const multiplierDecrease = BigNumber(depositPeriodInSeconds).times(multiplierSlope)
   if (multiplierDecrease.gte(multiplierIntercept)) {
     return 0
@@ -79,29 +79,29 @@ function getIRMultiplier(depositPeriodInSeconds) {
   }
 }
 
-function calcInterestAmount(depositAmount, interestRatePerSecond, depositPeriodInSeconds, applyFee) {
+function calcInterestAmount (depositAmount, interestRatePerSecond, depositPeriodInSeconds, applyFee) {
   const IRMultiplier = getIRMultiplier(depositPeriodInSeconds)
   const interestBeforeFee = BigNumber(depositAmount).times(depositPeriodInSeconds).times(interestRatePerSecond).times(IRMultiplier)
   return applyFee ? interestBeforeFee.minus(calcFeeAmount(interestBeforeFee)) : interestBeforeFee
 }
 
 // Converts a JS number into a string that doesn't use scientific notation
-function num2str(num) {
+function num2str (num) {
   return BigNumber(num).integerValue().toFixed()
 }
 
-function epsilonEq(curr, prev, ep) {
+function epsilonEq (curr, prev, ep) {
   const _epsilon = ep || epsilon
   return BigNumber(curr).eq(prev) ||
     (!BigNumber(prev).isZero() && BigNumber(curr).minus(prev).div(prev).abs().lt(_epsilon)) ||
     (!BigNumber(curr).isZero() && BigNumber(prev).minus(curr).div(curr).abs().lt(_epsilon))
 }
 
-function assertEpsilonEq(a, b, message) {
+function assertEpsilonEq (a, b, message) {
   assert(epsilonEq(a, b), `assertEpsilonEq error, a=${BigNumber(a).toString()}, b=${BigNumber(b).toString()}, message=${message}`)
 }
 
-async function factoryReceiptToContract(receipt, contractArtifact) {
+async function factoryReceiptToContract (receipt, contractArtifact) {
   return await contractArtifact.at(receipt.logs[receipt.logs.length - 1].args.clone)
 }
 
@@ -292,7 +292,7 @@ const yvaultMoneyMarketModule = () => {
 }
 
 const moneyMarketModuleList = [
-  {
+  /* {
     name: 'Aave',
     moduleGenerator: aaveMoneyMarketModule
   },
@@ -307,7 +307,7 @@ const moneyMarketModuleList = [
   {
     name: 'Harvest',
     moduleGenerator: harvestMoneyMarketModule
-  },
+  }, */
   {
     name: 'YVault',
     moduleGenerator: yvaultMoneyMarketModule
@@ -796,11 +796,158 @@ contract('DInterest', accounts => {
 
       describe('fund', () => {
         context('happy path', () => {
+          it('fund 10% at the beginning', async () => {
+            const depositAmount = 100 * STABLECOIN_PRECISION
 
+            // acc0 deposits for 1 year
+            await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+            const blockNow = await latestBlockTimestamp()
+            await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
+
+            // acc1 funds deposit
+            await stablecoin.approve(dInterestPool.address, INF, { from: acc1 })
+            await dInterestPool.fund(1, INF, { from: acc1 })
+
+            // wait 1 year
+            await moneyMarketModule.timePass(1)
+
+            // withdraw deposit
+            await dInterestPool.withdraw(1, INF, false, { from: acc0 })
+
+            // verify earned interest
+            const acc1BeforeBalance = BigNumber(await stablecoin.balanceOf(acc1))
+            await fundingMultitoken.withdrawDividend(1, { from: acc1 })
+            const actualInterestAmount = BigNumber(await stablecoin.balanceOf(acc1)).minus(acc1BeforeBalance)
+            const expectedInterestAmount = calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, YEAR_IN_SEC, false).plus(depositAmount).times(INIT_INTEREST_RATE)
+            assertEpsilonEq(actualInterestAmount, expectedInterestAmount, 'funding interest earned incorrect')
+          })
+
+          it('two funders fund 70% at 20% maturation', async () => {
+            const depositAmount = 100 * STABLECOIN_PRECISION
+
+            // acc0 deposits for 1 year
+            await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+            const blockNow = await latestBlockTimestamp()
+            await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
+
+            // wait 0.2 year
+            await moneyMarketModule.timePass(0.2)
+
+            // acc1 funds 50%
+            await stablecoin.approve(dInterestPool.address, INF, { from: acc1 })
+            const deficitAmount = BigNumber((await dInterestPool.surplusOfDeposit.call(1)).surplusAmount)
+            await dInterestPool.fund(1, num2str(deficitAmount.times(0.5)), { from: acc1 })
+
+            // acc1 funds 20%
+            await stablecoin.approve(dInterestPool.address, INF, { from: acc2 })
+            await dInterestPool.fund(1, num2str(deficitAmount.times(0.2)), { from: acc2 })
+
+            // wait 0.8 year
+            await moneyMarketModule.timePass(0.8)
+
+            // withdraw deposit
+            await dInterestPool.withdraw(1, INF, false, { from: acc0 })
+
+            // verify earned interest
+            const acc1BeforeBalance = BigNumber(await stablecoin.balanceOf(acc1))
+            await fundingMultitoken.withdrawDividend(1, { from: acc1 })
+            const actualAcc1InterestAmount = BigNumber(await stablecoin.balanceOf(acc1)).minus(acc1BeforeBalance)
+            const expectedAcc1InterestAmount = calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, YEAR_IN_SEC, false).plus(depositAmount).times(INIT_INTEREST_RATE).times(0.8).times(0.5)
+            assertEpsilonEq(actualAcc1InterestAmount, expectedAcc1InterestAmount, 'acc1 funding interest earned incorrect')
+
+            const acc2BeforeBalance = BigNumber(await stablecoin.balanceOf(acc2))
+            await fundingMultitoken.withdrawDividend(1, { from: acc2 })
+            const actualAcc2InterestAmount = BigNumber(await stablecoin.balanceOf(acc2)).minus(acc2BeforeBalance)
+            const expectedAcc2InterestAmount = calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, YEAR_IN_SEC, false).plus(depositAmount).times(INIT_INTEREST_RATE).times(0.8).times(0.2)
+            assertEpsilonEq(actualAcc2InterestAmount, expectedAcc2InterestAmount, 'acc2 funding interest earned incorrect')
+          })
+
+          it('fund 10% then withdraw 50%', async () => {
+            const depositAmount = 100 * STABLECOIN_PRECISION
+
+            // acc0 deposits for 1 year
+            await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+            const blockNow = await latestBlockTimestamp()
+            await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
+
+            // acc1 funds 10%
+            await stablecoin.approve(dInterestPool.address, INF, { from: acc1 })
+            const deficitAmount = BigNumber((await dInterestPool.surplusOfDeposit.call(1)).surplusAmount)
+            await dInterestPool.fund(1, num2str(deficitAmount.times(0.1)), { from: acc1 })
+
+            // withdraw 50%
+            const depositVirtualTokenTotalSupply = calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, YEAR_IN_SEC, true).plus(depositAmount)
+            await dInterestPool.withdraw(1, num2str(depositVirtualTokenTotalSupply.times(0.5)), true, { from: acc0 })
+
+            // wait 1 year
+            await moneyMarketModule.timePass(1)
+
+            // withdraw deposit
+            await dInterestPool.withdraw(1, INF, false, { from: acc0 })
+
+            // verify earned interest
+            const acc1BeforeBalance = BigNumber(await stablecoin.balanceOf(acc1))
+            await fundingMultitoken.withdrawDividend(1, { from: acc1 })
+            const actualInterestAmount = BigNumber(await stablecoin.balanceOf(acc1)).minus(acc1BeforeBalance)
+            const expectedInterestAmount = calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, YEAR_IN_SEC, false).plus(depositAmount).times(INIT_INTEREST_RATE).times(0.1)
+            assertEpsilonEq(actualInterestAmount, expectedInterestAmount, 'funding interest earned incorrect')
+          })
+
+          it('fund 90% then withdraw 50%', async () => {
+            const depositAmount = 100 * STABLECOIN_PRECISION
+
+            // acc0 deposits for 1 year
+            await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+            const blockNow = await latestBlockTimestamp()
+            await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
+
+            // acc1 funds 90%
+            await stablecoin.approve(dInterestPool.address, INF, { from: acc1 })
+            const deficitAmount = BigNumber((await dInterestPool.surplusOfDeposit.call(1)).surplusAmount)
+            await dInterestPool.fund(1, num2str(deficitAmount.times(0.9)), { from: acc1 })
+
+            // withdraw 50%
+            const depositVirtualTokenTotalSupply = calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, YEAR_IN_SEC, true).plus(depositAmount)
+            await dInterestPool.withdraw(1, num2str(depositVirtualTokenTotalSupply.times(0.5)), true, { from: acc0 })
+
+            // verify refund
+            {
+              const acc1BeforeBalance = BigNumber(await stablecoin.balanceOf(acc1))
+              await fundingMultitoken.withdrawDividend(1, { from: acc1 })
+              const actualRefundAmount = BigNumber(await stablecoin.balanceOf(acc1)).minus(acc1BeforeBalance)
+              const expectedRefundAmount = deficitAmount.times(0.4)
+              assertEpsilonEq(actualRefundAmount, expectedRefundAmount, 'funding refund incorrect')
+            }
+
+            // wait 1 year
+            await moneyMarketModule.timePass(1)
+
+            // withdraw deposit
+            await dInterestPool.withdraw(1, INF, false, { from: acc0 })
+
+            // verify earned interest
+            const acc1BeforeBalance = BigNumber(await stablecoin.balanceOf(acc1))
+            await fundingMultitoken.withdrawDividend(1, { from: acc1 })
+            const actualInterestAmount = BigNumber(await stablecoin.balanceOf(acc1)).minus(acc1BeforeBalance)
+            const expectedInterestAmount = calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, YEAR_IN_SEC, false).plus(depositAmount).times(INIT_INTEREST_RATE).times(0.5)
+            assertEpsilonEq(actualInterestAmount, expectedInterestAmount, 'funding interest earned incorrect')
+          })
+        })
+
+        context('complex cases', () => {
+          it('one funder funds 10% at the beginning, then another funder funds 70% at 50% maturation', async () => {
+
+          })
         })
 
         context('edge cases', () => {
+          it('fund 90%, withdraw 100%, topup', async () => {
 
+          })
+
+          it('fund 90%, withdraw 99.99%, topup', async () => {
+
+          })
         })
       })
 

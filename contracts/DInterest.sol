@@ -1225,6 +1225,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         // Add refund to interestAmount
         if (early) {
             Deposit memory depositEntity = _getDeposit(f.depositID);
+            // TODO: only make funder even
             fundingInterestAmount += (recordedFundedPrincipalAmount -
                 currentFundedPrincipalAmount)
                 .decdiv(

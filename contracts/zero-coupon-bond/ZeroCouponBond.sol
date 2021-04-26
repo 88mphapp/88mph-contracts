@@ -75,6 +75,21 @@ contract ZeroCouponBond is
         _mint(msg.sender, depositAmount + interestAmount);
     }
 
+    function earlyRedeem(uint256 bondAmount)
+        external
+        nonReentrant
+        returns (uint256 stablecoinsRedeemed)
+    {
+        // burn bonds
+        _burn(msg.sender, bondAmount);
+
+        // withdraw funds from the pool
+        stablecoinsRedeemed = pool.withdraw(depositID, bondAmount, true);
+
+        // transfer funds to sender
+        stablecoin.safeTransfer(msg.sender, stablecoinsRedeemed);
+    }
+
     function withdrawDeposit() external nonReentrant {
         uint256 balance = pool.getDeposit(depositID).virtualTokenTotalSupply;
         require(balance > 0, "ZeroCouponBond: already withdrawn");
@@ -83,7 +98,11 @@ contract ZeroCouponBond is
         emit WithdrawDeposit();
     }
 
-    function redeemStablecoin(uint256 amount, bool withdrawDepositIfNeeded)
+    function withdrawDepositNeeded() external view returns (bool) {
+        return pool.getDeposit(depositID).virtualTokenTotalSupply > 0;
+    }
+
+    function redeem(uint256 amount, bool withdrawDepositIfNeeded)
         external
         nonReentrant
     {

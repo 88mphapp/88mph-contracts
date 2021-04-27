@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import "./moneymarkets/IMoneyMarket.sol";
 import "./models/fee/IFeeModel.sol";
 import "./models/interest/IInterestModel.sol";
@@ -23,9 +23,9 @@ import "hardhat/console.sol";
     @notice The main pool contract for fixed-rate deposits
     @dev The contract to interact with for most actions
  */
-contract DInterest is ReentrancyGuard, Ownable {
-    using SafeERC20 for ERC20;
-    using Address for address;
+contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
+    using SafeERC20Upgradeable for ERC20Upgradeable;
+    using AddressUpgradeable for address;
     using DecMath for uint256;
 
     // Constants
@@ -82,7 +82,7 @@ contract DInterest is ReentrancyGuard, Ownable {
 
     // External smart contracts
     IMoneyMarket public moneyMarket;
-    ERC20 public stablecoin;
+    ERC20Upgradeable public stablecoin;
     IFeeModel public feeModel;
     IInterestModel public interestModel;
     IInterestOracle public interestOracle;
@@ -148,7 +148,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         @param _fundingMultitoken Address of the ERC1155 multitoken representing ownership of fundings (this DInterest contract must have the minter-burner role)
         @param _mphMinter Address of the contract for handling minting MPH to users
      */
-    constructor(
+    function init(
         uint256 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
         address _moneyMarket,
@@ -159,7 +159,10 @@ contract DInterest is ReentrancyGuard, Ownable {
         address _depositNFT,
         address _fundingMultitoken,
         address _mphMinter
-    ) {
+    ) external initializer {
+        __ReentrancyGuard_init();
+        __Ownable_init();
+
         // Verify input addresses
         require(
             _moneyMarket.isContract() &&
@@ -174,7 +177,7 @@ contract DInterest is ReentrancyGuard, Ownable {
         );
 
         moneyMarket = IMoneyMarket(_moneyMarket);
-        stablecoin = ERC20(_stablecoin);
+        stablecoin = ERC20Upgradeable(_stablecoin);
         feeModel = IFeeModel(_feeModel);
         interestModel = IInterestModel(_interestModel);
         interestOracle = IInterestOracle(_interestOracle);
@@ -1245,7 +1248,7 @@ contract DInterest is ReentrancyGuard, Ownable {
                     depositEntry.interestRate +
                         depositEntry.interestRate.decmul(depositEntry.feeRate)
                 );
-            fundingInterestAmount += Math.min(refundAmount, maxRefundAmount);
+            fundingInterestAmount += MathUpgradeable.min(refundAmount, maxRefundAmount);
         }
 
         // Mint funder rewards

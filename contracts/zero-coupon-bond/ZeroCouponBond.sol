@@ -3,8 +3,7 @@ pragma solidity 0.8.3;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721ReceiverUpgradeable.sol";
 import "../tokens/NFT.sol";
 import "../DInterest.sol";
@@ -14,10 +13,10 @@ contract ZeroCouponBond is
     ReentrancyGuardUpgradeable,
     IERC721ReceiverUpgradeable
 {
-    using SafeERC20 for ERC20;
+    using SafeERC20Upgradeable for ERC20Upgradeable;
 
     DInterest public pool;
-    ERC20 public stablecoin;
+    ERC20Upgradeable public stablecoin;
     NFT public depositNFT;
     uint256 public maturationTimestamp;
     uint256 public depositID;
@@ -43,7 +42,7 @@ contract ZeroCouponBond is
         maturationTimestamp = _maturationTimestamp;
 
         // set decimals to be the same as the underlying stablecoin
-        _decimals = ERC20(address(pool.stablecoin())).decimals();
+        _decimals = ERC20Upgradeable(address(pool.stablecoin())).decimals();
 
         // create deposit
         stablecoin.safeTransferFrom(

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./imports/CurveZapIn.sol";
@@ -11,7 +11,7 @@ import "../tokens/NFT.sol";
 import "../tokens/FundingMultitoken.sol";
 
 contract ZapCurve is ERC1155Receiver, IERC721Receiver {
-    using SafeERC20 for ERC20;
+    using SafeERC20Upgradeable for ERC20Upgradeable;
 
     modifier active {
         isActive = true;
@@ -33,7 +33,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
         uint256 maturationTimestamp
     ) external active {
         DInterest poolContract = DInterest(pool);
-        ERC20 stablecoin = poolContract.stablecoin();
+        ERC20Upgradeable stablecoin = poolContract.stablecoin();
         NFT depositNFT = poolContract.depositNFT();
 
         // zap into curve
@@ -63,7 +63,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
         uint256 depositID
     ) external active {
         DInterest poolContract = DInterest(pool);
-        ERC20 stablecoin = poolContract.stablecoin();
+        ERC20Upgradeable stablecoin = poolContract.stablecoin();
         FundingMultitoken fundingMultitoken = poolContract.fundingMultitoken();
 
         // zap into curve
@@ -132,7 +132,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
         uint256 inputTokenAmount,
         uint256 minOutputTokenAmount
     ) internal returns (uint256 outputTokenAmount) {
-        ERC20 inputTokenContract = ERC20(inputToken);
+        ERC20Upgradeable inputTokenContract = ERC20Upgradeable(inputToken);
 
         // transfer inputToken from msg.sender
         inputTokenContract.safeTransferFrom(

@@ -394,7 +394,10 @@ contract('DInterest', accounts => {
         // Initialize the DInterest pool
         feeModel = await PercentageFeeModel.new(rewards.address)
         interestModel = await LinearDecayInterestModel.new(num2str(multiplierIntercept), num2str(multiplierSlope))
-        dInterestPool = await DInterest.new(
+        const dInterestTemplate = await DInterest.new()
+        const dInterestReceipt = await factory.createDInterest(
+          dInterestTemplate.address,
+          DEFAULT_SALT,
           MaxDepositPeriod,
           MinDepositAmount,
           market.address,
@@ -406,6 +409,7 @@ contract('DInterest', accounts => {
           fundingMultitoken.address,
           mphMinter.address
         )
+        dInterestPool = await factoryReceiptToContract(dInterestReceipt, DInterest)
 
         // Set MPH minting multiplier for DInterest pool
         await mphMinter.setPoolWhitelist(dInterestPool.address, true)

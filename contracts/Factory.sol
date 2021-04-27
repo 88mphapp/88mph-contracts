@@ -12,6 +12,7 @@ import "./moneymarkets/compound/CompoundERC20Market.sol";
 import "./moneymarkets/cream/CreamERC20Market.sol";
 import "./moneymarkets/harvest/HarvestMarket.sol";
 import "./moneymarkets/yvault/YVaultMarket.sol";
+import "./DInterest.sol";
 
 contract Factory {
     using Clones for address;
@@ -189,6 +190,41 @@ contract Factory {
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("YVaultMarket", template, salt, address(clone));
+        return clone;
+    }
+
+    function createDInterest(
+        address template,
+        bytes32 salt,
+        uint256 _MaxDepositPeriod,
+        uint256 _MinDepositAmount,
+        address _moneyMarket,
+        address _stablecoin,
+        address _feeModel,
+        address _interestModel,
+        address _interestOracle,
+        address _depositNFT,
+        address _fundingMultitoken,
+        address _mphMinter
+    ) external returns (DInterest) {
+        DInterest clone = DInterest(template.cloneDeterministic(salt));
+
+        // initialize
+        clone.init(
+            _MaxDepositPeriod,
+            _MinDepositAmount,
+            _moneyMarket,
+            _stablecoin,
+            _feeModel,
+            _interestModel,
+            _interestOracle,
+            _depositNFT,
+            _fundingMultitoken,
+            _mphMinter
+        );
+        clone.transferOwnership(msg.sender);
+
+        emit CreateClone("DInterest", template, salt, address(clone));
         return clone;
     }
 

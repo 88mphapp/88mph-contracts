@@ -390,22 +390,18 @@ contract DInterestWithDepositFee is DInterest {
         Internal getter functions
      */
 
-    function _applyDepositFee(uint256 depositAmount)
+    /**
+        @dev Applies a flat percentage deposit fee to a value.
+        @param amount The before-fee amount
+        @return The after-fee amount
+     */
+    function _applyDepositFee(uint256 amount)
         internal
         view
         virtual
         returns (uint256)
     {
-        return depositAmount.decmul(PRECISION - DepositFee);
-    }
-
-    function _unapplyDepositFee(uint256 depositAmount)
-        internal
-        view
-        virtual
-        returns (uint256)
-    {
-        return depositAmount.decdiv(PRECISION - DepositFee);
+        return amount.decmul(PRECISION - DepositFee);
     }
 
     /**

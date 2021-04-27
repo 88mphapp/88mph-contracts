@@ -73,7 +73,7 @@ contract MPHIssuanceModel02 is OwnableUpgradeable, IMPHIssuanceModel {
         govRewardMultiplier = _govRewardMultiplier;
     }
 
-    function init(uint256 _devRewardMultiplier, uint256 _govRewardMultiplier)
+    function initialize(uint256 _devRewardMultiplier, uint256 _govRewardMultiplier)
         external
         initializer
     {

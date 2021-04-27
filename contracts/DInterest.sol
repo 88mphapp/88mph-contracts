@@ -223,7 +223,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @param _fundingMultitoken Address of the ERC1155 multitoken representing ownership of fundings (this DInterest contract must have the minter-burner role)
         @param _mphMinter Address of the contract for handling minting MPH to users
      */
-    function init(
+    function initialize(
         uint256 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
         address _moneyMarket,

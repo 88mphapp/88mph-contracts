@@ -8,7 +8,7 @@ contract NFT is ERC721URIStorageUpgradeable, OwnableUpgradeable {
     string internal _contractURI;
     string internal __baseURI;
 
-    function init(string calldata tokenName, string calldata tokenSymbol)
+    function initialize(string calldata tokenName, string calldata tokenSymbol)
         external
         initializer
     {

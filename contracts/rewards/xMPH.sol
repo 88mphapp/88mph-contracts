@@ -28,7 +28,7 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
         @param _rewardUnlockPeriod The length of each reward distribution period, in seconds
         @param _distributor The account that will call distributeReward()
      */
-    function init(
+    function initialize(
         ERC20Upgradeable _mph,
         uint256 _rewardUnlockPeriod,
         address _distributor

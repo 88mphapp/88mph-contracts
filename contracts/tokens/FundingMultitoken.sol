@@ -17,7 +17,7 @@ contract FundingMultitoken is ERC1155DividendToken {
 
     function __FundingMultitoken_init_unchained() internal initializer {}
 
-    function init(
+    function initialize(
         address targetAddress,
         address admin,
         string calldata uri

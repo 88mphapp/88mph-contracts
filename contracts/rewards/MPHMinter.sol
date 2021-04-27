@@ -34,7 +34,7 @@ contract MPHMinter is MPHMinterLegacy {
         vesting02 = Vesting02(_vesting02);
     }
 
-    function init(
+    function initialize(
         address _mph,
         address _govTreasury,
         address _devWallet,

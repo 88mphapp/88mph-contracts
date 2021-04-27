@@ -18,7 +18,7 @@ contract AaveMarket is IMoneyMarket, OwnableUpgradeable {
     ERC20Upgradeable public override stablecoin;
     ERC20Upgradeable public aToken;
 
-    function init(
+    function initialize(
         address _provider,
         address _aToken,
         address _stablecoin

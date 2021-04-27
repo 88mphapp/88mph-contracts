@@ -34,7 +34,7 @@ contract Factory {
         NFT clone = NFT(template.cloneDeterministic(salt));
 
         // initialize
-        clone.init(_tokenName, _tokenSymbol);
+        clone.initialize(_tokenName, _tokenSymbol);
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("NFT", template, salt, address(clone));
@@ -51,7 +51,7 @@ contract Factory {
             FundingMultitoken(template.cloneDeterministic(salt));
 
         // initialize
-        clone.init(target, msg.sender, _uri);
+        clone.initialize(target, msg.sender, _uri);
 
         emit CreateClone("FundingMultitoken", template, salt, address(clone));
         return clone;
@@ -70,7 +70,7 @@ contract Factory {
             ZeroCouponBond(template.cloneDeterministic(salt));
 
         // initialize
-        clone.init(
+        clone.initialize(
             msg.sender,
             _pool,
             _maturationTimetstamp,
@@ -95,7 +95,7 @@ contract Factory {
         EMAOracle clone = EMAOracle(template.cloneDeterministic(salt));
 
         // initialize
-        clone.init(
+        clone.initialize(
             _emaInitial,
             _updateInterval,
             _smoothingFactor,
@@ -117,7 +117,7 @@ contract Factory {
         AaveMarket clone = AaveMarket(template.cloneDeterministic(salt));
 
         // initialize
-        clone.init(_provider, _aToken, _stablecoin);
+        clone.initialize(_provider, _aToken, _stablecoin);
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("AaveMarket", template, salt, address(clone));
@@ -136,7 +136,7 @@ contract Factory {
             CompoundERC20Market(template.cloneDeterministic(salt));
 
         // initialize
-        clone.init(_cToken, _comptroller, _rewards, _stablecoin);
+        clone.initialize(_cToken, _comptroller, _rewards, _stablecoin);
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("CompoundERC20Market", template, salt, address(clone));
@@ -153,7 +153,7 @@ contract Factory {
             CreamERC20Market(template.cloneDeterministic(salt));
 
         // initialize
-        clone.init(_cToken, _stablecoin);
+        clone.initialize(_cToken, _stablecoin);
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("CreamERC20Market", template, salt, address(clone));
@@ -171,7 +171,7 @@ contract Factory {
         HarvestMarket clone = HarvestMarket(template.cloneDeterministic(salt));
 
         // initialize
-        clone.init(_vault, _rewards, _stakingPool, _stablecoin);
+        clone.initialize(_vault, _rewards, _stakingPool, _stablecoin);
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("HarvestMarket", template, salt, address(clone));
@@ -187,7 +187,7 @@ contract Factory {
         YVaultMarket clone = YVaultMarket(template.cloneDeterministic(salt));
 
         // initialize
-        clone.init(_vault, _stablecoin);
+        clone.initialize(_vault, _stablecoin);
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("YVaultMarket", template, salt, address(clone));
@@ -211,7 +211,7 @@ contract Factory {
         DInterest clone = DInterest(template.cloneDeterministic(salt));
 
         // initialize
-        clone.init(
+        clone.initialize(
             _MaxDepositPeriod,
             _MinDepositAmount,
             _moneyMarket,
@@ -252,7 +252,7 @@ contract Factory {
             DInterestWithDepositFee(template.cloneDeterministic(salt));
 
         // initialize
-        clone.init(
+        clone.initialize(
             params._MaxDepositPeriod,
             params._MinDepositAmount,
             params._DepositFee,

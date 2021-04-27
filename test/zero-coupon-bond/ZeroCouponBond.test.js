@@ -361,14 +361,14 @@ contract('ZeroCouponBond', accounts => {
 
         // Initialize MPH
         mph = await MPHToken.new()
-        await mph.init()
+        await mph.initialize()
         vesting = await Vesting.new(mph.address)
         vesting02 = await Vesting02.new()
         mphIssuanceModel = await MPHIssuanceModel.new()
-        await mphIssuanceModel.init(DevRewardMultiplier, GovRewardMultiplier)
+        await mphIssuanceModel.initialize(DevRewardMultiplier, GovRewardMultiplier)
         mphMinter = await MPHMinter.new()
-        await mphMinter.init(mph.address, govTreasury, devWallet, mphIssuanceModel.address, vesting.address, vesting02.address)
-        await vesting02.init(mphMinter.address, mph.address, 'Vested MPH', 'veMPH')
+        await mphMinter.initialize(mph.address, govTreasury, devWallet, mphIssuanceModel.address, vesting.address, vesting02.address)
+        await vesting02.initialize(mphMinter.address, mph.address, 'Vested MPH', 'veMPH')
         await mph.transferOwnership(mphMinter.address)
         await mphMinter.grantRole(WHITELISTER_ROLE, acc0, { from: acc0 })
 

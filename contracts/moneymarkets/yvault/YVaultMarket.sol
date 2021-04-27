@@ -16,7 +16,7 @@ contract YVaultMarket is IMoneyMarket, OwnableUpgradeable {
     Vault public vault;
     ERC20Upgradeable public override stablecoin;
 
-    function init(address _vault, address _stablecoin) external initializer {
+    function initialize(address _vault, address _stablecoin) external initializer {
         __Ownable_init();
 
         // Verify input addresses

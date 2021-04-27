@@ -21,7 +21,7 @@ contract CompoundERC20Market is IMoneyMarket, OwnableUpgradeable {
     address public rewards;
     ERC20Upgradeable public override stablecoin;
 
-    function init(
+    function initialize(
         address _cToken,
         address _comptroller,
         address _rewards,

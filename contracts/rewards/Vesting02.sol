@@ -45,7 +45,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
         uint256 withdrawnAmount
     );
 
-    function init(
+    function initialize(
         address _mphMinter,
         address _token,
         string calldata tokenName,

@@ -19,7 +19,7 @@ contract HarvestMarket is IMoneyMarket, OwnableUpgradeable {
     HarvestStaking public stakingPool;
     ERC20Upgradeable public override stablecoin;
 
-    function init(
+    function initialize(
         address _vault,
         address _rewards,
         address _stakingPool,

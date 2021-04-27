@@ -25,7 +25,7 @@ contract ZeroCouponBond is
     event WithdrawDeposit();
     event RedeemStablecoin(address indexed sender, uint256 amount);
 
-    function init(
+    function initialize(
         address _creator,
         address _pool,
         uint256 _maturationTimestamp,

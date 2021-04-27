@@ -18,7 +18,7 @@ contract CreamERC20Market is IMoneyMarket, OwnableUpgradeable {
     ICrERC20 public cToken;
     ERC20Upgradeable public override stablecoin;
 
-    function init(address _cToken, address _stablecoin) external initializer {
+    function initialize(address _cToken, address _stablecoin) external initializer {
         __Ownable_init();
 
         // Verify input addresses

@@ -29,7 +29,7 @@ contract EMAOracle is IInterestOracle, Initializable {
      */
     IMoneyMarket public override moneyMarket;
 
-    function init(
+    function initialize(
         uint256 _emaInitial,
         uint256 _updateInterval,
         uint256 _smoothingFactor,

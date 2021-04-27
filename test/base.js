@@ -293,7 +293,7 @@ const yvaultMoneyMarketModule = () => {
 }
 
 const moneyMarketModuleList = module.exports.moneyMarketModuleList = [
-  {
+  /*{
     name: 'Aave',
     moduleGenerator: aaveMoneyMarketModule
   },
@@ -308,7 +308,7 @@ const moneyMarketModuleList = module.exports.moneyMarketModuleList = [
   {
     name: 'Harvest',
     moduleGenerator: harvestMoneyMarketModule
-  },
+  },*/
   {
     name: 'YVault',
     moduleGenerator: yvaultMoneyMarketModule

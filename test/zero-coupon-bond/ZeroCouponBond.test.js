@@ -136,7 +136,7 @@ contract('ZeroCouponBond', accounts => {
 
       describe('mint', () => {
         context('happy path', () => {
-          console.log('hi')
+
         })
 
         context('edge cases', () => {

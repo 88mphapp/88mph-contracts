@@ -313,7 +313,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 virtualTokenAmount,
         bool early
     ) external nonReentrant returns (uint256 withdrawnStablecoinAmount) {
-        return _withdraw(depositID, virtualTokenAmount, early);
+        return _withdraw(depositID, virtualTokenAmount, early, false);
     }
 
     /**
@@ -448,7 +448,8 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
             withdrawnStablecoinAmountList[i] = _withdraw(
                 depositIDList[i],
                 virtualTokenAmountList[i],
-                earlyList[i]
+                earlyList[i],
+                false
             );
         }
     }
@@ -967,7 +968,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     {
         // withdraw from existing deposit
         uint256 withdrawnStablecoinAmount =
-            _withdraw(depositID, type(uint256).max, false);
+            _withdraw(depositID, type(uint256).max, false, true);
 
         // deposit funds into a new deposit
         (newDepositID, interestAmount) = _deposit(
@@ -981,11 +982,13 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
 
     /**
         @dev See {withdraw}
+        @param rollover True if being called from {_rolloverDeposit}, false otherwise
      */
     function _withdraw(
         uint256 depositID,
         uint256 virtualTokenAmount,
-        bool early
+        bool early,
+        bool rollover
     ) internal virtual returns (uint256 withdrawnStablecoinAmount) {
         (
             uint256 withdrawAmount,
@@ -997,7 +1000,8 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                 _getDeposit(depositID).fundingID,
                 withdrawAmount,
                 feeAmount,
-                fundingInterestAmount
+                fundingInterestAmount,
+                rollover
             );
     }
 
@@ -1105,7 +1109,8 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 fundingID,
         uint256 withdrawAmount,
         uint256 feeAmount,
-        uint256 fundingInterestAmount
+        uint256 fundingInterestAmount,
+        bool rollover
     ) internal virtual returns (uint256 withdrawnStablecoinAmount) {
         // Withdraw funds from money market
         // Withdraws principal together with funding interest to save gas
@@ -1119,7 +1124,9 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
             withdrawAmount -
             feeAmount -
             fundingInterestAmount;
-        stablecoin.safeTransfer(msg.sender, withdrawnStablecoinAmount);
+        if (!rollover) {
+            stablecoin.safeTransfer(msg.sender, withdrawnStablecoinAmount);
+        }
 
         // Send `feeAmount` stablecoin to feeModel beneficiary
         if (feeAmount > 0) {

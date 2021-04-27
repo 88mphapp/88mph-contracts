@@ -309,7 +309,31 @@ contract('DInterest', accounts => {
 
       describe('rolloverDeposit', () => {
         context('happy path', () => {
+          const depositAmount = 100 * Base.STABLECOIN_PRECISION
 
+          beforeEach(async () => {
+          // acc0 deposits
+            await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+            const blockNow = await Base.latestBlockTimestamp()
+            await dInterestPool.deposit(Base.num2str(depositAmount), Base.num2str(blockNow + Base.YEAR_IN_SEC), { from: acc0 })
+          })
+
+          it('should create a new deposit with new maturationTimestamp and deposit amount increased', async function () {
+            // Wait 1 year (maturation time)
+            await moneyMarketModule.timePass(1)
+            const blockNow = await Base.latestBlockTimestamp()
+
+            // calculate first deposit withdrawn value
+            const valueOfFirstDepositAfterMaturation = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, true).plus(depositAmount)
+            const valueOfRolloverDepositAfterMaturation = Base.calcInterestAmount(valueOfFirstDepositAfterMaturation, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, true).plus(valueOfFirstDepositAfterMaturation)
+            await dInterestPool.rolloverDeposit(Base.num2str(1), Base.num2str(blockNow + Base.YEAR_IN_SEC), { from: acc0 })
+
+            const deposit1 = await dInterestPool.getDeposit(Base.num2str(1))
+            const deposit2 = await dInterestPool.getDeposit(Base.num2str(2))
+            assert.equal(deposit1.virtualTokenTotalSupply, 0, 'old deposit value must be equals 0')
+            assert.equal(deposit2.maturationTimestamp, blockNow + Base.YEAR_IN_SEC, 'new deposit maturation time is not correct')
+            Base.assertEpsilonEq(deposit2.virtualTokenTotalSupply, valueOfRolloverDepositAfterMaturation, 'rollover deposit do not have the correct token number')
+          })
         })
 
         context('edge cases', () => {

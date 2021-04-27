@@ -740,6 +740,18 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     }
 
     /**
+        @notice A floating-rate bond is no longer active if its principalPerToken becomes 0,
+                which occurs when the corresponding deposit is completely withdrawn. When
+                such a deposit is topped up, a new Funding struct and floating-rate bond will
+                be created.
+        @param fundingID The ID of the floating-rate bond
+        @return True if the funding is active, false otherwise
+     */
+    function fundingIsActive(uint256 fundingID) external view returns (bool) {
+        return _fundingIsActive(fundingID);
+    }
+
+    /**
         @notice Returns the income index of the money market. The income index is
                 a non-decreasing value that can be used to determine the amount of
                 interest earned during a period.
@@ -1032,7 +1044,6 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                 totalPrincipalDecrease + recordedFundedPrincipalAmount
             ) {
                 // Not enough unfunded principal, need to decrease funding principal per token value
-                // TODO: handle cases where principalPerToken becomes 0
                 funding.principalPerToken =
                     (funding.principalPerToken *
                         (totalPrincipal - totalPrincipalDecrease)) /
@@ -1120,7 +1131,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 totalPrincipalToFund;
         fundingID = depositEntry.fundingID;
         uint256 mintTokenAmount;
-        if (fundingID == 0) {
+        if (fundingID == 0 || _getFunding(fundingID).principalPerToken == 0) {
             // The first funder, create struct
             fundingList.push(
                 Funding({
@@ -1352,6 +1363,13 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         returns (Funding storage)
     {
         return fundingList[fundingID - 1];
+    }
+
+    /**
+        @dev See {fundingIsActive}
+     */
+    function _fundingIsActive(uint256 fundingID) internal view returns (bool) {
+        return _getFunding(fundingID).principalPerToken > 0;
     }
 
     /**

@@ -325,7 +325,7 @@ contract DInterestWithDepositFee is DInterest {
         uint256 totalPrincipalToFund;
         fundingID = depositEntry.fundingID;
         uint256 mintTokenAmount;
-        if (fundingID == 0) {
+        if (fundingID == 0 || _getFunding(fundingID).principalPerToken == 0) {
             // The first funder, create struct
             fundingList.push(
                 Funding({

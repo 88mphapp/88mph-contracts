@@ -102,90 +102,11 @@ contract DInterestWithDepositFee is DInterest {
         override
         returns (uint256 depositID, uint256 interestAmount)
     {
-        // Ensure input is valid
-        require(
-            depositAmount >= MinDepositAmount,
-            "DInterest: Deposit amount too small"
-        );
-        uint256 depositPeriod = maturationTimestamp - block.timestamp;
-        require(
-            depositPeriod <= MaxDepositPeriod,
-            "DInterest: Deposit period too long"
-        );
-
-        // Apply deposit fee to the deposit amount
-        uint256 depositAmountAfterFee = _applyDepositFee(depositAmount);
-
-        // Calculate interest
-        interestAmount = calculateInterestAmount(
-            depositAmountAfterFee,
-            depositPeriod
-        );
-        require(interestAmount > 0, "DInterest: interestAmount == 0");
-
-        // Calculate fee
-        uint256 feeAmount = feeModel.getFee(interestAmount);
-        interestAmount -= feeAmount;
-
-        // Mint MPH for msg.sender
-        // TODO
-        uint256 mintMPHAmount; /* =
-            mphMinter.mintDepositorReward(
-                msg.sender,
-                depositAmount,
-                depositPeriod,
-                interestAmount
-            );*/
-
-        // Record deposit data
-        deposits.push(
-            Deposit({
-                virtualTokenTotalSupply: depositAmountAfterFee + interestAmount,
-                interestRate: interestAmount.decdiv(depositAmountAfterFee),
-                feeRate: feeAmount.decdiv(interestAmount),
-                mphRewardRate: mintMPHAmount.decdiv(depositAmountAfterFee),
-                maturationTimestamp: maturationTimestamp,
-                depositTimestamp: block.timestamp,
-                fundingID: 0,
-                averageRecordedIncomeIndex: moneyMarket.incomeIndex()
-            })
-        );
-
-        // Update global values
-        totalDeposit += depositAmountAfterFee;
-        totalInterestOwed += interestAmount;
-        totalFeeOwed += feeAmount;
-
-        // Only transfer funds from sender if it's not a rollover
-        // because if it is the funds are already in the contract
-        if (!rollover) {
-            // Transfer `depositAmount` stablecoin to DInterest
-            stablecoin.safeTransferFrom(
-                msg.sender,
-                address(this),
-                depositAmount
-            );
-        }
-
-        // Lend `depositAmount` stablecoin to money market
-        stablecoin.safeIncreaseAllowance(address(moneyMarket), depositAmount);
-        moneyMarket.deposit(depositAmount);
-
-        depositID = deposits.length;
-
-        // Mint depositNFT
-        depositNFT.mint(msg.sender, depositID);
-
-        // Emit event
-        emit EDeposit(
-            msg.sender,
-            depositID,
-            depositAmountAfterFee,
-            interestAmount,
-            feeAmount,
-            mintMPHAmount,
+        (depositID, interestAmount) = _depositRecordData(
+            _applyDepositFee(depositAmount),
             maturationTimestamp
         );
+        _depositTransferFunds(depositAmount, rollover);
     }
 
     /**
@@ -197,100 +118,11 @@ contract DInterestWithDepositFee is DInterest {
         override
         returns (uint256 interestAmount)
     {
-        Deposit memory depositEntry = _getDeposit(depositID);
-        require(
-            depositNFT.ownerOf(depositID) == msg.sender,
-            "DInterest: not owner"
-        );
-
-        // Apply deposit fee to the deposit amount
-        uint256 depositAmountAfterFee = _applyDepositFee(depositAmount);
-
-        // underflow check prevents topups after maturation
-        uint256 depositPeriod =
-            depositEntry.maturationTimestamp - block.timestamp;
-
-        // Calculate interest
-        interestAmount = calculateInterestAmount(
-            depositAmountAfterFee,
-            depositPeriod
-        );
-        require(interestAmount > 0, "DInterest: interestAmount == 0");
-
-        // Calculate fee
-        uint256 feeAmount = feeModel.getFee(interestAmount);
-        interestAmount -= feeAmount;
-
-        // Mint MPH for msg.sender
-        // TODO
-        uint256 mintMPHAmount; /* =
-            mphMinter.mintDepositorReward(
-                msg.sender,
-                depositAmount,
-                depositPeriod,
-                interestAmount
-            );*/
-
-        // Update deposit struct
-        uint256 currentDepositAmount =
-            depositEntry.virtualTokenTotalSupply.decdiv(
-                depositEntry.interestRate + PRECISION
-            );
-        uint256 currentInterestAmount =
-            depositEntry.virtualTokenTotalSupply - currentDepositAmount;
-        depositEntry.virtualTokenTotalSupply +=
-            depositAmountAfterFee +
-            interestAmount;
-        depositEntry.interestRate =
-            (PRECISION *
-                interestAmount +
-                currentDepositAmount *
-                depositEntry.interestRate) /
-            (depositAmountAfterFee + currentDepositAmount);
-        depositEntry.feeRate =
-            (PRECISION *
-                feeAmount +
-                currentInterestAmount *
-                depositEntry.feeRate) /
-            (interestAmount + currentInterestAmount);
-        depositEntry.mphRewardRate =
-            (depositAmountAfterFee *
-                mintMPHAmount.decdiv(depositAmountAfterFee) +
-                currentDepositAmount *
-                depositEntry.mphRewardRate) /
-            (depositAmountAfterFee + currentDepositAmount);
-        uint256 sumOfRecordedDepositAmountDivRecordedIncomeIndex =
-            (currentDepositAmount * EXTRA_PRECISION) /
-                depositEntry.averageRecordedIncomeIndex +
-                (depositAmountAfterFee * EXTRA_PRECISION) /
-                moneyMarket.incomeIndex();
-        depositEntry.averageRecordedIncomeIndex =
-            ((depositAmountAfterFee + currentDepositAmount) * EXTRA_PRECISION) /
-            sumOfRecordedDepositAmountDivRecordedIncomeIndex;
-
-        deposits[depositID - 1] = depositEntry;
-
-        // Update global values
-        totalDeposit += depositAmountAfterFee;
-        totalInterestOwed += interestAmount;
-        totalFeeOwed += feeAmount;
-
-        // Transfer `depositAmount` stablecoin to DInterest
-        stablecoin.safeTransferFrom(msg.sender, address(this), depositAmount);
-
-        // Lend `depositAmount` stablecoin to money market
-        stablecoin.safeIncreaseAllowance(address(moneyMarket), depositAmount);
-        moneyMarket.deposit(depositAmount);
-
-        // Emit event
-        emit ETopupDeposit(
-            msg.sender,
+        interestAmount = _topupDepositRecordData(
             depositID,
-            depositAmountAfterFee,
-            interestAmount,
-            feeAmount,
-            mintMPHAmount
+            _applyDepositFee(depositAmount)
         );
+        _topupDepositTransferFunds(depositAmount);
     }
 
     /**
@@ -302,88 +134,12 @@ contract DInterestWithDepositFee is DInterest {
         override
         returns (uint256 fundingID)
     {
-        Deposit storage depositEntry = _getDeposit(depositID);
-
-        (bool isNegative, uint256 surplusMagnitude) = surplus();
-        require(isNegative, "DInterest: No deficit available");
-
-        (isNegative, surplusMagnitude) = rawSurplusOfDeposit(depositID);
-        require(isNegative, "DInterest: No deficit available");
-        uint256 fundAmountAfterFee = _applyDepositFee(fundAmount);
-        if (fundAmountAfterFee > surplusMagnitude) {
-            fundAmountAfterFee = surplusMagnitude;
-        }
-
-        // Create funding struct if one doesn't exist
-        uint256 incomeIndex = moneyMarket.incomeIndex();
-        require(incomeIndex > 0, "DInterest: incomeIndex == 0");
-        uint256 totalPrincipal =
-            _depositVirtualTokenToPrincipal(
-                depositID,
-                depositEntry.virtualTokenTotalSupply
-            );
-        uint256 totalPrincipalToFund;
-        fundingID = depositEntry.fundingID;
-        uint256 mintTokenAmount;
-        if (fundingID == 0 || _getFunding(fundingID).principalPerToken == 0) {
-            // The first funder, create struct
-            fundingList.push(
-                Funding({
-                    depositID: depositID,
-                    recordedMoneyMarketIncomeIndex: incomeIndex,
-                    principalPerToken: ULTRA_PRECISION
-                })
-            );
-            fundingID = fundingList.length;
-            depositEntry.fundingID = fundingID;
-            totalPrincipalToFund =
-                (totalPrincipal * fundAmountAfterFee) /
-                surplusMagnitude;
-            mintTokenAmount = totalPrincipalToFund;
-        } else {
-            // Not the first funder
-            // Trigger interest payment for existing funders
-            _payInterestToFunders(fundingID);
-
-            // Compute amount of principal to fund
-            uint256 principalPerToken =
-                _getFunding(fundingID).principalPerToken;
-            uint256 unfundedPrincipalAmount =
-                totalPrincipal -
-                    (fundingMultitoken.totalSupply(fundingID) *
-                        principalPerToken) /
-                    ULTRA_PRECISION;
-            surplusMagnitude =
-                (surplusMagnitude * unfundedPrincipalAmount) /
-                totalPrincipal;
-            if (fundAmountAfterFee > surplusMagnitude) {
-                fundAmountAfterFee = surplusMagnitude;
-            }
-            totalPrincipalToFund =
-                (unfundedPrincipalAmount * fundAmountAfterFee) /
-                surplusMagnitude;
-            mintTokenAmount =
-                (totalPrincipalToFund * ULTRA_PRECISION) /
-                principalPerToken;
-        }
-        // Mint funding multitoken
-        fundingMultitoken.mint(msg.sender, fundingID, mintTokenAmount);
-
-        // Update relevant values
-        sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex +=
-            (totalPrincipalToFund * EXTRA_PRECISION) /
-            incomeIndex;
-        totalFundedPrincipalAmount += totalPrincipalToFund;
-
-        // Transfer `fundAmount` stablecoins from msg.sender
-        stablecoin.safeTransferFrom(msg.sender, address(this), fundAmount);
-
-        // Deposit `fundAmount` stablecoins into moneyMarket
-        stablecoin.safeIncreaseAllowance(address(moneyMarket), fundAmount);
-        moneyMarket.deposit(fundAmount);
-
-        // Emit event
-        emit EFund(msg.sender, fundingID, fundAmountAfterFee, mintTokenAmount);
+        uint256 actualFundAmount;
+        (fundingID, actualFundAmount) = _fundRecordData(
+            depositID,
+            _applyDepositFee(fundAmount)
+        );
+        _fundTransferFunds(_unapplyDepositFee(fundAmount));
     }
 
     /**
@@ -402,6 +158,20 @@ contract DInterestWithDepositFee is DInterest {
         returns (uint256)
     {
         return amount.decmul(PRECISION - DepositFee);
+    }
+
+    /**
+        @dev Unapplies a flat percentage deposit fee to a value.
+        @param amount The after-fee amount
+        @return The before-fee amount
+     */
+    function _unapplyDepositFee(uint256 amount)
+        internal
+        view
+        virtual
+        returns (uint256)
+    {
+        return amount.decdiv(PRECISION - DepositFee);
     }
 
     /**

@@ -773,6 +773,17 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 maturationTimestamp,
         bool rollover
     ) internal virtual returns (uint256 depositID, uint256 interestAmount) {
+        (depositID, interestAmount) = _depositRecordData(
+            depositAmount,
+            maturationTimestamp
+        );
+        _depositTransferFunds(depositAmount, rollover);
+    }
+
+    function _depositRecordData(
+        uint256 depositAmount,
+        uint256 maturationTimestamp
+    ) internal virtual returns (uint256 depositID, uint256 interestAmount) {
         // Ensure input is valid
         require(
             depositAmount >= MinDepositAmount,
@@ -821,21 +832,6 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         totalInterestOwed += interestAmount;
         totalFeeOwed += feeAmount;
 
-        // Only transfer funds from sender if it's not a rollover
-        // because if it is the funds are already in the contract
-        if (!rollover) {
-            // Transfer `depositAmount` stablecoin to DInterest
-            stablecoin.safeTransferFrom(
-                msg.sender,
-                address(this),
-                depositAmount
-            );
-        }
-
-        // Lend `depositAmount` stablecoin to money market
-        stablecoin.safeIncreaseAllowance(address(moneyMarket), depositAmount);
-        moneyMarket.deposit(depositAmount);
-
         depositID = deposits.length;
 
         // Mint depositNFT
@@ -853,10 +849,39 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         );
     }
 
+    function _depositTransferFunds(uint256 depositAmount, bool rollover)
+        internal
+        virtual
+    {
+        // Only transfer funds from sender if it's not a rollover
+        // because if it is the funds are already in the contract
+        if (!rollover) {
+            // Transfer `depositAmount` stablecoin to DInterest
+            stablecoin.safeTransferFrom(
+                msg.sender,
+                address(this),
+                depositAmount
+            );
+        }
+
+        // Lend `depositAmount` stablecoin to money market
+        stablecoin.safeIncreaseAllowance(address(moneyMarket), depositAmount);
+        moneyMarket.deposit(depositAmount);
+    }
+
     /**
         @dev See {topupDeposit}
      */
     function _topupDeposit(uint256 depositID, uint256 depositAmount)
+        internal
+        virtual
+        returns (uint256 interestAmount)
+    {
+        interestAmount = _topupDepositRecordData(depositID, depositAmount);
+        _topupDepositTransferFunds(depositAmount);
+    }
+
+    function _topupDepositRecordData(uint256 depositID, uint256 depositAmount)
         internal
         virtual
         returns (uint256 interestAmount)
@@ -931,13 +956,6 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         totalInterestOwed += interestAmount;
         totalFeeOwed += feeAmount;
 
-        // Transfer `depositAmount` stablecoin to DInterest
-        stablecoin.safeTransferFrom(msg.sender, address(this), depositAmount);
-
-        // Lend `depositAmount` stablecoin to money market
-        stablecoin.safeIncreaseAllowance(address(moneyMarket), depositAmount);
-        moneyMarket.deposit(depositAmount);
-
         // Emit event
         emit ETopupDeposit(
             msg.sender,
@@ -947,6 +965,18 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
             feeAmount,
             mintMPHAmount
         );
+    }
+
+    function _topupDepositTransferFunds(uint256 depositAmount)
+        internal
+        virtual
+    {
+        // Transfer `depositAmount` stablecoin to DInterest
+        stablecoin.safeTransferFrom(msg.sender, address(this), depositAmount);
+
+        // Lend `depositAmount` stablecoin to money market
+        stablecoin.safeIncreaseAllowance(address(moneyMarket), depositAmount);
+        moneyMarket.deposit(depositAmount);
     }
 
     /**
@@ -979,6 +1009,33 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 virtualTokenAmount,
         bool early
     ) internal virtual returns (uint256 withdrawnStablecoinAmount) {
+        (
+            uint256 withdrawAmount,
+            uint256 feeAmount,
+            uint256 fundingInterestAmount
+        ) = _withdrawRecordData(depositID, virtualTokenAmount, early);
+        return
+            _withdrawTransferFunds(
+                _getDeposit(depositID).fundingID,
+                withdrawAmount,
+                feeAmount,
+                fundingInterestAmount
+            );
+    }
+
+    function _withdrawRecordData(
+        uint256 depositID,
+        uint256 virtualTokenAmount,
+        bool early
+    )
+        internal
+        virtual
+        returns (
+            uint256 withdrawAmount,
+            uint256 feeAmount,
+            uint256 fundingInterestAmount
+        )
+    {
         // Verify input
         require(virtualTokenAmount > 0, "DInterest: 0 amount");
         Deposit memory depositEntry = _getDeposit(depositID);
@@ -1007,7 +1064,8 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 depositAmount =
             virtualTokenAmount.decdiv(depositEntry.interestRate + PRECISION);
         uint256 interestAmount = early ? 0 : virtualTokenAmount - depositAmount;
-        uint256 feeAmount = interestAmount.decmul(depositEntry.feeRate);
+        withdrawAmount = depositAmount + interestAmount;
+        feeAmount = interestAmount.decmul(depositEntry.feeRate);
 
         // Update global values
         totalDeposit -= depositAmount;
@@ -1017,7 +1075,6 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         );
 
         // If deposit was funded, compute funding interest payout
-        uint256 fundingInterestAmount;
         if (depositEntry.fundingID > 0) {
             Funding storage funding = _getFunding(depositEntry.fundingID);
 
@@ -1062,15 +1119,21 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         // Burn `virtualTokenAmount` deposit virtual tokens
         _getDeposit(depositID).virtualTokenTotalSupply -= virtualTokenAmount;
 
+        // Emit event
+        emit EWithdraw(msg.sender, depositID, virtualTokenAmount, feeAmount);
+    }
+
+    function _withdrawTransferFunds(
+        uint256 fundingID,
+        uint256 withdrawAmount,
+        uint256 feeAmount,
+        uint256 fundingInterestAmount
+    ) internal virtual returns (uint256 withdrawnStablecoinAmount) {
         // Withdraw funds from money market
         // Withdraws principal together with funding interest to save gas
-        uint256 withdrawAmount =
-            moneyMarket.withdraw(
-                depositAmount +
-                    interestAmount +
-                    feeAmount +
-                    fundingInterestAmount
-            );
+        withdrawAmount = moneyMarket.withdraw(
+            withdrawAmount + feeAmount + fundingInterestAmount
+        );
 
         // We do this instead of `depositAmount + interestAmount` because `withdrawAmount` might
         // be slightly less due to rounding
@@ -1079,9 +1142,6 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
             feeAmount -
             fundingInterestAmount;
         stablecoin.safeTransfer(msg.sender, withdrawnStablecoinAmount);
-
-        // Emit event
-        emit EWithdraw(msg.sender, depositID, virtualTokenAmount, feeAmount);
 
         // Send `feeAmount` stablecoin to feeModel beneficiary
         if (feeAmount > 0) {
@@ -1095,7 +1155,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                 fundingInterestAmount
             );
             fundingMultitoken.distributeDividends(
-                depositEntry.fundingID,
+                fundingID,
                 fundingInterestAmount
             );
         }
@@ -1108,6 +1168,16 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         internal
         virtual
         returns (uint256 fundingID)
+    {
+        uint256 actualFundAmount;
+        (fundingID, actualFundAmount) = _fundRecordData(depositID, fundAmount);
+        _fundTransferFunds(actualFundAmount);
+    }
+
+    function _fundRecordData(uint256 depositID, uint256 fundAmount)
+        internal
+        virtual
+        returns (uint256 fundingID, uint256 actualFundAmount)
     {
         Deposit storage depositEntry = _getDeposit(depositID);
 
@@ -1181,15 +1251,19 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
             incomeIndex;
         totalFundedPrincipalAmount += totalPrincipalToFund;
 
+        // Emit event
+        emit EFund(msg.sender, fundingID, fundAmount, mintTokenAmount);
+
+        actualFundAmount = fundAmount;
+    }
+
+    function _fundTransferFunds(uint256 fundAmount) internal virtual {
         // Transfer `fundAmount` stablecoins from msg.sender
         stablecoin.safeTransferFrom(msg.sender, address(this), fundAmount);
 
         // Deposit `fundAmount` stablecoins into moneyMarket
         stablecoin.safeIncreaseAllowance(address(moneyMarket), fundAmount);
         moneyMarket.deposit(fundAmount);
-
-        // Emit event
-        emit EFund(msg.sender, fundingID, fundAmount, mintTokenAmount);
     }
 
     /**

@@ -45,7 +45,6 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 virtualTokenTotalSupply; // depositAmount + interestAmount, behaves like a zero coupon bond
         uint256 interestRate; // interestAmount = interestRate * depositAmount
         uint256 feeRate; // feeAmount = feeRate * interestAmount
-        uint256 mphRewardRate; // mphRewardAmount = mphRewardRate * depositAmount
         uint256 maturationTimestamp; // Unix timestamp after which the deposit may be withdrawn, in seconds
         uint256 depositTimestamp; // Unix timestamp at time of deposit, in seconds
         uint256 averageRecordedIncomeIndex; // Average income index at time of deposit, used for computing deposit surplus
@@ -97,7 +96,6 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 depositAmount,
         uint256 interestAmount,
         uint256 feeAmount,
-        uint256 mintMPHAmount,
         uint256 maturationTimestamp
     );
     event ETopupDeposit(
@@ -105,8 +103,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 indexed depositID,
         uint256 depositAmount,
         uint256 interestAmount,
-        uint256 feeAmount,
-        uint256 mintMPHAmount
+        uint256 feeAmount
     );
     event ERolloverDeposit(
         address indexed sender,
@@ -803,23 +800,12 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 feeAmount = feeModel.getFee(interestAmount);
         interestAmount -= feeAmount;
 
-        // Mint MPH for msg.sender
-        // TODO
-        uint256 mintMPHAmount; /* =
-            mphMinter.mintDepositorReward(
-                msg.sender,
-                depositAmount,
-                depositPeriod,
-                interestAmount
-            );*/
-
         // Record deposit data
         deposits.push(
             Deposit({
                 virtualTokenTotalSupply: depositAmount + interestAmount,
                 interestRate: interestAmount.decdiv(depositAmount),
                 feeRate: feeAmount.decdiv(interestAmount),
-                mphRewardRate: mintMPHAmount.decdiv(depositAmount),
                 maturationTimestamp: maturationTimestamp,
                 depositTimestamp: block.timestamp,
                 fundingID: 0,
@@ -837,6 +823,9 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         // Mint depositNFT
         depositNFT.mint(msg.sender, depositID);
 
+        // Vest MPH to msg.sender
+        mphMinter.createVestForDeposit(msg.sender, depositID);
+
         // Emit event
         emit EDeposit(
             msg.sender,
@@ -844,7 +833,6 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
             depositAmount,
             interestAmount,
             feeAmount,
-            mintMPHAmount,
             maturationTimestamp
         );
     }
@@ -904,16 +892,6 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 feeAmount = feeModel.getFee(interestAmount);
         interestAmount -= feeAmount;
 
-        // Mint MPH for msg.sender
-        // TODO
-        uint256 mintMPHAmount; /* =
-            mphMinter.mintDepositorReward(
-                msg.sender,
-                depositAmount,
-                depositPeriod,
-                interestAmount
-            );*/
-
         // Update deposit struct
         uint256 currentDepositAmount =
             depositEntry.virtualTokenTotalSupply.decdiv(
@@ -934,12 +912,6 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                 currentInterestAmount *
                 depositEntry.feeRate) /
             (interestAmount + currentInterestAmount);
-        depositEntry.mphRewardRate =
-            (depositAmount *
-                mintMPHAmount.decdiv(depositAmount) +
-                currentDepositAmount *
-                depositEntry.mphRewardRate) /
-            (depositAmount + currentDepositAmount);
         uint256 sumOfRecordedDepositAmountDivRecordedIncomeIndex =
             (currentDepositAmount * EXTRA_PRECISION) /
                 depositEntry.averageRecordedIncomeIndex +
@@ -956,14 +928,20 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         totalInterestOwed += interestAmount;
         totalFeeOwed += feeAmount;
 
+        // Update vest
+        mphMinter.updateVestForDeposit(
+            depositID,
+            currentDepositAmount,
+            depositAmount
+        );
+
         // Emit event
         emit ETopupDeposit(
             msg.sender,
             depositID,
             depositAmount,
             interestAmount,
-            feeAmount,
-            mintMPHAmount
+            feeAmount
         );
     }
 

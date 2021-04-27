@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../../libs/DecMath.sol";
 import "./IMPHIssuanceModel.sol";
 
-contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
-    using Address for address;
+contract MPHIssuanceModel02 is OwnableUpgradeable, IMPHIssuanceModel {
+    using AddressUpgradeable for address;
     using DecMath for uint256;
 
     uint256 internal constant PRECISION = 10**18;
@@ -18,13 +18,9 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
                 Scaled by 10^18.
                 NOTE: The depositToken's decimals matter! 
      */
-    mapping(address => uint256) public poolDepositorRewardMintMultiplier;
-    /**
-        @notice The multiplier applied when taking back MPH from depositors upon withdrawal.
-                No unit, is a proportion between 0 and 1.
-                Scaled by 10^18.
-     */
-    mapping(address => uint256) public poolDepositorRewardTakeBackMultiplier;
+    mapping(address => uint256)
+        public
+        override poolDepositorRewardMintMultiplier;
     /**
         @notice The multiplier applied when minting MPH for a pool's funder reward.
                 Unit is MPH-wei per depositToken-wei per second. (wei here is the smallest decimal place)
@@ -33,18 +29,18 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
      */
     mapping(address => uint256) public poolFunderRewardMultiplier;
     /**
-        @notice The period over which the depositor reward will be vested, in seconds.
-     */
-    mapping(address => uint256) public override poolDepositorRewardVestPeriod;
-    /**
         @notice The period over which the funder reward will be vested, in seconds.
      */
     mapping(address => uint256) public override poolFunderRewardVestPeriod;
 
     /**
-        @notice Multiplier used for calculating dev reward
+        @notice Multiplier used for calculating dev deposit reward
      */
     uint256 public devRewardMultiplier;
+    /**
+        @notice Multiplier used for calculating gov deposit reward
+     */
+    uint256 public govRewardMultiplier;
 
     event ESetParamAddress(
         address indexed sender,
@@ -58,16 +54,40 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
         uint256 newValue
     );
 
-    constructor(uint256 _devRewardMultiplier) {
-        devRewardMultiplier = _devRewardMultiplier;
+    function __MPHIssuanceModel02_init(
+        uint256 _devRewardMultiplier,
+        uint256 _govRewardMultiplier
+    ) internal initializer {
+        __Ownable_init();
+        __MPHIssuanceModel02_init_unchained(
+            _devRewardMultiplier,
+            _govRewardMultiplier
+        );
     }
 
+    function __MPHIssuanceModel02_init_unchained(
+        uint256 _devRewardMultiplier,
+        uint256 _govRewardMultiplier
+    ) internal initializer {
+        devRewardMultiplier = _devRewardMultiplier;
+        govRewardMultiplier = _govRewardMultiplier;
+    }
+
+    function init(uint256 _devRewardMultiplier, uint256 _govRewardMultiplier)
+        external
+        initializer
+    {
+        __MPHIssuanceModel02_init(_devRewardMultiplier, _govRewardMultiplier);
+    }
+
+    /**
+        v2 legacy functions
+     */
     /**
         @notice Computes the MPH amount to reward to a depositor upon deposit.
         @param  pool The DInterest pool trying to mint reward
         @param  depositAmount The deposit amount in the pool's stablecoins
         @param  depositPeriodInSeconds The deposit's lock period in seconds
-        @param  interestAmount The deposit's fixed-rate interest amount in the pool's stablecoins
         @return depositorReward The MPH amount to mint to the depositor
                 devReward The MPH amount to mint to the dev wallet
                 govReward The MPH amount to mint to the gov treasury
@@ -75,8 +95,7 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
     function computeDepositorReward(
         address pool,
         uint256 depositAmount,
-        uint256 depositPeriodInSeconds,
-        uint256 interestAmount
+        uint256 depositPeriodInSeconds
     )
         external
         view
@@ -93,13 +112,12 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
             );
         depositorReward = mintAmount;
         devReward = mintAmount.decmul(devRewardMultiplier);
-        govReward = 0;
+        govReward = mintAmount.decmul(govRewardMultiplier);
     }
 
     /**
         @notice Computes the MPH amount to take back from a depositor upon withdrawal.
                 If takeBackAmount > devReward + govReward, the extra MPH should be burnt.
-        @param  pool The DInterest pool trying to mint reward
         @param  mintMPHAmount The MPH amount originally minted to the depositor as reward
         @param  early True if the deposit is withdrawn early, false if the deposit is mature
         @return takeBackAmount The MPH amount to take back from the depositor
@@ -107,12 +125,11 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
                 govReward The MPH amount from takeBackAmount to send to the gov treasury
      */
     function computeTakeBackDepositorRewardAmount(
-        address pool,
         uint256 mintMPHAmount,
         bool early
     )
         external
-        view
+        pure
         override
         returns (
             uint256 takeBackAmount,
@@ -120,11 +137,9 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
             uint256 govReward
         )
     {
-        takeBackAmount = early
-            ? mintMPHAmount
-            : mintMPHAmount.decmul(poolDepositorRewardTakeBackMultiplier[pool]);
+        takeBackAmount = early ? mintMPHAmount : 0;
         devReward = 0;
-        govReward = early ? 0 : takeBackAmount;
+        govReward = 0;
     }
 
     /**
@@ -133,8 +148,6 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
         @param  depositAmount The deposit amount in the pool's stablecoins
         @param  fundingCreationTimestamp The timestamp of the funding's creation, in seconds
         @param  maturationTimestamp The maturation timestamp of the deposit, in seconds
-        @param  interestPayoutAmount The interest payout amount to the funder, in the pool's stablecoins.
-                                     Includes the interest from other funded deposits.
         @param  early True if the deposit is withdrawn early, false if the deposit is mature
         @return funderReward The MPH amount to mint to the funder
                 devReward The MPH amount to mint to the dev wallet
@@ -145,7 +158,6 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
         uint256 depositAmount,
         uint256 fundingCreationTimestamp,
         uint256 maturationTimestamp,
-        uint256 interestPayoutAmount,
         bool early
     )
         external
@@ -165,7 +177,7 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
                 .decmul(poolFunderRewardMultiplier[pool])
             : 0;
         devReward = funderReward.decmul(devRewardMultiplier);
-        govReward = 0;
+        govReward = funderReward.decmul(govRewardMultiplier);
     }
 
     /**
@@ -186,24 +198,6 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
         );
     }
 
-    function setPoolDepositorRewardTakeBackMultiplier(
-        address pool,
-        uint256 newMultiplier
-    ) external onlyOwner {
-        require(pool.isContract(), "MPHIssuanceModel: pool not contract");
-        require(
-            newMultiplier <= PRECISION,
-            "MPHIssuanceModel: invalid multiplier"
-        );
-        poolDepositorRewardTakeBackMultiplier[pool] = newMultiplier;
-        emit ESetParamUint(
-            msg.sender,
-            "poolDepositorRewardTakeBackMultiplier",
-            pool,
-            newMultiplier
-        );
-    }
-
     function setPoolFunderRewardMultiplier(address pool, uint256 newMultiplier)
         external
         onlyOwner
@@ -215,20 +209,6 @@ contract MPHIssuanceModel01 is Ownable, IMPHIssuanceModel {
             "poolFunderRewardMultiplier",
             pool,
             newMultiplier
-        );
-    }
-
-    function setPoolDepositorRewardVestPeriod(
-        address pool,
-        uint256 newVestPeriodInSeconds
-    ) external onlyOwner {
-        require(pool.isContract(), "MPHIssuanceModel: pool not contract");
-        poolDepositorRewardVestPeriod[pool] = newVestPeriodInSeconds;
-        emit ESetParamUint(
-            msg.sender,
-            "poolDepositorRewardVestPeriod",
-            pool,
-            newVestPeriodInSeconds
         );
     }
 

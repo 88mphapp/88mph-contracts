@@ -13,8 +13,9 @@ const MPHToken = artifacts.require('MPHToken')
 const MPHMinter = artifacts.require('MPHMinter')
 const ERC20Mock = artifacts.require('ERC20Mock')
 const EMAOracle = artifacts.require('EMAOracle')
-const MPHIssuanceModel = artifacts.require('MPHIssuanceModel01')
+const MPHIssuanceModel = artifacts.require('MPHIssuanceModel02')
 const Vesting = artifacts.require('Vesting')
+const Vesting02 = artifacts.require('Vesting02')
 
 // Constants
 const PRECISION = 1e18
@@ -25,16 +26,17 @@ const multiplierSlope = 0.25 / YEAR_IN_SEC * PRECISION
 const MaxDepositPeriod = 3 * YEAR_IN_SEC // 3 years in seconds
 const MinDepositAmount = BigNumber(0.1 * STABLECOIN_PRECISION).toFixed() // 0.1 stablecoin
 const PoolDepositorRewardMintMultiplier = BigNumber(3.168873e-13 * PRECISION * (PRECISION / STABLECOIN_PRECISION)).toFixed() // 1e5 stablecoin * 1 year => 1 MPH
-const PoolDepositorRewardTakeBackMultiplier = BigNumber(0.9 * PRECISION).toFixed()
 const PoolFunderRewardMultiplier = BigNumber(3.168873e-13 * PRECISION * (PRECISION / STABLECOIN_PRECISION)).toFixed() // 1e5 stablecoin * 1 year => 1 MPH
 const DevRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
+const GovRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
 const EMAUpdateInterval = 24 * 60 * 60
 const EMASmoothingFactor = BigNumber(2 * PRECISION).toFixed()
 const EMAAverageWindowInIntervals = 30
-const PoolDepositorRewardVestPeriod = 7 * 24 * 60 * 60 // 7 days
 const PoolFunderRewardVestPeriod = 0 * 24 * 60 * 60 // 0 days
 const MINTER_BURNER_ROLE = web3.utils.soliditySha3('MINTER_BURNER_ROLE')
 const DIVIDEND_ROLE = web3.utils.soliditySha3('DIVIDEND_ROLE')
+const WHITELISTER_ROLE = web3.utils.soliditySha3('WHITELISTER_ROLE')
+const WHITELISTED_POOL_ROLE = web3.utils.soliditySha3('WHITELISTED_POOL_ROLE')
 
 const epsilon = 1e-4
 const INF = BigNumber(2).pow(256).minus(1).toFixed()
@@ -335,6 +337,7 @@ contract('DInterest', accounts => {
   let mphMinter
   let mphIssuanceModel
   let vesting
+  let vesting02
   let factory
 
   // Constants
@@ -357,9 +360,14 @@ contract('DInterest', accounts => {
         mph = await MPHToken.new()
         await mph.init()
         vesting = await Vesting.new(mph.address)
-        mphIssuanceModel = await MPHIssuanceModel.new(DevRewardMultiplier)
-        mphMinter = await MPHMinter.new(mph.address, govTreasury, devWallet, mphIssuanceModel.address, vesting.address)
-        mph.transferOwnership(mphMinter.address)
+        vesting02 = await Vesting02.new()
+        mphIssuanceModel = await MPHIssuanceModel.new()
+        await mphIssuanceModel.init(DevRewardMultiplier, GovRewardMultiplier)
+        mphMinter = await MPHMinter.new()
+        await mphMinter.init(mph.address, govTreasury, devWallet, mphIssuanceModel.address, vesting.address, vesting02.address)
+        await vesting02.init(mphMinter.address, mph.address, 'Vested MPH', 'veMPH')
+        await mph.transferOwnership(mphMinter.address)
+        await mphMinter.grantRole(WHITELISTER_ROLE, acc0, { from: acc0 })
 
         // Set infinite MPH approval
         await mph.approve(mphMinter.address, INF, { from: acc0 })
@@ -406,11 +414,9 @@ contract('DInterest', accounts => {
         dInterestPool = await factoryReceiptToContract(dInterestReceipt, DInterest)
 
         // Set MPH minting multiplier for DInterest pool
-        await mphMinter.setPoolWhitelist(dInterestPool.address, true)
+        await mphMinter.grantRole(WHITELISTED_POOL_ROLE, dInterestPool.address, { from: acc0 })
         await mphIssuanceModel.setPoolDepositorRewardMintMultiplier(dInterestPool.address, PoolDepositorRewardMintMultiplier)
-        await mphIssuanceModel.setPoolDepositorRewardTakeBackMultiplier(dInterestPool.address, PoolDepositorRewardTakeBackMultiplier)
         await mphIssuanceModel.setPoolFunderRewardMultiplier(dInterestPool.address, PoolFunderRewardMultiplier)
-        await mphIssuanceModel.setPoolDepositorRewardVestPeriod(dInterestPool.address, PoolDepositorRewardVestPeriod)
         await mphIssuanceModel.setPoolFunderRewardVestPeriod(dInterestPool.address, PoolFunderRewardVestPeriod)
 
         // Transfer the ownership of the money market to the DInterest pool

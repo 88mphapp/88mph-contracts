@@ -13,6 +13,7 @@ import "./moneymarkets/cream/CreamERC20Market.sol";
 import "./moneymarkets/harvest/HarvestMarket.sol";
 import "./moneymarkets/yvault/YVaultMarket.sol";
 import "./DInterest.sol";
+import "./DInterestWithDepositFee.sol";
 
 contract Factory {
     using Clones for address;
@@ -225,6 +226,53 @@ contract Factory {
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("DInterest", template, salt, address(clone));
+        return clone;
+    }
+
+    struct DInterestWithDepositFeeParams {
+        uint256 _MaxDepositPeriod;
+        uint256 _MinDepositAmount;
+        uint256 _DepositFee;
+        address _moneyMarket;
+        address _stablecoin;
+        address _feeModel;
+        address _interestModel;
+        address _interestOracle;
+        address _depositNFT;
+        address _fundingMultitoken;
+        address _mphMinter;
+    }
+
+    function createDInterestWithDepositFee(
+        address template,
+        bytes32 salt,
+        DInterestWithDepositFeeParams calldata params
+    ) external returns (DInterestWithDepositFee) {
+        DInterestWithDepositFee clone =
+            DInterestWithDepositFee(template.cloneDeterministic(salt));
+
+        // initialize
+        clone.init(
+            params._MaxDepositPeriod,
+            params._MinDepositAmount,
+            params._DepositFee,
+            params._moneyMarket,
+            params._stablecoin,
+            params._feeModel,
+            params._interestModel,
+            params._interestOracle,
+            params._depositNFT,
+            params._fundingMultitoken,
+            params._mphMinter
+        );
+        clone.transferOwnership(msg.sender);
+
+        emit CreateClone(
+            "DInterestWithDepositFee",
+            template,
+            salt,
+            address(clone)
+        );
         return clone;
     }
 

@@ -136,19 +136,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 newValue
     );
 
-    /**
-        @param _MaxDepositPeriod The maximum deposit period, in seconds
-        @param _MinDepositAmount The minimum deposit amount, in stablecoins
-        @param _moneyMarket Address of IMoneyMarket that's used for generating interest (owner must be set to this DInterest contract)
-        @param _stablecoin Address of the stablecoin used to store funds
-        @param _feeModel Address of the FeeModel contract that determines how fees are charged
-        @param _interestModel Address of the InterestModel contract that determines how much interest to offer
-        @param _interestOracle Address of the InterestOracle contract that provides the average interest rate
-        @param _depositNFT Address of the NFT representing ownership of deposits (owner must be set to this DInterest contract)
-        @param _fundingMultitoken Address of the ERC1155 multitoken representing ownership of fundings (this DInterest contract must have the minter-burner role)
-        @param _mphMinter Address of the contract for handling minting MPH to users
-     */
-    function init(
+    function __DInterest_init(
         uint256 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
         address _moneyMarket,
@@ -159,10 +147,35 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         address _depositNFT,
         address _fundingMultitoken,
         address _mphMinter
-    ) external initializer {
+    ) internal initializer {
         __ReentrancyGuard_init();
         __Ownable_init();
+        __DInterest_init_unchained(
+            _MaxDepositPeriod,
+            _MinDepositAmount,
+            _moneyMarket,
+            _stablecoin,
+            _feeModel,
+            _interestModel,
+            _interestOracle,
+            _depositNFT,
+            _fundingMultitoken,
+            _mphMinter
+        );
+    }
 
+    function __DInterest_init_unchained(
+        uint256 _MaxDepositPeriod,
+        uint256 _MinDepositAmount,
+        address _moneyMarket,
+        address _stablecoin,
+        address _feeModel,
+        address _interestModel,
+        address _interestOracle,
+        address _depositNFT,
+        address _fundingMultitoken,
+        address _mphMinter
+    ) internal initializer {
         // Verify input addresses
         require(
             _moneyMarket.isContract() &&
@@ -199,6 +212,44 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
 
         MaxDepositPeriod = _MaxDepositPeriod;
         MinDepositAmount = _MinDepositAmount;
+    }
+
+    /**
+        @param _MaxDepositPeriod The maximum deposit period, in seconds
+        @param _MinDepositAmount The minimum deposit amount, in stablecoins
+        @param _moneyMarket Address of IMoneyMarket that's used for generating interest (owner must be set to this DInterest contract)
+        @param _stablecoin Address of the stablecoin used to store funds
+        @param _feeModel Address of the FeeModel contract that determines how fees are charged
+        @param _interestModel Address of the InterestModel contract that determines how much interest to offer
+        @param _interestOracle Address of the InterestOracle contract that provides the average interest rate
+        @param _depositNFT Address of the NFT representing ownership of deposits (owner must be set to this DInterest contract)
+        @param _fundingMultitoken Address of the ERC1155 multitoken representing ownership of fundings (this DInterest contract must have the minter-burner role)
+        @param _mphMinter Address of the contract for handling minting MPH to users
+     */
+    function init(
+        uint256 _MaxDepositPeriod,
+        uint256 _MinDepositAmount,
+        address _moneyMarket,
+        address _stablecoin,
+        address _feeModel,
+        address _interestModel,
+        address _interestOracle,
+        address _depositNFT,
+        address _fundingMultitoken,
+        address _mphMinter
+    ) external virtual initializer {
+        __DInterest_init(
+            _MaxDepositPeriod,
+            _MinDepositAmount,
+            _moneyMarket,
+            _stablecoin,
+            _feeModel,
+            _interestModel,
+            _interestOracle,
+            _depositNFT,
+            _fundingMultitoken,
+            _mphMinter
+        );
     }
 
     /**
@@ -452,7 +503,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     function calculateInterestAmount(
         uint256 depositAmount,
         uint256 depositPeriodInSeconds
-    ) public returns (uint256 interestAmount) {
+    ) public virtual returns (uint256 interestAmount) {
         (, uint256 moneyMarketInterestRatePerSecond) =
             interestOracle.updateAndQuery();
         (bool surplusIsNegative, uint256 surplusAmount) = surplus();
@@ -478,6 +529,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
      */
     function totalInterestOwedToFunders()
         public
+        virtual
         returns (uint256 interestOwed)
     {
         uint256 currentValue =
@@ -498,7 +550,11 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @return isNegative True if the surplus is negative, false otherwise
         @return surplusAmount The absolute value of the surplus, in stablecoins
      */
-    function surplus() public returns (bool isNegative, uint256 surplusAmount) {
+    function surplus()
+        public
+        virtual
+        returns (bool isNegative, uint256 surplusAmount)
+    {
         uint256 totalValue = moneyMarket.totalValue();
         uint256 totalOwed =
             totalDeposit +
@@ -527,6 +583,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
      */
     function rawSurplusOfDeposit(uint256 depositID)
         public
+        virtual
         returns (bool isNegative, uint256 surplusAmount)
     {
         Deposit storage depositEntry = _getDeposit(depositID);
@@ -563,6 +620,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
      */
     function surplusOfDeposit(uint256 depositID)
         public
+        virtual
         returns (bool isNegative, uint256 surplusAmount)
     {
         (isNegative, surplusAmount) = rawSurplusOfDeposit(depositID);
@@ -702,7 +760,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 depositAmount,
         uint256 maturationTimestamp,
         bool rollover
-    ) internal returns (uint256 depositID, uint256 interestAmount) {
+    ) internal virtual returns (uint256 depositID, uint256 interestAmount) {
         // Ensure input is valid
         require(
             depositAmount >= MinDepositAmount,
@@ -788,6 +846,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
      */
     function _topupDeposit(uint256 depositID, uint256 depositAmount)
         internal
+        virtual
         returns (uint256 interestAmount)
     {
         Deposit memory depositEntry = _getDeposit(depositID);
@@ -883,6 +942,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
      */
     function _rolloverDeposit(uint256 depositID, uint256 maturationTimestamp)
         internal
+        virtual
         returns (uint256 newDepositID, uint256 interestAmount)
     {
         // withdraw from existing deposit
@@ -906,7 +966,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 depositID,
         uint256 virtualTokenAmount,
         bool early
-    ) internal returns (uint256 withdrawnStablecoinAmount) {
+    ) internal virtual returns (uint256 withdrawnStablecoinAmount) {
         // Verify input
         require(virtualTokenAmount > 0, "DInterest: 0 amount");
         Deposit memory depositEntry = _getDeposit(depositID);
@@ -1035,6 +1095,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
      */
     function _fund(uint256 depositID, uint256 fundAmount)
         internal
+        virtual
         returns (uint256 fundingID)
     {
         Deposit storage depositEntry = _getDeposit(depositID);
@@ -1125,6 +1186,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
      */
     function _payInterestToFunders(uint256 fundingID)
         internal
+        virtual
         returns (uint256 interestAmount)
     {
         Funding storage f = _getFunding(fundingID);
@@ -1180,7 +1242,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 fundingID,
         uint256 recordedFundedPrincipalAmount,
         bool early
-    ) internal returns (uint256 fundingInterestAmount) {
+    ) internal virtual returns (uint256 fundingInterestAmount) {
         Funding storage f = _getFunding(fundingID);
         uint256 recordedMoneyMarketIncomeIndex =
             f.recordedMoneyMarketIncomeIndex;
@@ -1248,7 +1310,10 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                     depositEntry.interestRate +
                         depositEntry.interestRate.decmul(depositEntry.feeRate)
                 );
-            fundingInterestAmount += MathUpgradeable.min(refundAmount, maxRefundAmount);
+            fundingInterestAmount += MathUpgradeable.min(
+                refundAmount,
+                maxRefundAmount
+            );
         }
 
         // Mint funder rewards
@@ -1299,7 +1364,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     function _depositVirtualTokenToPrincipal(
         uint256 depositID,
         uint256 virtualTokenAmount
-    ) internal view returns (uint256) {
+    ) internal view virtual returns (uint256) {
         Deposit storage depositEntry = _getDeposit(depositID);
         uint256 depositInterestRate = depositEntry.interestRate;
         return
@@ -1315,6 +1380,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
      */
     function _accruedInterestOfFunding(uint256 fundingID)
         internal
+        virtual
         returns (uint256 fundingInterestAmount)
     {
         Funding storage f = _getFunding(fundingID);

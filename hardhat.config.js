@@ -7,6 +7,7 @@ require('@nomiclabs/hardhat-solhint')
 require('hardhat-spdx-license-identifier')
 require('hardhat-docgen')
 require('@nomiclabs/hardhat-etherscan')
+require('@openzeppelin/hardhat-upgrades')
 
 let secret
 

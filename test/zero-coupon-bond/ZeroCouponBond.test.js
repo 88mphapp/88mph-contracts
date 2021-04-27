@@ -1,28 +1,23 @@
 // Libraries
 const BigNumber = require('bignumber.js')
+const { assert } = require('hardhat')
 
 // Contract artifacts
 const DInterest = artifacts.require('DInterest')
 const PercentageFeeModel = artifacts.require('PercentageFeeModel')
 const LinearDecayInterestModel = artifacts.require('LinearDecayInterestModel')
 const NFT = artifacts.require('NFT')
-const NFTFactory = artifacts.require('NFTFactory')
+const FundingMultitoken = artifacts.require('FundingMultitoken')
+const Factory = artifacts.require('Factory')
 const MPHToken = artifacts.require('MPHToken')
 const MPHMinter = artifacts.require('MPHMinter')
 const ERC20Mock = artifacts.require('ERC20Mock')
-const Rewards = artifacts.require('Rewards')
+const xMPH = artifacts.require('xMPH')
 const EMAOracle = artifacts.require('EMAOracle')
 const MPHIssuanceModel = artifacts.require('MPHIssuanceModel01')
 const Vesting = artifacts.require('Vesting')
 
-const VaultMock = artifacts.require('VaultMock')
-const HarvestStakingMock = artifacts.require('HarvestStakingMock')
-const HarvestMarket = artifacts.require('HarvestMarket')
-
-const FractionalDeposit = artifacts.require('FractionalDeposit')
-const FractionalDepositFactory = artifacts.require('FractionalDepositFactory')
 const ZeroCouponBond = artifacts.require('ZeroCouponBond')
-const ZeroCouponBondFactory = artifacts.require('ZeroCouponBondFactory')
 
 // Constants
 const PRECISION = 1e18
@@ -30,10 +25,8 @@ const STABLECOIN_PRECISION = 1e6
 const YEAR_IN_SEC = 31556952 // Number of seconds in a year
 const multiplierIntercept = 0.5 * PRECISION
 const multiplierSlope = 0.25 / YEAR_IN_SEC * PRECISION
-const MinDepositPeriod = 1 * 24 * 60 * 60 // 1 day in seconds
 const MaxDepositPeriod = 3 * YEAR_IN_SEC // 3 years in seconds
-const MinDepositAmount = BigNumber(0 * PRECISION).toFixed() // 0 stablecoins
-const MaxDepositAmount = BigNumber(1000 * PRECISION).toFixed() // 1000 stablecoins
+const MinDepositAmount = BigNumber(0.1 * STABLECOIN_PRECISION).toFixed() // 0.1 stablecoin
 const PoolDepositorRewardMintMultiplier = BigNumber(3.168873e-13 * PRECISION * (PRECISION / STABLECOIN_PRECISION)).toFixed() // 1e5 stablecoin * 1 year => 1 MPH
 const PoolDepositorRewardTakeBackMultiplier = BigNumber(0.9 * PRECISION).toFixed()
 const PoolFunderRewardMultiplier = BigNumber(3.168873e-13 * PRECISION * (PRECISION / STABLECOIN_PRECISION)).toFixed() // 1e5 stablecoin * 1 year => 1 MPH
@@ -43,14 +36,17 @@ const EMASmoothingFactor = BigNumber(2 * PRECISION).toFixed()
 const EMAAverageWindowInIntervals = 30
 const PoolDepositorRewardVestPeriod = 7 * 24 * 60 * 60 // 7 days
 const PoolFunderRewardVestPeriod = 0 * 24 * 60 * 60 // 0 days
+const MINTER_BURNER_ROLE = web3.utils.soliditySha3('MINTER_BURNER_ROLE')
+const DIVIDEND_ROLE = web3.utils.soliditySha3('DIVIDEND_ROLE')
 
 const epsilon = 1e-4
 const INF = BigNumber(2).pow(256).minus(1).toFixed()
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
+const DEFAULT_SALT = '0x0000000000000000000000000000000000000000000000000000000000000000'
 
 // Utilities
 // travel `time` seconds forward in time
-function timeTravel(time) {
+function timeTravel (time) {
   return new Promise((resolve, reject) => {
     web3.currentProvider.send({
       jsonrpc: '2.0',
@@ -64,21 +60,261 @@ function timeTravel(time) {
   })
 }
 
-async function latestBlockTimestamp() {
+async function latestBlockTimestamp () {
   return (await web3.eth.getBlock('latest')).timestamp
 }
 
+function calcFeeAmount (interestAmount) {
+  return interestAmount.times(0.2)
+}
+
+function applyFee (interestAmount) {
+  return interestAmount.minus(calcFeeAmount(interestAmount))
+}
+
+function getIRMultiplier (depositPeriodInSeconds) {
+  const multiplierDecrease = BigNumber(depositPeriodInSeconds).times(multiplierSlope)
+  if (multiplierDecrease.gte(multiplierIntercept)) {
+    return 0
+  } else {
+    return BigNumber(multiplierIntercept).minus(multiplierDecrease).div(PRECISION).toNumber()
+  }
+}
+
+function calcInterestAmount (depositAmount, interestRatePerSecond, depositPeriodInSeconds, shouldApplyFee) {
+  const IRMultiplier = getIRMultiplier(depositPeriodInSeconds)
+  const interestBeforeFee = BigNumber(depositAmount).times(depositPeriodInSeconds).times(interestRatePerSecond).times(IRMultiplier)
+  return shouldApplyFee ? applyFee(interestBeforeFee) : interestBeforeFee
+}
+
 // Converts a JS number into a string that doesn't use scientific notation
-function num2str(num) {
+function num2str (num) {
   return BigNumber(num).integerValue().toFixed()
 }
 
-function epsilonEq(curr, prev, ep) {
+function epsilonEq (curr, prev, ep) {
   const _epsilon = ep || epsilon
   return BigNumber(curr).eq(prev) ||
     (!BigNumber(prev).isZero() && BigNumber(curr).minus(prev).div(prev).abs().lt(_epsilon)) ||
     (!BigNumber(curr).isZero() && BigNumber(prev).minus(curr).div(curr).abs().lt(_epsilon))
 }
+
+function assertEpsilonEq (a, b, message) {
+  assert(epsilonEq(a, b), `assertEpsilonEq error, a=${BigNumber(a).toString()}, b=${BigNumber(b).toString()}, message=${message}`)
+}
+
+async function factoryReceiptToContract (receipt, contractArtifact) {
+  return await contractArtifact.at(receipt.logs[receipt.logs.length - 1].args.clone)
+}
+
+const aaveMoneyMarketModule = () => {
+  let aToken
+  let lendingPool
+  let lendingPoolAddressesProvider
+
+  const deployMoneyMarket = async (accounts, factory, stablecoin, rewards) => {
+    // Contract artifacts
+    const AaveMarket = artifacts.require('AaveMarket')
+    const ATokenMock = artifacts.require('ATokenMock')
+    const LendingPoolMock = artifacts.require('LendingPoolMock')
+    const LendingPoolAddressesProviderMock = artifacts.require('LendingPoolAddressesProviderMock')
+
+    // Initialize mock Aave contracts
+    aToken = await ATokenMock.new(stablecoin.address)
+    lendingPool = await LendingPoolMock.new()
+    await lendingPool.setReserveAToken(stablecoin.address, aToken.address)
+    lendingPoolAddressesProvider = await LendingPoolAddressesProviderMock.new()
+    await lendingPoolAddressesProvider.setLendingPoolImpl(lendingPool.address)
+
+    // Mint stablecoins
+    const mintAmount = 1000 * STABLECOIN_PRECISION
+    await stablecoin.mint(lendingPool.address, num2str(mintAmount))
+
+    // Initialize the money market
+    const marketTemplate = await AaveMarket.new()
+    const marketReceipt = await factory.createAaveMarket(marketTemplate.address, DEFAULT_SALT, lendingPoolAddressesProvider.address, aToken.address, stablecoin.address)
+    return await factoryReceiptToContract(marketReceipt, AaveMarket)
+  }
+
+  const timePass = async (timeInYears) => {
+    await timeTravel(timeInYears * YEAR_IN_SEC)
+    await aToken.mintInterest(num2str(timeInYears * YEAR_IN_SEC))
+  }
+
+  return {
+    deployMoneyMarket,
+    timePass
+  }
+}
+
+const compoundERC20MoneyMarketModule = () => {
+  let cToken
+  let comptroller
+  let comp
+  const INIT_INTEREST_RATE = 0.1 // 10% APY
+
+  const deployMoneyMarket = async (accounts, factory, stablecoin, rewards) => {
+    // Contract artifacts
+    const CompoundERC20Market = artifacts.require('CompoundERC20Market')
+    const CERC20Mock = artifacts.require('CERC20Mock')
+    const ComptrollerMock = artifacts.require('ComptrollerMock')
+
+    // Deploy Compound mock contracts
+    cToken = await CERC20Mock.new(stablecoin.address)
+    comp = await ERC20Mock.new()
+    comptroller = await ComptrollerMock.new(comp.address)
+
+    // Mint stablecoins
+    const mintAmount = 1000 * STABLECOIN_PRECISION
+    await stablecoin.mint(cToken.address, num2str(mintAmount))
+
+    // Initialize the money market
+    const marketTemplate = await CompoundERC20Market.new()
+    const marketReceipt = await factory.createCompoundERC20Market(marketTemplate.address, DEFAULT_SALT, cToken.address, comptroller.address, rewards.address, stablecoin.address)
+    return await factoryReceiptToContract(marketReceipt, CompoundERC20Market)
+  }
+
+  const timePass = async (timeInYears) => {
+    await timeTravel(timeInYears * YEAR_IN_SEC)
+    const currentExRate = BigNumber(await cToken.exchangeRateStored())
+    const rateAfterTimePasses = BigNumber(currentExRate).times(1 + timeInYears * INIT_INTEREST_RATE)
+    await cToken._setExchangeRateStored(num2str(rateAfterTimePasses))
+  }
+
+  return {
+    deployMoneyMarket,
+    timePass
+  }
+}
+
+const creamERC20MoneyMarketModule = () => {
+  let cToken
+  const INIT_INTEREST_RATE = 0.1 // 10% APY
+
+  const deployMoneyMarket = async (accounts, factory, stablecoin, rewards) => {
+    // Contract artifacts
+    const CreamERC20Market = artifacts.require('CreamERC20Market')
+    const CERC20Mock = artifacts.require('CERC20Mock')
+
+    // Deploy Compound mock contracts
+    cToken = await CERC20Mock.new(stablecoin.address)
+
+    // Mint stablecoins
+    const mintAmount = 1000 * STABLECOIN_PRECISION
+    await stablecoin.mint(cToken.address, num2str(mintAmount))
+
+    // Initialize the money market
+    const marketTemplate = await CreamERC20Market.new()
+    const marketReceipt = await factory.createCreamERC20Market(marketTemplate.address, DEFAULT_SALT, cToken.address, stablecoin.address)
+    return await factoryReceiptToContract(marketReceipt, CreamERC20Market)
+  }
+
+  const timePass = async (timeInYears) => {
+    await timeTravel(timeInYears * YEAR_IN_SEC)
+    const currentExRate = BigNumber(await cToken.exchangeRateStored())
+    const rateAfterTimePasses = BigNumber(currentExRate).times(1 + timeInYears * INIT_INTEREST_RATE)
+    await cToken._setExchangeRateStored(num2str(rateAfterTimePasses))
+  }
+
+  return {
+    deployMoneyMarket,
+    timePass
+  }
+}
+
+const harvestMoneyMarketModule = () => {
+  let vault
+  let stablecoin
+  const INIT_INTEREST_RATE = 0.1 // 10% APY
+
+  const deployMoneyMarket = async (accounts, factory, _stablecoin, rewards) => {
+    // Contract artifacts
+    const VaultMock = artifacts.require('VaultMock')
+    const HarvestStakingMock = artifacts.require('HarvestStakingMock')
+    const HarvestMarket = artifacts.require('HarvestMarket')
+
+    // Deploy mock contracts
+    stablecoin = _stablecoin
+    vault = await VaultMock.new(stablecoin.address)
+
+    // Initialize FARM rewards
+    const farmToken = await ERC20Mock.new()
+    const farmRewards = 1000 * STABLECOIN_PRECISION
+    const harvestStaking = await HarvestStakingMock.new(vault.address, farmToken.address, Math.floor(Date.now() / 1e3 - 60))
+    await farmToken.mint(harvestStaking.address, num2str(farmRewards))
+    await harvestStaking.setRewardDistribution(accounts[0], true)
+    await harvestStaking.notifyRewardAmount(num2str(farmRewards), { from: accounts[0] })
+
+    // Initialize the money market
+    const marketTemplate = await HarvestMarket.new()
+    const marketReceipt = await factory.createHarvestMarket(marketTemplate.address, DEFAULT_SALT, vault.address, rewards.address, harvestStaking.address, stablecoin.address)
+    return await factoryReceiptToContract(marketReceipt, HarvestMarket)
+  }
+
+  const timePass = async (timeInYears) => {
+    await timeTravel(timeInYears * YEAR_IN_SEC)
+    await stablecoin.mint(vault.address, num2str(BigNumber(await stablecoin.balanceOf(vault.address)).times(INIT_INTEREST_RATE).times(timeInYears)))
+  }
+
+  return {
+    deployMoneyMarket,
+    timePass
+  }
+}
+
+const yvaultMoneyMarketModule = () => {
+  let vault
+  let stablecoin
+  const INIT_INTEREST_RATE = 0.1 // 10% APY
+
+  const deployMoneyMarket = async (accounts, factory, _stablecoin, rewards) => {
+    // Contract artifacts
+    const VaultMock = artifacts.require('VaultMock')
+    const YVaultMarket = artifacts.require('YVaultMarket')
+
+    // Deploy mock contracts
+    stablecoin = _stablecoin
+    vault = await VaultMock.new(stablecoin.address)
+
+    // Initialize the money market
+    const marketTemplate = await YVaultMarket.new()
+    const marketReceipt = await factory.createYVaultMarket(marketTemplate.address, DEFAULT_SALT, vault.address, stablecoin.address)
+    return await factoryReceiptToContract(marketReceipt, YVaultMarket)
+  }
+
+  const timePass = async (timeInYears) => {
+    await timeTravel(timeInYears * YEAR_IN_SEC)
+    await stablecoin.mint(vault.address, num2str(BigNumber(await stablecoin.balanceOf(vault.address)).times(INIT_INTEREST_RATE).times(timeInYears)))
+  }
+
+  return {
+    deployMoneyMarket,
+    timePass
+  }
+}
+
+const moneyMarketModuleList = [
+  {
+    name: 'Aave',
+    moduleGenerator: aaveMoneyMarketModule
+  },
+  {
+    name: 'CompoundERC20',
+    moduleGenerator: compoundERC20MoneyMarketModule
+  },
+  {
+    name: 'CreamERC20',
+    moduleGenerator: creamERC20MoneyMarketModule
+  },
+  {
+    name: 'Harvest',
+    moduleGenerator: harvestMoneyMarketModule
+  },
+  {
+    name: 'YVault',
+    moduleGenerator: yvaultMoneyMarketModule
+  }
+]
 
 // Tests
 contract('ZeroCouponBond', accounts => {
@@ -91,216 +327,161 @@ contract('ZeroCouponBond', accounts => {
 
   // Contract instances
   let stablecoin
-  let vault
-  let farmToken
-  let harvestStaking
   let dInterestPool
   let market
   let feeModel
   let interestModel
   let interestOracle
   let depositNFT
-  let fundingNFT
+  let fundingMultitoken
   let mph
   let mphMinter
-  let rewards
   let mphIssuanceModel
   let vesting
-  let fractionalDepositFactory
-  let zeroCouponBondFactory
-  let nftFactory
+  let factory
+  let zeroCouponBond
 
   // Constants
   const INIT_INTEREST_RATE = 0.1 // 10% APY
-  const depositAmount = 100 * STABLECOIN_PRECISION
+  const INIT_INTEREST_RATE_PER_SECOND = 0.1 / YEAR_IN_SEC // 10% APY
 
-  const timePass = async (timeInYears) => {
-    await timeTravel(timeInYears * YEAR_IN_SEC)
-    await stablecoin.mint(vault.address, num2str(BigNumber(await stablecoin.balanceOf(vault.address)).times(INIT_INTEREST_RATE).times(timeInYears)))
+  for (const moduleInfo of moneyMarketModuleList) {
+    const moneyMarketModule = moduleInfo.moduleGenerator()
+    context(`Money market: ${moduleInfo.name}`, () => {
+      beforeEach(async () => {
+        stablecoin = await ERC20Mock.new()
+
+        // Mint stablecoin
+        const mintAmount = 1000 * STABLECOIN_PRECISION
+        await stablecoin.mint(acc0, num2str(mintAmount))
+        await stablecoin.mint(acc1, num2str(mintAmount))
+        await stablecoin.mint(acc2, num2str(mintAmount))
+
+        // Initialize MPH
+        mph = await MPHToken.new()
+        await mph.init()
+        vesting = await Vesting.new(mph.address)
+        mphIssuanceModel = await MPHIssuanceModel.new(DevRewardMultiplier)
+        mphMinter = await MPHMinter.new(mph.address, govTreasury, devWallet, mphIssuanceModel.address, vesting.address)
+        mph.transferOwnership(mphMinter.address)
+
+        // Set infinite MPH approval
+        await mph.approve(mphMinter.address, INF, { from: acc0 })
+        await mph.approve(mphMinter.address, INF, { from: acc1 })
+        await mph.approve(mphMinter.address, INF, { from: acc2 })
+
+        // Deploy factory
+        factory = await Factory.new()
+
+        // Deploy moneyMarket
+        market = await moneyMarketModule.deployMoneyMarket(accounts, factory, stablecoin, govTreasury)
+
+        // Initialize the NFTs
+        const nftTemplate = await NFT.new()
+        const depositNFTReceipt = await factory.createNFT(nftTemplate.address, DEFAULT_SALT, '88mph Deposit', '88mph-Deposit')
+        depositNFT = await factoryReceiptToContract(depositNFTReceipt, NFT)
+        const fundingMultitokenTemplate = await FundingMultitoken.new()
+        const fundingNFTReceipt = await factory.createFundingMultitoken(fundingMultitokenTemplate.address, DEFAULT_SALT, stablecoin.address, 'https://api.88mph.app/funding-metadata/')
+        fundingMultitoken = await factoryReceiptToContract(fundingNFTReceipt, FundingMultitoken)
+
+        // Initialize the interest oracle
+        const interestOracleTemplate = await EMAOracle.new()
+        const interestOracleReceipt = await factory.createEMAOracle(interestOracleTemplate.address, DEFAULT_SALT, num2str(INIT_INTEREST_RATE * PRECISION / YEAR_IN_SEC), EMAUpdateInterval, EMASmoothingFactor, EMAAverageWindowInIntervals, market.address)
+        interestOracle = await factoryReceiptToContract(interestOracleReceipt, EMAOracle)
+
+        // Initialize the DInterest pool
+        feeModel = await PercentageFeeModel.new(govTreasury)
+        interestModel = await LinearDecayInterestModel.new(num2str(multiplierIntercept), num2str(multiplierSlope))
+        const dInterestTemplate = await DInterest.new()
+        const dInterestReceipt = await factory.createDInterest(
+          dInterestTemplate.address,
+          DEFAULT_SALT,
+          MaxDepositPeriod,
+          MinDepositAmount,
+          market.address,
+          stablecoin.address,
+          feeModel.address,
+          interestModel.address,
+          interestOracle.address,
+          depositNFT.address,
+          fundingMultitoken.address,
+          mphMinter.address
+        )
+        dInterestPool = await factoryReceiptToContract(dInterestReceipt, DInterest)
+
+        // Set MPH minting multiplier for DInterest pool
+        await mphMinter.setPoolWhitelist(dInterestPool.address, true)
+        await mphIssuanceModel.setPoolDepositorRewardMintMultiplier(dInterestPool.address, PoolDepositorRewardMintMultiplier)
+        await mphIssuanceModel.setPoolDepositorRewardTakeBackMultiplier(dInterestPool.address, PoolDepositorRewardTakeBackMultiplier)
+        await mphIssuanceModel.setPoolFunderRewardMultiplier(dInterestPool.address, PoolFunderRewardMultiplier)
+        await mphIssuanceModel.setPoolDepositorRewardVestPeriod(dInterestPool.address, PoolDepositorRewardVestPeriod)
+        await mphIssuanceModel.setPoolFunderRewardVestPeriod(dInterestPool.address, PoolFunderRewardVestPeriod)
+
+        // Transfer the ownership of the money market to the DInterest pool
+        await market.transferOwnership(dInterestPool.address)
+
+        // Transfer NFT ownerships to the DInterest pool
+        await depositNFT.transferOwnership(dInterestPool.address)
+        await fundingMultitoken.grantRole(MINTER_BURNER_ROLE, dInterestPool.address)
+        await fundingMultitoken.grantRole(DIVIDEND_ROLE, dInterestPool.address)
+
+        // Deploy ZeroCouponBond
+        const zeroCouponBondTemplate = await ZeroCouponBond.new()
+        const blockNow = await latestBlockTimestamp()
+        const zeroCouponBondAddress = await factory.predictAddress(zeroCouponBondTemplate.address, DEFAULT_SALT)
+        await stablecoin.approve(zeroCouponBondAddress, num2str(MinDepositAmount))
+        const zcbReceipt = await factory.createZeroCouponBond(
+          zeroCouponBondTemplate.address,
+          DEFAULT_SALT,
+          dInterestPool.address,
+          num2str(blockNow + 2 * YEAR_IN_SEC),
+          num2str(MinDepositAmount),
+          '88mph Zero Coupon Bond',
+          'MPHZCB-Jan-2023',
+          { from: acc0 }
+        )
+        zeroCouponBond = await factoryReceiptToContract(zcbReceipt, ZeroCouponBond)
+      })
+
+      describe('mint', () => {
+        context('happy path', () => {
+
+        })
+
+        context('edge cases', () => {
+
+        })
+      })
+
+      describe('earlyRedeem', () => {
+        context('happy path', () => {
+
+        })
+
+        context('edge cases', () => {
+
+        })
+      })
+
+      describe('withdrawDeposit', () => {
+        context('happy path', () => {
+
+        })
+
+        context('edge cases', () => {
+
+        })
+      })
+
+      describe('redeem', () => {
+        context('happy path', () => {
+
+        })
+
+        context('edge cases', () => {
+
+        })
+      })
+    })
   }
-
-  beforeEach(async function () {
-    // Initialize mock stablecoin and vault
-    stablecoin = await ERC20Mock.new()
-    vault = await VaultMock.new(stablecoin.address)
-
-    // Initialize FARM rewards
-    farmToken = await ERC20Mock.new()
-    const farmRewards = 1000 * STABLECOIN_PRECISION
-    harvestStaking = await HarvestStakingMock.new(vault.address, farmToken.address, Math.floor(Date.now() / 1e3 - 60))
-    await farmToken.mint(harvestStaking.address, num2str(farmRewards))
-    await harvestStaking.setRewardDistribution(acc0, true)
-    await harvestStaking.notifyRewardAmount(num2str(farmRewards), { from: acc0 })
-
-    // Mint stablecoin
-    const mintAmount = 1000 * STABLECOIN_PRECISION
-    await stablecoin.mint(acc0, num2str(mintAmount))
-    await stablecoin.mint(acc1, num2str(mintAmount))
-    await stablecoin.mint(acc2, num2str(mintAmount))
-
-    // Initialize MPH
-    mph = await MPHToken.new()
-    await mph.init()
-    vesting = await Vesting.new(mph.address)
-    mphIssuanceModel = await MPHIssuanceModel.new(DevRewardMultiplier)
-    mphMinter = await MPHMinter.new(mph.address, govTreasury, devWallet, mphIssuanceModel.address, vesting.address)
-    mph.transferOwnership(mphMinter.address)
-
-    // Set infinite MPH approval
-    await mph.approve(mphMinter.address, INF, { from: acc0 })
-    await mph.approve(mphMinter.address, INF, { from: acc1 })
-    await mph.approve(mphMinter.address, INF, { from: acc2 })
-
-    // Initialize MPH rewards
-    rewards = await Rewards.new(mph.address, stablecoin.address, Math.floor(Date.now() / 1e3))
-    rewards.setRewardDistribution(acc0, true)
-
-    // Initialize the money market
-    market = await HarvestMarket.new(vault.address, rewards.address, harvestStaking.address, stablecoin.address)
-
-    // Initialize the NFTs
-    const nftTemplate = await NFT.new()
-    nftFactory = await NFTFactory.new(nftTemplate.address)
-    const depositNFTReceipt = await nftFactory.createClone('88mph Deposit', '88mph-Deposit')
-    depositNFT = await NFT.at(depositNFTReceipt.logs[0].args._clone)
-    const fundingNFTReceipt = await nftFactory.createClone('88mph Funding', '88mph-Funding')
-    fundingNFT = await NFT.at(fundingNFTReceipt.logs[0].args._clone)
-
-    // Initialize the interest oracle
-    interestOracle = await EMAOracle.new(num2str(INIT_INTEREST_RATE * PRECISION / YEAR_IN_SEC), EMAUpdateInterval, EMASmoothingFactor, EMAAverageWindowInIntervals, market.address)
-
-    // Initialize the DInterest pool
-    feeModel = await PercentageFeeModel.new(rewards.address)
-    interestModel = await LinearDecayInterestModel.new(num2str(multiplierIntercept), num2str(multiplierSlope))
-    dInterestPool = await DInterest.new(
-      {
-        MinDepositPeriod,
-        MaxDepositPeriod,
-        MinDepositAmount,
-        MaxDepositAmount
-      },
-      market.address,
-      stablecoin.address,
-      feeModel.address,
-      interestModel.address,
-      interestOracle.address,
-      depositNFT.address,
-      fundingNFT.address,
-      mphMinter.address
-    )
-
-    // Set MPH minting multiplier for DInterest pool
-    await mphMinter.setPoolWhitelist(dInterestPool.address, true)
-    await mphIssuanceModel.setPoolDepositorRewardMintMultiplier(dInterestPool.address, PoolDepositorRewardMintMultiplier)
-    await mphIssuanceModel.setPoolDepositorRewardTakeBackMultiplier(dInterestPool.address, PoolDepositorRewardTakeBackMultiplier)
-    await mphIssuanceModel.setPoolFunderRewardMultiplier(dInterestPool.address, PoolFunderRewardMultiplier)
-    await mphIssuanceModel.setPoolDepositorRewardVestPeriod(dInterestPool.address, PoolDepositorRewardVestPeriod)
-    await mphIssuanceModel.setPoolFunderRewardVestPeriod(dInterestPool.address, PoolFunderRewardVestPeriod)
-
-    // Transfer the ownership of the money market to the DInterest pool
-    await market.transferOwnership(dInterestPool.address)
-
-    // Transfer NFT ownerships to the DInterest pool
-    await depositNFT.transferOwnership(dInterestPool.address)
-    await fundingNFT.transferOwnership(dInterestPool.address)
-
-    // Deploy FractionalDepositFactory
-    const fractionalDepositTemplate = await FractionalDeposit.new()
-    fractionalDepositFactory = await FractionalDepositFactory.new(fractionalDepositTemplate.address, mph.address)
-    await mph.approve(fractionalDepositFactory.address, INF, { from: acc0 })
-
-    // acc0 deposits stablecoin into the DInterest pool for 1 year
-    await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
-    const blockNow = await latestBlockTimestamp()
-    await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
-
-    // withdraw vested MPH reward after 7 days
-    await timePass(1 / 52)
-    await vesting.withdrawVested(acc0, 0, { from: acc0 })
-
-    // Deploy ZeroCouponBondFactory
-    const zeroCouponBondTemplate = await ZeroCouponBond.new()
-    zeroCouponBondFactory = await ZeroCouponBondFactory.new(zeroCouponBondTemplate.address, fractionalDepositFactory.address)
-  })
-
-  it('create zero coupon bond', async () => {
-    const blockNow = await latestBlockTimestamp()
-    await zeroCouponBondFactory.createZeroCouponBond(
-      dInterestPool.address,
-      num2str(blockNow + 2 * YEAR_IN_SEC),
-      '88mph Zero Coupon Bond',
-      'MPHZCB-Jan-2023',
-      { from: acc0 }
-    )
-  })
-
-  it('create zero coupon bond from NFT and redeem', async () => {
-    // create ZCB
-    const blockNow = await latestBlockTimestamp()
-    const zcbReceipt = await zeroCouponBondFactory.createZeroCouponBond(
-      dInterestPool.address,
-      num2str(blockNow + 2 * YEAR_IN_SEC),
-      '88mph Zero Coupon Bond',
-      'MPHZCB-Jan-2023',
-      { from: acc0 }
-    )
-    const zcbAddress = zcbReceipt.logs[0].args._clone
-    const zcb = await ZeroCouponBond.at(zcbAddress)
-
-    // mint ZCB
-    await depositNFT.approve(zcbAddress, 1)
-    await mph.approve(zcbAddress, INF)
-    const mintReceipt = await zcb.mintWithDepositNFT(1, '88mph Fractional Deposit', 'MPHFD-Jan-2022')
-    const fractionalDepositAddress = mintReceipt.logs[mintReceipt.logs.length - 1].args.fractionalDepositAddress
-    const fractionalDeposit = await FractionalDeposit.at(fractionalDepositAddress)
-    const fractionalDepositBalance = await fractionalDeposit.balanceOf(zcbAddress)
-
-    // wait 2 years
-    await timePass(2)
-
-    // redeem fractional deposit shares
-    await zcb.redeemFractionalDepositShares(fractionalDepositAddress, 0)
-
-    // check balances
-    assert(epsilonEq(await stablecoin.balanceOf(zcbAddress), fractionalDepositBalance), 'stablecoins not withdrawn to zero coupon bonds contract')
-
-    // redeem stablecoin
-    const beforeStablecoinBalance = await stablecoin.balanceOf(acc0)
-    await zcb.redeemStablecoin(await zcb.balanceOf(acc0))
-    const afterStablecoinBalance = await stablecoin.balanceOf(acc0)
-
-    // check balances
-    const actualMPHReward = await mph.balanceOf(acc0)
-    const expectedMPHReward = BigNumber(PoolDepositorRewardMintMultiplier).times(depositAmount).div(PRECISION).times(YEAR_IN_SEC).times(BigNumber(PRECISION).minus(PoolDepositorRewardTakeBackMultiplier)).div(PRECISION)
-    assert(epsilonEq(actualMPHReward, expectedMPHReward), 'MPH reward amount incorrect')
-    assert(epsilonEq(afterStablecoinBalance.sub(beforeStablecoinBalance), fractionalDepositBalance), 'stablecoins not credited to acc0')
-    assert(BigNumber(await zcb.balanceOf(acc0)).div(STABLECOIN_PRECISION).lt(epsilon), 'zero coupon bonds not burned from acc0')
-    assert(BigNumber(await fractionalDeposit.balanceOf(zcbAddress)).div(STABLECOIN_PRECISION).lt(epsilon), 'fractional deposit not burned from zero coupon bonds contract')
-  })
-
-  it('should not be able to mint using deposit that matures after the zero coupon bond', async () => {
-    // create ZCB that matures in 6 months (earlier than the deposit)
-    const blockNow = await latestBlockTimestamp()
-    const zcbReceipt = await zeroCouponBondFactory.createZeroCouponBond(
-      dInterestPool.address,
-      num2str(blockNow + 0.5 * YEAR_IN_SEC),
-      '88mph Zero Coupon Bond',
-      'MPHZCB',
-      { from: acc0 }
-    )
-    const zcbAddress = zcbReceipt.logs[0].args._clone
-    const zcb = await ZeroCouponBond.at(zcbAddress)
-
-    // mint ZCB
-    await depositNFT.approve(zcbAddress, 1)
-    await mph.approve(zcbAddress, INF)
-    try {
-      await zcb.mintWithDepositNFT(1, '88mph Fractional Deposit', 'MPHFD-Jan-2022')
-      assert.fail('minted with deposit that matures after the zero coupon bond')
-    } catch (error) {
-      if (error.message === 'minted with deposit that matures after the zero coupon bond') {
-        assert.fail('minted with deposit that matures after the zero coupon bond')
-      }
-    }
-  })
 })

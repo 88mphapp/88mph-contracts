@@ -12,7 +12,6 @@ const Factory = artifacts.require('Factory')
 const MPHToken = artifacts.require('MPHToken')
 const MPHMinter = artifacts.require('MPHMinter')
 const ERC20Mock = artifacts.require('ERC20Mock')
-const xMPH = artifacts.require('xMPH')
 const EMAOracle = artifacts.require('EMAOracle')
 const MPHIssuanceModel = artifacts.require('MPHIssuanceModel01')
 const Vesting = artifacts.require('Vesting')
@@ -34,10 +33,8 @@ const EMASmoothingFactor = BigNumber(2 * PRECISION).toFixed()
 const EMAAverageWindowInIntervals = 30
 const PoolDepositorRewardVestPeriod = 7 * 24 * 60 * 60 // 7 days
 const PoolFunderRewardVestPeriod = 0 * 24 * 60 * 60 // 0 days
-const xMPHRewardUnlockPeriod = 14 * 24 * 60 * 60 // 14 days
 const MINTER_BURNER_ROLE = web3.utils.soliditySha3('MINTER_BURNER_ROLE')
 const DIVIDEND_ROLE = web3.utils.soliditySha3('DIVIDEND_ROLE')
-const DISTRIBUTOR_ROLE = web3.utils.soliditySha3('DIVIDEND_ROLE')
 
 const epsilon = 1e-4
 const INF = BigNumber(2).pow(256).minus(1).toFixed()
@@ -170,7 +167,7 @@ const compoundERC20MoneyMarketModule = () => {
 
     // Initialize the money market
     const marketTemplate = await CompoundERC20Market.new()
-    const marketReceipt = await factory.createCompoundERC20Market(marketTemplate.address, DEFAULT_SALT, cToken.address, comptroller.address, rewards.address, stablecoin.address)
+    const marketReceipt = await factory.createCompoundERC20Market(marketTemplate.address, DEFAULT_SALT, cToken.address, comptroller.address, rewards, stablecoin.address)
     return await factoryReceiptToContract(marketReceipt, CompoundERC20Market)
   }
 
@@ -247,7 +244,7 @@ const harvestMoneyMarketModule = () => {
 
     // Initialize the money market
     const marketTemplate = await HarvestMarket.new()
-    const marketReceipt = await factory.createHarvestMarket(marketTemplate.address, DEFAULT_SALT, vault.address, rewards.address, harvestStaking.address, stablecoin.address)
+    const marketReceipt = await factory.createHarvestMarket(marketTemplate.address, DEFAULT_SALT, vault.address, rewards, harvestStaking.address, stablecoin.address)
     return await factoryReceiptToContract(marketReceipt, HarvestMarket)
   }
 
@@ -294,7 +291,7 @@ const yvaultMoneyMarketModule = () => {
 }
 
 const moneyMarketModuleList = [
-  /* {
+  {
     name: 'Aave',
     moduleGenerator: aaveMoneyMarketModule
   },
@@ -309,7 +306,7 @@ const moneyMarketModuleList = [
   {
     name: 'Harvest',
     moduleGenerator: harvestMoneyMarketModule
-  }, */
+  },
   {
     name: 'YVault',
     moduleGenerator: yvaultMoneyMarketModule
@@ -336,7 +333,6 @@ contract('DInterest', accounts => {
   let fundingMultitoken
   let mph
   let mphMinter
-  let xmph
   let mphIssuanceModel
   let vesting
   let factory
@@ -1053,7 +1049,42 @@ contract('DInterest', accounts => {
 
       describe('payInterestToFunders', () => {
         context('happy path', () => {
+          it('single deposit, two payouts', async () => {
+            const depositAmount = 10 * STABLECOIN_PRECISION
 
+            // acc0 deposits stablecoin into the DInterest pool for 1 year
+            await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+            const blockNow = await latestBlockTimestamp()
+            await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
+
+            // Fund deficit using acc2
+            await stablecoin.approve(dInterestPool.address, INF, { from: acc2 })
+            await dInterestPool.fund(1, INF, { from: acc2 })
+
+            // Wait 0.3 year
+            await moneyMarketModule.timePass(0.3)
+
+            // Payout interest
+            await dInterestPool.payInterestToFunders(1, { from: acc2 })
+
+            // Wait 0.7 year
+            await moneyMarketModule.timePass(0.7)
+
+            // Payout interest
+            await dInterestPool.payInterestToFunders(1, { from: acc2 })
+
+            // Withdraw deposit
+            await dInterestPool.withdraw(1, INF, false, { from: acc0 })
+
+            // Redeem interest
+            const beforeBalance = BigNumber(await stablecoin.balanceOf(acc2))
+            await fundingMultitoken.withdrawDividend(1, { from: acc2 })
+
+            // Check interest received
+            const actualInterestReceived = BigNumber(await stablecoin.balanceOf(acc2)).minus(beforeBalance)
+            const interestExpected = calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, YEAR_IN_SEC, false).plus(depositAmount).times(INIT_INTEREST_RATE)
+            assertEpsilonEq(actualInterestReceived, interestExpected, 'interest received incorrect')
+          })
         })
 
         context('edge cases', () => {
@@ -1073,7 +1104,30 @@ contract('DInterest', accounts => {
 
       describe('totalInterestOwedToFunders', () => {
         context('happy path', () => {
+          it('single deposit', async () => {
+            const depositAmount = 10 * STABLECOIN_PRECISION
 
+            // acc0 deposits for 1 year
+            await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+            const blockNow = await latestBlockTimestamp()
+            await dInterestPool.deposit(num2str(depositAmount), blockNow + YEAR_IN_SEC, { from: acc0 })
+
+            // Fund deficit using acc2
+            await stablecoin.approve(dInterestPool.address, INF, { from: acc2 })
+            await dInterestPool.fund(1, INF, { from: acc2 })
+
+            // Wait 1 year
+            await moneyMarketModule.timePass(1)
+
+            // Surplus should be zero, because the interest owed to funders should be deducted from surplus
+            const surplusObj = await dInterestPool.surplus.call()
+            assertEpsilonEq(0, surplusObj.surplusAmount, 'surplus not 0')
+
+            // totalInterestOwedToFunders() should return the interest generated by the deposit
+            const totalInterestOwedToFunders = await dInterestPool.totalInterestOwedToFunders.call()
+            const interestExpected = calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, YEAR_IN_SEC, false).plus(depositAmount).times(INIT_INTEREST_RATE)
+            assertEpsilonEq(totalInterestOwedToFunders, interestExpected, 'interest owed to funders not correct')
+          })
         })
 
         context('edge cases', () => {

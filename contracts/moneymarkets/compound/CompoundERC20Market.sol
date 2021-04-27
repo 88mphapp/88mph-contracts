@@ -33,9 +33,9 @@ contract CompoundERC20Market is IMoneyMarket, OwnableUpgradeable {
         require(
             _cToken.isContract() &&
                 _comptroller.isContract() &&
-                _rewards.isContract() &&
+                _rewards != address(0) &&
                 _stablecoin.isContract(),
-            "CompoundERC20Market: An input address is not a contract"
+            "CompoundERC20Market: Invalid input address"
         );
 
         cToken = ICERC20(_cToken);

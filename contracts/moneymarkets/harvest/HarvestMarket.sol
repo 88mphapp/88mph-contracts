@@ -30,10 +30,10 @@ contract HarvestMarket is IMoneyMarket, OwnableUpgradeable {
         // Verify input addresses
         require(
             _vault.isContract() &&
-                _rewards.isContract() &&
+                _rewards != address(0) &&
                 _stakingPool.isContract() &&
                 _stablecoin.isContract(),
-            "HarvestMarket: An input address is not a contract"
+            "HarvestMarket: Invalid input address"
         );
 
         vault = HarvestVault(_vault);
@@ -61,7 +61,8 @@ contract HarvestMarket is IMoneyMarket, OwnableUpgradeable {
     }
 
     function withdraw(uint256 amountInUnderlying)
-        external override
+        external
+        override
         onlyOwner
         returns (uint256 actualAmountWithdrawn)
     {
@@ -87,13 +88,16 @@ contract HarvestMarket is IMoneyMarket, OwnableUpgradeable {
 
     function claimRewards() external override {
         stakingPool.getReward();
-        ERC20Upgradeable rewardToken = ERC20Upgradeable(stakingPool.rewardToken());
+        ERC20Upgradeable rewardToken =
+            ERC20Upgradeable(stakingPool.rewardToken());
         rewardToken.safeTransfer(rewards, rewardToken.balanceOf(address(this)));
     }
 
     function totalValue() external view override returns (uint256) {
         uint256 sharePrice = vault.getPricePerFullShare();
-        uint256 shareBalance = vault.balanceOf(address(this)) + stakingPool.balanceOf(address(this));
+        uint256 shareBalance =
+            vault.balanceOf(address(this)) +
+                stakingPool.balanceOf(address(this));
         return shareBalance.decmul(sharePrice);
     }
 

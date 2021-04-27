@@ -513,7 +513,103 @@ contract('DInterest', accounts => {
 
       describe('topupDeposit', () => {
         context('happy path', () => {
+          it('should update global variables correctly', async () => {
+            const depositAmount = 100 * STABLECOIN_PRECISION
 
+            // acc0 deposits for 1 year
+            await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+            const blockNow = await latestBlockTimestamp()
+            await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
+
+            // topup
+            await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+            await dInterestPool.topupDeposit(1, num2str(depositAmount), { from: acc0 })
+
+            // Calculate interest amount
+            const expectedInterest = calcInterestAmount(2 * depositAmount, INIT_INTEREST_RATE_PER_SECOND, YEAR_IN_SEC, true)
+
+            // Verify totalDeposit
+            const totalDeposit = BigNumber(await dInterestPool.totalDeposit())
+            assertEpsilonEq(totalDeposit, 2 * depositAmount, 'totalDeposit not updated after acc0 deposited')
+
+            // Verify totalInterestOwed
+            const totalInterestOwed = BigNumber(await dInterestPool.totalInterestOwed())
+            assertEpsilonEq(totalInterestOwed, expectedInterest, 'totalInterestOwed not updated after acc0 deposited')
+
+            // Verify totalFeeOwed
+            const totalFeeOwed = BigNumber(await dInterestPool.totalFeeOwed())
+            const expectedTotalFeeOwed = totalInterestOwed.plus(totalFeeOwed).minus(applyFee(totalInterestOwed.plus(totalFeeOwed)))
+            assertEpsilonEq(totalFeeOwed, expectedTotalFeeOwed, 'totalFeeOwed not updated after acc0 deposited')
+          })
+
+          it('should transfer funds correctly', async () => {
+            const depositAmount = 100 * STABLECOIN_PRECISION
+
+            // acc0 deposits for 1 year
+            await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+            const blockNow = await latestBlockTimestamp()
+            await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
+
+            // topup
+            const acc0BeforeBalance = BigNumber(await stablecoin.balanceOf(acc0))
+            const dInterestPoolBeforeBalance = BigNumber(await market.totalValue.call())
+            await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+            await dInterestPool.topupDeposit(1, num2str(depositAmount), { from: acc0 })
+
+            const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0))
+            const dInterestPoolCurrentBalance = BigNumber(await market.totalValue.call())
+
+            // Verify stablecoin transferred out of account
+            assertEpsilonEq(acc0BeforeBalance.minus(acc0CurrentBalance), depositAmount, 'stablecoin not transferred out of acc0')
+
+            // Verify stablecoin transferred into money market
+            assertEpsilonEq(dInterestPoolCurrentBalance.minus(dInterestPoolBeforeBalance), depositAmount, 'stablecoin not transferred into money market')
+          })
+
+          it('should withdraw correctly', async () => {
+            const depositAmount = 100 * STABLECOIN_PRECISION
+
+            // acc0 deposits for 1 year
+            await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+            const blockNow = await latestBlockTimestamp()
+            await dInterestPool.deposit(num2str(depositAmount), num2str(blockNow + YEAR_IN_SEC), { from: acc0 })
+
+            // topup
+            await stablecoin.approve(dInterestPool.address, num2str(depositAmount), { from: acc0 })
+            await dInterestPool.topupDeposit(1, num2str(depositAmount), { from: acc0 })
+
+            // wait 1 year
+            await moneyMarketModule.timePass(1)
+
+            // withdraw
+            const acc0BeforeBalance = BigNumber(await stablecoin.balanceOf(acc0))
+            const dInterestPoolBeforeBalance = BigNumber(await market.totalValue.call())
+            await dInterestPool.withdraw(1, INF, false, { from: acc0 })
+            const acc0CurrentBalance = BigNumber(await stablecoin.balanceOf(acc0))
+            const dInterestPoolCurrentBalance = BigNumber(await market.totalValue.call())
+
+            // Verify totalDeposit
+            const totalDeposit = BigNumber(await dInterestPool.totalDeposit())
+            assertEpsilonEq(totalDeposit, 0, 'totalDeposit not updated after acc0 withdrew')
+
+            // Verify totalInterestOwed
+            const totalInterestOwed = BigNumber(await dInterestPool.totalInterestOwed())
+            assertEpsilonEq(totalInterestOwed, 0, 'totalInterestOwed not updated after acc0 withdrew')
+
+            // Verify totalFeeOwed
+            const totalFeeOwed = BigNumber(await dInterestPool.totalFeeOwed())
+            assertEpsilonEq(totalFeeOwed, 0, 'totalFeeOwed not updated after acc0 withdrew')
+
+            // Verify stablecoin transferred to account
+            const expectedInterest = calcInterestAmount(2 * depositAmount, INIT_INTEREST_RATE_PER_SECOND, YEAR_IN_SEC, true)
+            const expectedWithdrawAmount = expectedInterest.plus(2 * depositAmount)
+            assertEpsilonEq(acc0CurrentBalance.minus(acc0BeforeBalance), expectedWithdrawAmount, 'stablecoin not transferred to acc0')
+
+            // Verify stablecoin transferred from money market
+            const expectedInterestPlusFee = calcInterestAmount(2 * depositAmount, INIT_INTEREST_RATE_PER_SECOND, YEAR_IN_SEC, false)
+            const expectedPoolValueChange = expectedInterestPlusFee.plus(2 * depositAmount)
+            assertEpsilonEq(dInterestPoolBeforeBalance.minus(dInterestPoolCurrentBalance), expectedPoolValueChange, 'stablecoin not transferred from money market')
+          })
         })
 
         context('edge cases', () => {

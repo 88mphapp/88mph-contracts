@@ -807,13 +807,13 @@ contract DInterest is ReentrancyGuard, Ownable {
 
         // Mint MPH for msg.sender
         // TODO
-        uint256 mintMPHAmount =
+        uint256 mintMPHAmount; /* =
             mphMinter.mintDepositorReward(
                 msg.sender,
                 depositAmount,
                 depositPeriod,
                 interestAmount
-            );
+            );*/
 
         // Update deposit struct
         uint256 currentDepositAmount =
@@ -983,7 +983,6 @@ contract DInterest is ReentrancyGuard, Ownable {
                 recordedFundedPrincipalAmount,
                 early
             );
-            console.log(fundingInterestAmount);
         }
 
         // Burn `virtualTokenAmount` deposit virtual tokens

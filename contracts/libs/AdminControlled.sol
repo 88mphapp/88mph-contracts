@@ -11,7 +11,7 @@ abstract contract AdminControlled is AccessControl {
     modifier onlyAdmin {
         require(
             hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
-            "OneSplitDumper: not admin"
+            "AdminControlled: not admin"
         );
         _;
     }

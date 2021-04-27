@@ -3,24 +3,20 @@ pragma solidity 0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./imports/OneSplitAudit.sol";
-import "../IRewards.sol";
+import "../xMPH.sol";
 import "../../libs/AdminControlled.sol";
 
 contract OneSplitDumper is AdminControlled {
     using SafeERC20 for IERC20;
 
     OneSplitAudit public oneSplit;
-    IRewards public rewards;
+    xMPH public xMPHToken;
     IERC20 public rewardToken;
 
-    constructor(
-        address _oneSplit,
-        address _rewards,
-        address _rewardToken
-    ) {
+    constructor(address _oneSplit, address _xMPHToken) {
         oneSplit = OneSplitAudit(_oneSplit);
-        rewards = IRewards(_rewards);
-        rewardToken = IERC20(_rewardToken);
+        xMPHToken = xMPH(_xMPHToken);
+        rewardToken = IERC20(address(xMPHToken.mph()));
     }
 
     function getDumpParams(address tokenAddress, uint256 parts)
@@ -67,7 +63,7 @@ contract OneSplitDumper is AdminControlled {
 
     function notify() external onlyAdmin {
         uint256 balance = rewardToken.balanceOf(address(this));
-        rewardToken.safeTransfer(address(rewards), balance);
-        rewards.notifyRewardAmount(balance);
+        rewardToken.safeIncreaseAllowance(address(xMPHToken), balance);
+        xMPHToken.distributeReward(balance);
     }
 }

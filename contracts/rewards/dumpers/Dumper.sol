@@ -6,9 +6,7 @@ import "./withdrawers/CurveLPWithdrawer.sol";
 import "./withdrawers/YearnWithdrawer.sol";
 
 contract Dumper is OneSplitDumper, CurveLPWithdrawer, YearnWithdrawer {
-    constructor(
-        address _oneSplit,
-        address _rewards,
-        address _rewardToken
-    ) OneSplitDumper(_oneSplit, _rewards, _rewardToken) {}
+    constructor(address _oneSplit, address _xMPHToken)
+        OneSplitDumper(_oneSplit, _xMPHToken)
+    {}
 }

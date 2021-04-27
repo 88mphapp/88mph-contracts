@@ -3,7 +3,6 @@ pragma solidity 0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../imports/Curve.sol";
-import "../../IRewards.sol";
 import "../../../libs/AdminControlled.sol";
 
 contract CurveLPWithdrawer is AdminControlled {

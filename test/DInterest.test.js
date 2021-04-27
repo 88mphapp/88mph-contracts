@@ -12,7 +12,7 @@ const Factory = artifacts.require('Factory')
 const MPHToken = artifacts.require('MPHToken')
 const MPHMinter = artifacts.require('MPHMinter')
 const ERC20Mock = artifacts.require('ERC20Mock')
-const Rewards = artifacts.require('Rewards')
+const xMPH = artifacts.require('xMPH')
 const EMAOracle = artifacts.require('EMAOracle')
 const MPHIssuanceModel = artifacts.require('MPHIssuanceModel01')
 const Vesting = artifacts.require('Vesting')
@@ -34,8 +34,10 @@ const EMASmoothingFactor = BigNumber(2 * PRECISION).toFixed()
 const EMAAverageWindowInIntervals = 30
 const PoolDepositorRewardVestPeriod = 7 * 24 * 60 * 60 // 7 days
 const PoolFunderRewardVestPeriod = 0 * 24 * 60 * 60 // 0 days
+const xMPHRewardUnlockPeriod = 14 * 24 * 60 * 60 // 14 days
 const MINTER_BURNER_ROLE = web3.utils.soliditySha3('MINTER_BURNER_ROLE')
 const DIVIDEND_ROLE = web3.utils.soliditySha3('DIVIDEND_ROLE')
+const DISTRIBUTOR_ROLE = web3.utils.soliditySha3('DIVIDEND_ROLE')
 
 const epsilon = 1e-4
 const INF = BigNumber(2).pow(256).minus(1).toFixed()
@@ -334,7 +336,7 @@ contract('DInterest', accounts => {
   let fundingMultitoken
   let mph
   let mphMinter
-  let rewards
+  let xmph
   let mphIssuanceModel
   let vesting
   let factory
@@ -368,15 +370,11 @@ contract('DInterest', accounts => {
         await mph.approve(mphMinter.address, INF, { from: acc1 })
         await mph.approve(mphMinter.address, INF, { from: acc2 })
 
-        // Initialize MPH rewards
-        rewards = await Rewards.new(mph.address, stablecoin.address, Math.floor(Date.now() / 1e3))
-        rewards.setRewardDistribution(acc0, true)
-
         // Deploy factory
         factory = await Factory.new()
 
         // Deploy moneyMarket
-        market = await moneyMarketModule.deployMoneyMarket(accounts, factory, stablecoin, rewards)
+        market = await moneyMarketModule.deployMoneyMarket(accounts, factory, stablecoin, govTreasury)
 
         // Initialize the NFTs
         const nftTemplate = await NFT.new()
@@ -392,7 +390,7 @@ contract('DInterest', accounts => {
         interestOracle = await factoryReceiptToContract(interestOracleReceipt, EMAOracle)
 
         // Initialize the DInterest pool
-        feeModel = await PercentageFeeModel.new(rewards.address)
+        feeModel = await PercentageFeeModel.new(govTreasury)
         interestModel = await LinearDecayInterestModel.new(num2str(multiplierIntercept), num2str(multiplierSlope))
         const dInterestTemplate = await DInterest.new()
         const dInterestReceipt = await factory.createDInterest(

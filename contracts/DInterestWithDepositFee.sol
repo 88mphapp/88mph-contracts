@@ -3,6 +3,9 @@ pragma solidity 0.8.3;
 
 import "./DInterest.sol";
 
+/**
+    @dev A variant of DInterest that supports money markets with deposit fees
+ */
 contract DInterestWithDepositFee is DInterest {
     using DecMath for uint256;
     using SafeERC20Upgradeable for ERC20Upgradeable;

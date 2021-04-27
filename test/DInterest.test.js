@@ -915,7 +915,9 @@ contract('DInterest', accounts => {
               const acc1BeforeBalance = BigNumber(await stablecoin.balanceOf(acc1))
               await fundingMultitoken.withdrawDividend(1, { from: acc1 })
               const actualRefundAmount = BigNumber(await stablecoin.balanceOf(acc1)).minus(acc1BeforeBalance)
-              const expectedRefundAmount = deficitAmount.times(0.4)
+              const estimatedLostInterest = calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, YEAR_IN_SEC, false).plus(depositAmount).times(INIT_INTEREST_RATE).times(0.9 + 0.5 - 1)
+              const maxRefundAmount = deficitAmount.times(0.4)
+              const expectedRefundAmount = BigNumber.min(estimatedLostInterest, maxRefundAmount)
               assertEpsilonEq(actualRefundAmount, expectedRefundAmount, 'funding refund incorrect')
             }
 

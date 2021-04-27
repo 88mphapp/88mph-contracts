@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./moneymarkets/IMoneyMarket.sol";
 import "./models/fee/IFeeModel.sol";
 import "./models/interest/IInterestModel.sol";
@@ -982,6 +983,7 @@ contract DInterest is ReentrancyGuard, Ownable {
                 recordedFundedPrincipalAmount,
                 early
             );
+            console.log(fundingInterestAmount);
         }
 
         // Burn `virtualTokenAmount` deposit virtual tokens
@@ -1224,19 +1226,27 @@ contract DInterest is ReentrancyGuard, Ownable {
 
         // Add refund to interestAmount
         if (early) {
-            Deposit memory depositEntity = _getDeposit(f.depositID);
-            // TODO: only make funder even
-            fundingInterestAmount += (recordedFundedPrincipalAmount -
-                currentFundedPrincipalAmount)
-                .decdiv(
-                PRECISION +
-                    depositEntity.interestRate +
-                    depositEntity.interestRate.decmul(depositEntity.feeRate)
-            )
-                .decmul(
-                depositEntity.interestRate +
-                    depositEntity.interestRate.decmul(depositEntity.feeRate)
-            );
+            Deposit memory depositEntry = _getDeposit(f.depositID);
+            (, uint256 moneyMarketInterestRatePerSecond) =
+                interestOracle.updateAndQuery();
+            uint256 refundAmount =
+                (((recordedFundedPrincipalAmount -
+                    currentFundedPrincipalAmount) * PRECISION)
+                    .decmul(moneyMarketInterestRatePerSecond) *
+                    (depositEntry.maturationTimestamp - block.timestamp)) /
+                    PRECISION;
+            uint256 maxRefundAmount =
+                (recordedFundedPrincipalAmount - currentFundedPrincipalAmount)
+                    .decdiv(
+                    PRECISION +
+                        depositEntry.interestRate +
+                        depositEntry.interestRate.decmul(depositEntry.feeRate)
+                )
+                    .decmul(
+                    depositEntry.interestRate +
+                        depositEntry.interestRate.decmul(depositEntry.feeRate)
+                );
+            fundingInterestAmount += Math.min(refundAmount, maxRefundAmount);
         }
 
         // Mint funder rewards

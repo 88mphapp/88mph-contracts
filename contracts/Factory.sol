@@ -61,6 +61,7 @@ contract Factory {
         address template,
         bytes32 salt,
         address _pool,
+        address _vesting,
         uint256 _maturationTimetstamp,
         uint256 _initialDepositAmount,
         string calldata _tokenName,
@@ -73,6 +74,7 @@ contract Factory {
         clone.initialize(
             msg.sender,
             _pool,
+            _vesting,
             _maturationTimetstamp,
             _initialDepositAmount,
             _tokenName,

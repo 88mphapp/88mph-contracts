@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721ReceiverUpgradeable.sol";
 import "../tokens/NFT.sol";
 import "../DInterest.sol";
+import "../rewards/Vesting02.sol";
 
 contract ZeroCouponBond is
     ERC20Upgradeable,
@@ -18,6 +19,7 @@ contract ZeroCouponBond is
     DInterest public pool;
     ERC20Upgradeable public stablecoin;
     NFT public depositNFT;
+    Vesting02 public vesting;
     uint256 public maturationTimestamp;
     uint256 public depositID;
     uint8 public _decimals;
@@ -28,6 +30,7 @@ contract ZeroCouponBond is
     function initialize(
         address _creator,
         address _pool,
+        address _vesting,
         uint256 _maturationTimestamp,
         uint256 _initialDepositAmount,
         string calldata _tokenName,
@@ -40,6 +43,7 @@ contract ZeroCouponBond is
         stablecoin = pool.stablecoin();
         depositNFT = pool.depositNFT();
         maturationTimestamp = _maturationTimestamp;
+        vesting = Vesting02(_vesting);
 
         // set decimals to be the same as the underlying stablecoin
         _decimals = ERC20Upgradeable(address(pool.stablecoin())).decimals();
@@ -57,6 +61,11 @@ contract ZeroCouponBond is
             maturationTimestamp
         );
         _mint(_creator, _initialDepositAmount + interestAmount);
+        vesting.safeTransferFrom(
+            address(this),
+            _creator,
+            vesting.depositIDToVestID(depositID)
+        );
     }
 
     function decimals() public view override returns (uint8) {

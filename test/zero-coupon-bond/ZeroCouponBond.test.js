@@ -125,10 +125,11 @@ contract('ZeroCouponBond', accounts => {
           zeroCouponBondTemplate.address,
           Base.DEFAULT_SALT,
           dInterestPool.address,
-          Base.num2str(blockNow + 2 * Base.YEAR_IN_SEC),
+          vesting02.address,
+          Base.num2str(blockNow + Base.YEAR_IN_SEC),
           Base.num2str(Base.MinDepositAmount),
           '88mph Zero Coupon Bond',
-          'MPHZCB-Jan-2023',
+          'MPHZCB-Apr-2022',
           { from: acc0 }
         )
         zeroCouponBond = await Base.factoryReceiptToContract(zcbReceipt, ZeroCouponBond)
@@ -136,7 +137,18 @@ contract('ZeroCouponBond', accounts => {
 
       describe('mint', () => {
         context('happy path', () => {
+          it('simple mint', async () => {
+            const depositAmount = 100 * Base.STABLECOIN_PRECISION
 
+            // acc1 mint ZCB
+            await stablecoin.approve(zeroCouponBond.address, Base.INF, { from: acc1 })
+            await zeroCouponBond.mint(Base.num2str(depositAmount), { from: acc1 })
+
+            // check mint amount
+            const actualZCBMinted = await zeroCouponBond.balanceOf(acc1)
+            const expectedZCBMinted = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, true).plus(depositAmount)
+            Base.assertEpsilonEq(actualZCBMinted, expectedZCBMinted, 'minted ZCB amount incorrect')
+          })
         })
 
         context('edge cases', () => {

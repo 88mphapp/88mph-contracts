@@ -855,11 +855,14 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                 address(this),
                 depositAmount
             );
-        }
 
-        // Lend `depositAmount` stablecoin to money market
-        stablecoin.safeIncreaseAllowance(address(moneyMarket), depositAmount);
-        moneyMarket.deposit(depositAmount);
+            // Lend `depositAmount` stablecoin to money market
+            stablecoin.safeIncreaseAllowance(
+                address(moneyMarket),
+                depositAmount
+            );
+            moneyMarket.deposit(depositAmount);
+        }
     }
 
     /**
@@ -1134,18 +1137,65 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     ) internal virtual returns (uint256 withdrawnStablecoinAmount) {
         // Withdraw funds from money market
         // Withdraws principal together with funding interest to save gas
-        withdrawAmount = moneyMarket.withdraw(
-            withdrawAmount + feeAmount + fundingInterestAmount
-        );
+        if (rollover) {
+            // Rollover mode, don't withdraw `withdrawAmount` from moneyMarket
 
-        // We do this instead of `depositAmount + interestAmount` because `withdrawAmount` might
-        // be slightly less due to rounding
-        withdrawnStablecoinAmount =
-            withdrawAmount -
-            feeAmount -
-            fundingInterestAmount;
-        if (!rollover) {
-            stablecoin.safeTransfer(msg.sender, withdrawnStablecoinAmount);
+            // We do this because feePlusFundingInterest might
+            // be slightly less due to rounding
+            uint256 feePlusFundingInterest =
+                moneyMarket.withdraw(feeAmount + fundingInterestAmount);
+            if (feePlusFundingInterest >= feeAmount + fundingInterestAmount) {
+                // enough to pay everything, if there's extra give to feeAmount
+                feeAmount = feePlusFundingInterest - fundingInterestAmount;
+            } else if (feePlusFundingInterest >= feeAmount) {
+                // enough to pay fee, give remainder to fundingInterestAmount
+                fundingInterestAmount = feePlusFundingInterest - feeAmount;
+            } else {
+                // not enough to pay fee, give everything to fee
+                feeAmount = feePlusFundingInterest;
+                fundingInterestAmount = 0;
+            }
+
+            // we're keeping the withdrawal amount in the money market
+            withdrawnStablecoinAmount = withdrawAmount;
+        } else {
+            uint256 actualWithdrawnAmount =
+                moneyMarket.withdraw(
+                    withdrawAmount + feeAmount + fundingInterestAmount
+                );
+
+            // We do this because `actualWithdrawnAmount` might
+            // be slightly less due to rounding
+            withdrawnStablecoinAmount = withdrawAmount;
+            if (
+                actualWithdrawnAmount >=
+                withdrawAmount + feeAmount + fundingInterestAmount
+            ) {
+                // enough to pay everything, if there's extra give to feeAmount
+                feeAmount =
+                    actualWithdrawnAmount -
+                    withdrawAmount -
+                    fundingInterestAmount;
+            } else if (actualWithdrawnAmount >= withdrawAmount + feeAmount) {
+                // enough to pay withdrawal + fee + remainder
+                // give remainder to funding interest
+                fundingInterestAmount =
+                    actualWithdrawnAmount -
+                    withdrawAmount -
+                    feeAmount;
+            } else if (actualWithdrawnAmount >= withdrawAmount) {
+                // enough to pay withdrawal + remainder
+                // give remainder to fee
+                feeAmount = actualWithdrawnAmount - withdrawAmount;
+            } else {
+                // not enough to pay withdrawal
+                // give everything to withdrawal
+                withdrawnStablecoinAmount = actualWithdrawnAmount;
+            }
+
+            if (withdrawnStablecoinAmount > 0) {
+                stablecoin.safeTransfer(msg.sender, withdrawnStablecoinAmount);
+            }
         }
 
         // Send `feeAmount` stablecoin to feeModel beneficiary
@@ -1165,7 +1215,10 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                 fundingInterestAmount
             );
             // Mint funder rewards
-            // TODO
+            mphMinter.distributeFundingRewards(
+                fundingID,
+                fundingInterestAmount
+            );
         }
     }
 
@@ -1321,7 +1374,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                 );
 
                 // Mint funder rewards
-                // TODO
+                mphMinter.distributeFundingRewards(fundingID, interestAmount);
             }
         }
     }

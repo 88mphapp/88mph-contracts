@@ -15,10 +15,12 @@ contract PercentageFeeModel is IFeeModel, Ownable {
     }
 
     address payable public override beneficiary;
+    mapping(address => FeeOverride) public interestFeeOverrideForPool;
+    mapping(address => FeeOverride) public earlyWithdrawFeeOverrideForPool;
     mapping(address => mapping(uint256 => FeeOverride))
-        public interestFeeOverride;
+        public interestFeeOverrideForDeposit;
     mapping(address => mapping(uint256 => FeeOverride))
-        public earlyWithdrawFeeOverride;
+        public earlyWithdrawFeeOverrideForDeposit;
 
     uint256 public interestFee;
     uint256 public earlyWithdrawFee;
@@ -26,12 +28,14 @@ contract PercentageFeeModel is IFeeModel, Ownable {
     event SetBeneficiary(address newBeneficiary);
     event SetInterestFee(uint256 newValue);
     event SetEarlyWithdrawFee(uint256 newValue);
-    event SetOverrideInterestFee(
+    event OverrideInterestFeeForPool(address indexed pool, uint256 newFee);
+    event OverrideEarlyWithdrawFeeForPool(address indexed pool, uint256 newFee);
+    event OverrideInterestFeeForDeposit(
         address indexed pool,
         uint256 indexed depositID,
         uint256 newFee
     );
-    event SetOverrideEarlyWithdrawFee(
+    event OverrideEarlyWithdrawFeeForDeposit(
         address indexed pool,
         uint256 indexed depositID,
         uint256 newFee
@@ -59,13 +63,21 @@ contract PercentageFeeModel is IFeeModel, Ownable {
         uint256 interestAmount
     ) external view override returns (uint256 feeAmount) {
         uint256 feeRate;
-        FeeOverride memory feeOverride = interestFeeOverride[pool][depositID];
-        if (feeOverride.isOverridden) {
-            // fee has been overridden
-            feeRate = feeOverride.fee;
+        FeeOverride memory feeOverrideForDeposit =
+            interestFeeOverrideForDeposit[pool][depositID];
+        if (feeOverrideForDeposit.isOverridden) {
+            // fee has been overridden for deposit
+            feeRate = feeOverrideForDeposit.fee;
         } else {
-            // use default fee
-            feeRate = interestFee;
+            FeeOverride memory feeOverrideForPool =
+                interestFeeOverrideForPool[pool];
+            if (feeOverrideForPool.isOverridden) {
+                // fee has been overridden for pool
+                feeRate = feeOverrideForPool.fee;
+            } else {
+                // use default fee
+                feeRate = interestFee;
+            }
         }
         return (interestAmount * feeRate) / PRECISION;
     }
@@ -76,14 +88,21 @@ contract PercentageFeeModel is IFeeModel, Ownable {
         uint256 withdrawnDepositAmount
     ) external view override returns (uint256 feeAmount) {
         uint256 feeRate;
-        FeeOverride memory feeOverride =
-            earlyWithdrawFeeOverride[pool][depositID];
-        if (feeOverride.isOverridden) {
-            // fee has been overridden
-            feeRate = feeOverride.fee;
+        FeeOverride memory feeOverrideForDeposit =
+            earlyWithdrawFeeOverrideForDeposit[pool][depositID];
+        if (feeOverrideForDeposit.isOverridden) {
+            // fee has been overridden for deposit
+            feeRate = feeOverrideForDeposit.fee;
         } else {
-            // use default fee
-            feeRate = earlyWithdrawFee;
+            FeeOverride memory feeOverrideForPool =
+                earlyWithdrawFeeOverrideForPool[pool];
+            if (feeOverrideForPool.isOverridden) {
+                // fee has been overridden for pool
+                feeRate = feeOverrideForPool.fee;
+            } else {
+                // use default fee
+                feeRate = earlyWithdrawFee;
+            }
         }
         return (withdrawnDepositAmount * feeRate) / PRECISION;
     }
@@ -109,29 +128,53 @@ contract PercentageFeeModel is IFeeModel, Ownable {
         emit SetEarlyWithdrawFee(newValue);
     }
 
-    function overrideInterestFee(
+    function overrideInterestFeeForPool(address pool, uint256 newFee)
+        external
+        onlyOwner
+    {
+        require(newFee <= interestFee, "PercentageFeeModel: too big");
+        interestFeeOverrideForPool[pool] = FeeOverride({
+            isOverridden: true,
+            fee: newFee
+        });
+        emit OverrideInterestFeeForPool(pool, newFee);
+    }
+
+    function overrideEarlyWithdrawFeeForPool(address pool, uint256 newFee)
+        external
+        onlyOwner
+    {
+        require(newFee <= earlyWithdrawFee, "PercentageFeeModel: too big");
+        earlyWithdrawFeeOverrideForPool[pool] = FeeOverride({
+            isOverridden: true,
+            fee: newFee
+        });
+        emit OverrideEarlyWithdrawFeeForPool(pool, newFee);
+    }
+
+    function overrideInterestFeeForDeposit(
         address pool,
         uint256 depositID,
         uint256 newFee
     ) external onlyOwner {
         require(newFee <= interestFee, "PercentageFeeModel: too big");
-        interestFeeOverride[pool][depositID] = FeeOverride({
+        interestFeeOverrideForDeposit[pool][depositID] = FeeOverride({
             isOverridden: true,
             fee: newFee
         });
-        emit SetOverrideInterestFee(pool, depositID, newFee);
+        emit OverrideInterestFeeForDeposit(pool, depositID, newFee);
     }
 
-    function overrideEarlyWithdrawFee(
+    function overrideEarlyWithdrawFeeForDeposit(
         address pool,
         uint256 depositID,
         uint256 newFee
     ) external onlyOwner {
         require(newFee <= earlyWithdrawFee, "PercentageFeeModel: too big");
-        earlyWithdrawFeeOverride[pool][depositID] = FeeOverride({
+        earlyWithdrawFeeOverrideForDeposit[pool][depositID] = FeeOverride({
             isOverridden: true,
             fee: newFee
         });
-        emit SetOverrideEarlyWithdrawFee(pool, depositID, newFee);
+        emit OverrideEarlyWithdrawFeeForDeposit(pool, depositID, newFee);
     }
 }

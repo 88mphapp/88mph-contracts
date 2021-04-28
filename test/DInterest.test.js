@@ -80,7 +80,7 @@ contract('DInterest', accounts => {
         interestOracle = await Base.factoryReceiptToContract(interestOracleReceipt, Base.EMAOracle)
 
         // Initialize the DInterest pool
-        feeModel = await Base.PercentageFeeModel.new(govTreasury)
+        feeModel = await Base.PercentageFeeModel.new(govTreasury, Base.interestFee, Base.earlyWithdrawFee)
         interestModel = await Base.LinearDecayInterestModel.new(Base.num2str(Base.multiplierIntercept), Base.num2str(Base.multiplierSlope))
         const dInterestTemplate = await Base.DInterest.new()
         const dInterestReceipt = await factory.createDInterest(
@@ -489,9 +489,10 @@ contract('DInterest', accounts => {
               const dInterestPoolCurrentBalance = BigNumber(await market.totalValue.call())
 
               // Verify stablecoin transferred into account
-              Base.assertEpsilonEq(acc0CurrentBalance.minus(acc0BeforeBalance), depositAmount, 'stablecoin not transferred into acc0')
+              const expectedReceiveStablecoinAmount = Base.applyEarlyWithdrawFee(depositAmount)
+              Base.assertEpsilonEq(acc0CurrentBalance.minus(acc0BeforeBalance), expectedReceiveStablecoinAmount, 'stablecoin not transferred into acc0')
 
-              // Verify stablecoin transferred into money market
+              // Verify stablecoin transferred from money market
               const actualPoolValueChange = dInterestPoolBeforeBalance.minus(dInterestPoolCurrentBalance)
               Base.assertEpsilonEq(actualPoolValueChange, depositAmount, 'stablecoin not transferred out of money market')
             })
@@ -536,7 +537,7 @@ contract('DInterest', accounts => {
               const dInterestPoolCurrentBalance = BigNumber(await market.totalValue.call())
 
               // Verify stablecoin transferred into account
-              const expectedWithdrawAmount = BigNumber(depositAmount).times(withdrawProportion)
+              const expectedWithdrawAmount = Base.applyEarlyWithdrawFee(BigNumber(depositAmount).times(withdrawProportion))
               Base.assertEpsilonEq(acc0CurrentBalance.minus(acc0BeforeBalance), expectedWithdrawAmount, 'stablecoin not transferred into acc0')
 
               // Verify stablecoin transferred into money market

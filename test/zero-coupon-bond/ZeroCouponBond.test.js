@@ -83,7 +83,7 @@ contract('ZeroCouponBond', accounts => {
         interestOracle = await Base.factoryReceiptToContract(interestOracleReceipt, Base.EMAOracle)
 
         // Initialize the DInterest pool
-        feeModel = await Base.PercentageFeeModel.new(govTreasury)
+        feeModel = await Base.PercentageFeeModel.new(govTreasury, Base.interestFee, Base.earlyWithdrawFee)
         interestModel = await Base.LinearDecayInterestModel.new(Base.num2str(Base.multiplierIntercept), Base.num2str(Base.multiplierSlope))
         const dInterestTemplate = await Base.DInterest.new()
         const dInterestReceipt = await factory.createDInterest(

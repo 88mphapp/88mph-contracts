@@ -26,13 +26,15 @@ const multiplierSlope = module.exports.multiplierSlope = 0.25 / YEAR_IN_SEC * PR
 const MaxDepositPeriod = module.exports.MaxDepositPeriod = 3 * YEAR_IN_SEC // 3 years in seconds
 const MinDepositAmount = module.exports.MinDepositAmount = BigNumber(0.1 * STABLECOIN_PRECISION).toFixed() // 0.1 stablecoin
 const PoolDepositorRewardMintMultiplier = module.exports.PoolDepositorRewardMintMultiplier = BigNumber(3.168873e-13 * PRECISION * (PRECISION / STABLECOIN_PRECISION)).toFixed() // 1e5 stablecoin * 1 year => 1 MPH
-const PoolFunderRewardMultiplier = module.exports.PoolFunderRewardMultiplier = BigNumber(3.168873e-13 * PRECISION * (PRECISION / STABLECOIN_PRECISION)).toFixed() // 1e5 stablecoin * 1 year => 1 MPH
+const PoolFunderRewardMultiplier = module.exports.PoolFunderRewardMultiplier = BigNumber(1e-13 * PRECISION * (PRECISION / STABLECOIN_PRECISION)).toFixed() // 1e5 stablecoin => 1 MPH
 const DevRewardMultiplier = module.exports.DevRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
 const GovRewardMultiplier = module.exports.GovRewardMultiplier = BigNumber(0.1 * PRECISION).toFixed()
 const EMAUpdateInterval = module.exports.EMAUpdateInterval = 24 * 60 * 60
 const EMASmoothingFactor = module.exports.EMASmoothingFactor = BigNumber(2 * PRECISION).toFixed()
 const EMAAverageWindowInIntervals = module.exports.EMAAverageWindowInIntervals = 30
 const PoolFunderRewardVestPeriod = module.exports.PoolFunderRewardVestPeriod = 0 * 24 * 60 * 60 // 0 days
+const interestFee = module.exports.interestFee = BigNumber(0.2 * PRECISION).toFixed()
+const earlyWithdrawFee = module.exports.earlyWithdrawFee = BigNumber(0.005 * PRECISION).toFixed()
 const MINTER_BURNER_ROLE = module.exports.MINTER_BURNER_ROLE = web3.utils.soliditySha3('MINTER_BURNER_ROLE')
 const DIVIDEND_ROLE = module.exports.DIVIDEND_ROLE = web3.utils.soliditySha3('DIVIDEND_ROLE')
 const WHITELISTER_ROLE = module.exports.WHITELISTER_ROLE = web3.utils.soliditySha3('WHITELISTER_ROLE')
@@ -64,11 +66,18 @@ const latestBlockTimestamp = module.exports.latestBlockTimestamp = async () => {
 }
 
 const calcFeeAmount = module.exports.calcFeeAmount = (interestAmount) => {
-  return interestAmount.times(0.2)
+  interestAmount = BigNumber(interestAmount)
+  return interestAmount.times(interestFee).div(PRECISION)
 }
 
 const applyFee = module.exports.applyFee = (interestAmount) => {
+  interestAmount = BigNumber(interestAmount)
   return interestAmount.minus(calcFeeAmount(interestAmount))
+}
+
+const applyEarlyWithdrawFee = module.exports.applyEarlyWithdrawFee = (depositAmount) => {
+  depositAmount = BigNumber(depositAmount)
+  return depositAmount.minus(depositAmount.times(earlyWithdrawFee).div(PRECISION))
 }
 
 const getIRMultiplier = module.exports.getIRMultiplier = (depositPeriodInSeconds) => {
@@ -293,7 +302,7 @@ const yvaultMoneyMarketModule = () => {
 }
 
 const moneyMarketModuleList = module.exports.moneyMarketModuleList = [
-  /*{
+  {
     name: 'Aave',
     moduleGenerator: aaveMoneyMarketModule
   },
@@ -308,7 +317,7 @@ const moneyMarketModuleList = module.exports.moneyMarketModuleList = [
   {
     name: 'Harvest',
     moduleGenerator: harvestMoneyMarketModule
-  },*/
+  },
   {
     name: 'YVault',
     moduleGenerator: yvaultMoneyMarketModule

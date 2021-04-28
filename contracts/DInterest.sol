@@ -798,7 +798,13 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         require(interestAmount > 0, "DInterest: interestAmount == 0");
 
         // Calculate fee
-        uint256 feeAmount = feeModel.getFee(interestAmount);
+        depositID = deposits.length + 1;
+        uint256 feeAmount =
+            feeModel.getInterestFeeAmount(
+                address(this),
+                depositID,
+                interestAmount
+            );
         interestAmount -= feeAmount;
 
         // Record deposit data
@@ -818,8 +824,6 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         totalDeposit += depositAmount;
         totalInterestOwed += interestAmount;
         totalFeeOwed += feeAmount;
-
-        depositID = deposits.length;
 
         // Mint depositNFT
         depositNFT.mint(msg.sender, depositID);
@@ -890,7 +894,12 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         require(interestAmount > 0, "DInterest: interestAmount == 0");
 
         // Calculate fee
-        uint256 feeAmount = feeModel.getFee(interestAmount);
+        uint256 feeAmount =
+            feeModel.getInterestFeeAmount(
+                address(this),
+                depositID,
+                interestAmount
+            );
         interestAmount -= feeAmount;
 
         // Update deposit struct
@@ -1048,6 +1057,17 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 interestAmount = early ? 0 : virtualTokenAmount - depositAmount;
         withdrawAmount = depositAmount + interestAmount;
         feeAmount = interestAmount.decmul(depositEntry.feeRate);
+        if (early) {
+            // apply fee to withdrawAmount
+            uint256 earlyWithdrawFee =
+                feeModel.getEarlyWithdrawFeeAmount(
+                    address(this),
+                    depositID,
+                    withdrawAmount
+                );
+            feeAmount += earlyWithdrawFee;
+            withdrawAmount -= earlyWithdrawFee;
+        }
 
         // Update global values
         totalDeposit -= depositAmount;

@@ -11,29 +11,38 @@ abstract contract ERC1155DividendToken is ERC1155Base {
     using SafeCastUpgradeable for uint256;
     using SafeCastUpgradeable for int256;
 
-    IERC20Upgradeable public target;
+    struct DividendTokenData {
+        address dividendToken;
+        mapping(uint256 => uint256) magnifiedDividendPerShare;
+        // About dividendCorrection:
+        // If the token balance of a `_user` is never changed, the dividend of `_user` can be computed with:
+        //   `dividendOf(_user) = dividendPerShare * balanceOf(_user)`.
+        // When `balanceOf(_user)` is changed (via minting/burning/transferring tokens),
+        //   `dividendOf(_user)` should not be changed,
+        //   but the computed value of `dividendPerShare * balanceOf(_user)` is changed.
+        // To keep the `dividendOf(_user)` unchanged, we add a correction term:
+        //   `dividendOf(_user) = dividendPerShare * balanceOf(_user) + dividendCorrectionOf(_user)`,
+        //   where `dividendCorrectionOf(_user)` is updated whenever `balanceOf(_user)` is changed:
+        //   `dividendCorrectionOf(_user) = dividendPerShare * (old balanceOf(_user)) - (new balanceOf(_user))`.
+        // So now `dividendOf(_user)` returns the same value before and after `balanceOf(_user)` is changed.
+        mapping(uint256 => mapping(address => int256)) magnifiedDividendCorrections;
+        mapping(uint256 => mapping(address => uint256)) withdrawnDividends;
+    }
 
     // With `magnitude`, we can properly distribute dividends even if the amount of received target is small.
     // For more discussion about choosing the value of `magnitude`,
     //  see https://github.com/ethereum/EIPs/issues/1726#issuecomment-472352728
     uint256 internal constant magnitude = 2**128;
 
-    mapping(uint256 => uint256) internal magnifiedDividendPerShare;
-
-    // About dividendCorrection:
-    // If the token balance of a `_user` is never changed, the dividend of `_user` can be computed with:
-    //   `dividendOf(_user) = dividendPerShare * balanceOf(_user)`.
-    // When `balanceOf(_user)` is changed (via minting/burning/transferring tokens),
-    //   `dividendOf(_user)` should not be changed,
-    //   but the computed value of `dividendPerShare * balanceOf(_user)` is changed.
-    // To keep the `dividendOf(_user)` unchanged, we add a correction term:
-    //   `dividendOf(_user) = dividendPerShare * balanceOf(_user) + dividendCorrectionOf(_user)`,
-    //   where `dividendCorrectionOf(_user)` is updated whenever `balanceOf(_user)` is changed:
-    //   `dividendCorrectionOf(_user) = dividendPerShare * (old balanceOf(_user)) - (new balanceOf(_user))`.
-    // So now `dividendOf(_user)` returns the same value before and after `balanceOf(_user)` is changed.
-    mapping(uint256 => mapping(address => int256))
-        internal magnifiedDividendCorrections;
-    mapping(uint256 => mapping(address => uint256)) internal withdrawnDividends;
+    /**
+        @notice The list of tokens that can be distributed to token holders as dividend. 1-indexed.
+     */
+    mapping(uint256 => DividendTokenData) public dividendTokenDataList;
+    uint256 public dividendTokenDataListLength;
+    /**
+        @notice The dividend token address to its key in {dividendTokenDataList}
+     */
+    mapping(address => uint256) public dividendTokenToDataID;
 
     /// @dev This event MUST emit when target is distributed to token holders.
     /// @param from The address which sends target to this contract.
@@ -41,6 +50,7 @@ abstract contract ERC1155DividendToken is ERC1155Base {
     event DividendsDistributed(
         uint256 indexed tokenID,
         address indexed from,
+        address indexed dividendToken,
         uint256 weiAmount
     );
 
@@ -50,23 +60,27 @@ abstract contract ERC1155DividendToken is ERC1155Base {
     event DividendWithdrawn(
         uint256 indexed tokenID,
         address indexed to,
+        address indexed dividendToken,
         uint256 weiAmount
     );
 
     function __ERC1155DividendToken_init(
-        address targetAddress,
+        address[] memory dividendTokens,
         address admin,
         string memory uri
     ) internal initializer {
         __ERC1155Base_init(admin, uri);
-        __ERC1155DividendToken_init_unchained(targetAddress);
+        __ERC1155DividendToken_init_unchained(dividendTokens);
     }
 
-    function __ERC1155DividendToken_init_unchained(address targetAddress)
-        internal
-        initializer
-    {
-        target = IERC20Upgradeable(targetAddress);
+    function __ERC1155DividendToken_init_unchained(
+        address[] memory dividendTokens
+    ) internal initializer {
+        dividendTokenDataListLength = dividendTokens.length;
+        for (uint256 i = 0; i < dividendTokens.length; i++) {
+            dividendTokenDataList[i + 1].dividendToken = dividendTokens[i];
+            dividendTokenToDataID[dividendTokens[i]] = i + 1;
+        }
     }
 
     /**
@@ -75,42 +89,59 @@ abstract contract ERC1155DividendToken is ERC1155Base {
 
     /// @notice View the amount of dividend in wei that an address can withdraw.
     /// @param tokenID The token's ID.
+    /// @param dividendToken The token the dividend is in
     /// @param _owner The address of a token holder.
     /// @return The amount of dividend in wei that `_owner` can withdraw.
-    function dividendOf(uint256 tokenID, address _owner)
-        public
-        view
-        returns (uint256)
-    {
-        return _withdrawableDividendOf(tokenID, _owner);
+    function dividendOf(
+        uint256 tokenID,
+        address dividendToken,
+        address _owner
+    ) public view returns (uint256) {
+        return _withdrawableDividendOf(tokenID, dividendToken, _owner);
     }
 
     /// @notice View the amount of dividend in wei that an address has withdrawn.
     /// @param tokenID The token's ID.
+    /// @param dividendToken The token the dividend is in
     /// @param _owner The address of a token holder.
     /// @return The amount of dividend in wei that `_owner` has withdrawn.
-    function withdrawnDividendOf(uint256 tokenID, address _owner)
-        public
-        view
-        returns (uint256)
-    {
-        return withdrawnDividends[tokenID][_owner];
+    function withdrawnDividendOf(
+        uint256 tokenID,
+        address dividendToken,
+        address _owner
+    ) public view returns (uint256) {
+        uint256 dividendTokenDataID = dividendTokenToDataID[dividendToken];
+        if (dividendTokenDataID == 0) {
+            return 0;
+        }
+        DividendTokenData storage data =
+            dividendTokenDataList[dividendTokenDataID];
+        return data.withdrawnDividends[tokenID][_owner];
     }
 
     /// @notice View the amount of dividend in wei that an address has earned in total.
     /// @dev accumulativeDividendOf(_owner) = _withdrawableDividendOf(_owner) + withdrawnDividendOf(_owner)
     /// = (magnifiedDividendPerShare * balanceOf(_owner) + magnifiedDividendCorrections[_owner]) / magnitude
     /// @param tokenID The token's ID.
+    /// @param dividendToken The token the dividend is in
     /// @param _owner The address of a token holder.
     /// @return The amount of dividend in wei that `_owner` has earned in total.
-    function accumulativeDividendOf(uint256 tokenID, address _owner)
-        public
-        view
-        returns (uint256)
-    {
+    function accumulativeDividendOf(
+        uint256 tokenID,
+        address dividendToken,
+        address _owner
+    ) public view returns (uint256) {
+        uint256 dividendTokenDataID = dividendTokenToDataID[dividendToken];
+        if (dividendTokenDataID == 0) {
+            return 0;
+        }
+        DividendTokenData storage data =
+            dividendTokenDataList[dividendTokenDataID];
         return
-            ((magnifiedDividendPerShare[tokenID] * balanceOf(_owner, tokenID))
-                .toInt256() + magnifiedDividendCorrections[tokenID][_owner])
+            ((data.magnifiedDividendPerShare[tokenID] *
+                balanceOf(_owner, tokenID))
+                .toInt256() +
+                data.magnifiedDividendCorrections[tokenID][_owner])
                 .toUint256() / magnitude;
     }
 
@@ -120,16 +151,23 @@ abstract contract ERC1155DividendToken is ERC1155Base {
 
     /// @notice View the amount of dividend in wei that an address can withdraw.
     /// @param tokenID The token's ID.
+    /// @param dividendToken The token the dividend is in
     /// @param _owner The address of a token holder.
     /// @return The amount of dividend in wei that `_owner` can withdraw.
-    function _withdrawableDividendOf(uint256 tokenID, address _owner)
-        internal
-        view
-        returns (uint256)
-    {
+    function _withdrawableDividendOf(
+        uint256 tokenID,
+        address dividendToken,
+        address _owner
+    ) internal view returns (uint256) {
+        uint256 dividendTokenDataID = dividendTokenToDataID[dividendToken];
+        if (dividendTokenDataID == 0) {
+            return 0;
+        }
+        DividendTokenData storage data =
+            dividendTokenDataList[dividendTokenDataID];
         return
-            accumulativeDividendOf(tokenID, _owner) -
-            withdrawnDividends[tokenID][_owner];
+            accumulativeDividendOf(tokenID, dividendToken, _owner) -
+            data.withdrawnDividends[tokenID][_owner];
     }
 
     /// @notice Distributes target to token holders as dividends.
@@ -145,29 +183,80 @@ abstract contract ERC1155DividendToken is ERC1155Base {
     ///     and try to distribute it in the next distribution,
     ///     but keeping track of such data on-chain costs much more than
     ///     the saved target, so we don't do that.
-    function _distributeDividends(uint256 tokenID, uint256 amount) internal {
+    function _distributeDividends(
+        uint256 tokenID,
+        address dividendToken,
+        uint256 amount
+    ) internal {
         uint256 tokenTotalSupply = totalSupply(tokenID);
         require(tokenTotalSupply > 0);
         require(amount > 0);
 
-        magnifiedDividendPerShare[tokenID] +=
+        uint256 dividendTokenDataID = dividendTokenToDataID[dividendToken];
+        require(
+            dividendTokenDataID != 0,
+            "ERC1155DividendToken: invalid dividendToken"
+        );
+        DividendTokenData storage data =
+            dividendTokenDataList[dividendTokenDataID];
+
+        data.magnifiedDividendPerShare[tokenID] +=
             (amount * magnitude) /
             tokenTotalSupply;
 
-        target.safeTransferFrom(msg.sender, address(this), amount);
+        IERC20Upgradeable(dividendToken).safeTransferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
 
-        emit DividendsDistributed(tokenID, msg.sender, amount);
+        emit DividendsDistributed(tokenID, msg.sender, dividendToken, amount);
     }
 
     /// @notice Withdraws the target distributed to the sender.
     /// @dev It emits a `DividendWithdrawn` event if the amount of withdrawn target is greater than 0.
-    function _withdrawDividend(uint256 tokenID, address user) internal {
-        uint256 _withdrawableDividend = _withdrawableDividendOf(tokenID, user);
+    function _withdrawDividend(
+        uint256 tokenID,
+        address dividendToken,
+        address user
+    ) internal {
+        uint256 _withdrawableDividend =
+            _withdrawableDividendOf(tokenID, dividendToken, user);
         if (_withdrawableDividend > 0) {
-            withdrawnDividends[tokenID][user] += _withdrawableDividend;
-            emit DividendWithdrawn(tokenID, user, _withdrawableDividend);
-            target.safeTransfer(user, _withdrawableDividend);
+            uint256 dividendTokenDataID = dividendTokenToDataID[dividendToken];
+            require(
+                dividendTokenDataID != 0,
+                "ERC1155DividendToken: invalid dividendToken"
+            );
+            DividendTokenData storage data =
+                dividendTokenDataList[dividendTokenDataID];
+            data.withdrawnDividends[tokenID][user] += _withdrawableDividend;
+            emit DividendWithdrawn(
+                tokenID,
+                user,
+                dividendToken,
+                _withdrawableDividend
+            );
+            IERC20Upgradeable(dividendToken).safeTransfer(
+                user,
+                _withdrawableDividend
+            );
         }
+    }
+
+    function _registerDividendToken(address dividendToken)
+        internal
+        returns (uint256 newDividendTokenDataID)
+    {
+        require(
+            dividendTokenToDataID[dividendToken] == 0,
+            "ERC1155DividendToken: already registered"
+        );
+        dividendTokenDataListLength++;
+        newDividendTokenDataID = dividendTokenDataListLength;
+        dividendTokenDataList[newDividendTokenDataID]
+            .dividendToken = dividendToken;
+        dividendTokenToDataID[dividendToken] = newDividendTokenDataID;
     }
 
     function _beforeTokenTransfer(
@@ -186,9 +275,15 @@ abstract contract ERC1155DividendToken is ERC1155Base {
                 uint256 tokenID = ids[i];
                 uint256 amount = amounts[i];
 
-                magnifiedDividendCorrections[tokenID][
-                    to
-                ] -= (magnifiedDividendPerShare[tokenID] * amount).toInt256();
+                for (uint256 j = 1; j <= dividendTokenDataListLength; j++) {
+                    DividendTokenData storage dividendTokenData =
+                        dividendTokenDataList[j];
+                    dividendTokenData.magnifiedDividendCorrections[tokenID][
+                        to
+                    ] -= (dividendTokenData.magnifiedDividendPerShare[tokenID] *
+                        amount)
+                        .toInt256();
+                }
             }
         } else if (to == address(0)) {
             // Burn
@@ -196,9 +291,15 @@ abstract contract ERC1155DividendToken is ERC1155Base {
                 uint256 tokenID = ids[i];
                 uint256 amount = amounts[i];
 
-                magnifiedDividendCorrections[tokenID][
-                    to
-                ] += (magnifiedDividendPerShare[tokenID] * amount).toInt256();
+                for (uint256 j = 1; j <= dividendTokenDataListLength; j++) {
+                    DividendTokenData storage dividendTokenData =
+                        dividendTokenDataList[j];
+                    dividendTokenData.magnifiedDividendCorrections[tokenID][
+                        to
+                    ] += (dividendTokenData.magnifiedDividendPerShare[tokenID] *
+                        amount)
+                        .toInt256();
+                }
             }
         } else {
             // Transfer
@@ -206,11 +307,21 @@ abstract contract ERC1155DividendToken is ERC1155Base {
                 uint256 tokenID = ids[i];
                 uint256 amount = amounts[i];
 
-                int256 _magCorrection =
-                    (magnifiedDividendPerShare[tokenID] * amount).toInt256();
-                // Retain the rewards
-                magnifiedDividendCorrections[tokenID][from] += _magCorrection;
-                magnifiedDividendCorrections[tokenID][to] -= _magCorrection;
+                for (uint256 j = 1; j <= dividendTokenDataListLength; j++) {
+                    DividendTokenData storage dividendTokenData =
+                        dividendTokenDataList[j];
+                    int256 _magCorrection =
+                        (dividendTokenData.magnifiedDividendPerShare[tokenID] *
+                            amount)
+                            .toInt256();
+                    // Retain the rewards
+                    dividendTokenData.magnifiedDividendCorrections[tokenID][
+                        from
+                    ] += _magCorrection;
+                    dividendTokenData.magnifiedDividendCorrections[tokenID][
+                        to
+                    ] -= _magCorrection;
+                }
             }
         }
     }

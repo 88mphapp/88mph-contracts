@@ -74,7 +74,7 @@ contract('ZeroCouponBond', accounts => {
         const depositNFTReceipt = await factory.createNFT(nftTemplate.address, Base.DEFAULT_SALT, '88mph Deposit', '88mph-Deposit')
         depositNFT = await Base.factoryReceiptToContract(depositNFTReceipt, Base.NFT)
         const fundingMultitokenTemplate = await Base.FundingMultitoken.new()
-        const fundingNFTReceipt = await factory.createFundingMultitoken(fundingMultitokenTemplate.address, Base.DEFAULT_SALT, stablecoin.address, 'https://api.88mph.app/funding-metadata/')
+        const fundingNFTReceipt = await factory.createFundingMultitoken(fundingMultitokenTemplate.address, Base.DEFAULT_SALT, [stablecoin.address, mph.address], 'https://api.88mph.app/funding-metadata/')
         fundingMultitoken = await Base.factoryReceiptToContract(fundingNFTReceipt, Base.FundingMultitoken)
 
         // Initialize the interest oracle
@@ -115,6 +115,7 @@ contract('ZeroCouponBond', accounts => {
         await depositNFT.transferOwnership(dInterestPool.address)
         await fundingMultitoken.grantRole(Base.MINTER_BURNER_ROLE, dInterestPool.address)
         await fundingMultitoken.grantRole(Base.DIVIDEND_ROLE, dInterestPool.address)
+        await fundingMultitoken.grantRole(Base.DIVIDEND_ROLE, mphMinter.address)
 
         // Deploy ZeroCouponBond
         const zeroCouponBondTemplate = await ZeroCouponBond.new()

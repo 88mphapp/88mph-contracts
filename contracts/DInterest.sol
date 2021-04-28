@@ -1141,8 +1141,11 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
             );
             fundingMultitoken.distributeDividends(
                 fundingID,
+                address(stablecoin),
                 fundingInterestAmount
             );
+            // Mint funder rewards
+            // TODO
         }
     }
 
@@ -1293,8 +1296,12 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                 );
                 fundingMultitoken.distributeDividends(
                     fundingID,
+                    address(stablecoin),
                     interestAmount
                 );
+
+                // Mint funder rewards
+                // TODO
             }
         }
     }
@@ -1385,17 +1392,6 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                 maxRefundAmount
             );
         }
-
-        // Mint funder rewards
-        // TODO
-        /*mphMinter.mintFunderReward(
-            funder,
-            depositAmount,
-            f.creationTimestamp,
-            depositMaturationTimestamp,
-            interestAmount,
-            early
-        );*/
     }
 
     /**

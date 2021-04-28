@@ -95,4 +95,20 @@ interface IMPHIssuanceModel {
         external
         view
         returns (uint256);
+
+    /**
+        @notice The multiplier applied when minting MPH for a pool's funder reward.
+                v2 usage:
+                Unit is MPH-wei per depositToken-wei per second. (wei here is the smallest decimal place)
+                Scaled by 10^18.
+                NOTE: The depositToken's decimals matter!
+                v3 usage:
+                Unit is MPH-wei per depositToken-wei. (wei here is the smallest decimal place)
+                Scaled by 10^18.
+                NOTE: The depositToken's decimals matter!
+     */
+    function poolFunderRewardMultiplier(address pool)
+        external
+        view
+        returns (uint256);
 }

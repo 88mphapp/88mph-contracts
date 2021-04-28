@@ -7,41 +7,57 @@ contract FundingMultitoken is ERC1155DividendToken {
     bytes32 public constant DIVIDEND_ROLE = keccak256("DIVIDEND_ROLE");
 
     function __FundingMultitoken_init(
-        address targetAddress,
+        address[] memory dividendTokens,
         address admin,
         string memory uri
     ) internal initializer {
-        __ERC1155DividendToken_init(targetAddress, admin, uri);
+        __ERC1155DividendToken_init(dividendTokens, admin, uri);
         __FundingMultitoken_init_unchained();
     }
 
     function __FundingMultitoken_init_unchained() internal initializer {}
 
     function initialize(
-        address targetAddress,
+        address[] calldata dividendTokens,
         address admin,
         string calldata uri
     ) external virtual initializer {
-        __FundingMultitoken_init(targetAddress, admin, uri);
+        __FundingMultitoken_init(dividendTokens, admin, uri);
     }
 
-    function distributeDividends(uint256 tokenID, uint256 amount) external {
+    function distributeDividends(
+        uint256 tokenID,
+        address dividendToken,
+        uint256 amount
+    ) external {
         require(
             hasRole(DIVIDEND_ROLE, _msgSender()),
             "FundingMultitoken: must have dividend role"
         );
-        _distributeDividends(tokenID, amount);
+        _distributeDividends(tokenID, dividendToken, amount);
     }
 
-    function withdrawDividend(uint256 tokenID) external {
-        _withdrawDividend(tokenID, msg.sender);
+    function withdrawDividend(uint256 tokenID, address dividendToken) external {
+        _withdrawDividend(tokenID, dividendToken, msg.sender);
     }
 
-    function withdrawDividendFor(uint256 tokenID, address user) external {
+    function withdrawDividendFor(
+        uint256 tokenID,
+        address dividendToken,
+        address user
+    ) external {
         require(
             hasRole(DIVIDEND_ROLE, _msgSender()),
             "FundingMultitoken: must have dividend role"
         );
-        _withdrawDividend(tokenID, user);
+        _withdrawDividend(tokenID, dividendToken, user);
+    }
+
+    function registerDividendToken(address dividendToken) external {
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, _msgSender()),
+            "FundingMultitoken: must have admin role"
+        );
+        _registerDividendToken(dividendToken);
     }
 }

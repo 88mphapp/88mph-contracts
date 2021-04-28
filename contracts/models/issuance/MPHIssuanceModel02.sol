@@ -23,22 +23,28 @@ contract MPHIssuanceModel02 is OwnableUpgradeable, IMPHIssuanceModel {
         override poolDepositorRewardMintMultiplier;
     /**
         @notice The multiplier applied when minting MPH for a pool's funder reward.
+                v2 usage:
                 Unit is MPH-wei per depositToken-wei per second. (wei here is the smallest decimal place)
                 Scaled by 10^18.
-                NOTE: The depositToken's decimals matter! 
+                NOTE: The depositToken's decimals matter!
+                v3 usage:
+                Unit is MPH-wei per depositToken-wei. (wei here is the smallest decimal place)
+                Scaled by 10^18.
+                NOTE: The depositToken's decimals matter!
      */
-    mapping(address => uint256) public poolFunderRewardMultiplier;
+    mapping(address => uint256) public override poolFunderRewardMultiplier;
     /**
-        @notice The period over which the funder reward will be vested, in seconds.
+        @notice v2 usage:
+                The period over which the funder reward will be vested, in seconds.
      */
     mapping(address => uint256) public override poolFunderRewardVestPeriod;
 
     /**
-        @notice Multiplier used for calculating dev deposit reward
+        @notice Multiplier used for calculating dev reward
      */
     uint256 public devRewardMultiplier;
     /**
-        @notice Multiplier used for calculating gov deposit reward
+        @notice Multiplier used for calculating gov reward
      */
     uint256 public govRewardMultiplier;
 
@@ -73,10 +79,10 @@ contract MPHIssuanceModel02 is OwnableUpgradeable, IMPHIssuanceModel {
         govRewardMultiplier = _govRewardMultiplier;
     }
 
-    function initialize(uint256 _devRewardMultiplier, uint256 _govRewardMultiplier)
-        external
-        initializer
-    {
+    function initialize(
+        uint256 _devRewardMultiplier,
+        uint256 _govRewardMultiplier
+    ) external initializer {
         __MPHIssuanceModel02_init(_devRewardMultiplier, _govRewardMultiplier);
     }
 

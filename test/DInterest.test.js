@@ -71,7 +71,7 @@ contract('DInterest', accounts => {
         const depositNFTReceipt = await factory.createNFT(nftTemplate.address, Base.DEFAULT_SALT, '88mph Deposit', '88mph-Deposit')
         depositNFT = await Base.factoryReceiptToContract(depositNFTReceipt, Base.NFT)
         const fundingMultitokenTemplate = await Base.FundingMultitoken.new()
-        const fundingNFTReceipt = await factory.createFundingMultitoken(fundingMultitokenTemplate.address, Base.DEFAULT_SALT, stablecoin.address, 'https://api.88mph.app/funding-metadata/')
+        const fundingNFTReceipt = await factory.createFundingMultitoken(fundingMultitokenTemplate.address, Base.DEFAULT_SALT, [stablecoin.address, mph.address], 'https://api.88mph.app/funding-metadata/')
         fundingMultitoken = await Base.factoryReceiptToContract(fundingNFTReceipt, Base.FundingMultitoken)
 
         // Initialize the interest oracle
@@ -112,6 +112,7 @@ contract('DInterest', accounts => {
         await depositNFT.transferOwnership(dInterestPool.address)
         await fundingMultitoken.grantRole(Base.MINTER_BURNER_ROLE, dInterestPool.address)
         await fundingMultitoken.grantRole(Base.DIVIDEND_ROLE, dInterestPool.address)
+        await fundingMultitoken.grantRole(Base.DIVIDEND_ROLE, mphMinter.address)
       })
 
       describe('deposit', () => {
@@ -312,7 +313,7 @@ contract('DInterest', accounts => {
           const depositAmount = 100 * Base.STABLECOIN_PRECISION
 
           beforeEach(async () => {
-          // acc0 deposits
+            // acc0 deposits
             await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
             const blockNow = await Base.latestBlockTimestamp()
             await dInterestPool.deposit(Base.num2str(depositAmount), Base.num2str(blockNow + Base.YEAR_IN_SEC), { from: acc0 })
@@ -626,7 +627,7 @@ contract('DInterest', accounts => {
 
             // verify earned interest
             const acc1BeforeBalance = BigNumber(await stablecoin.balanceOf(acc1))
-            await fundingMultitoken.withdrawDividend(1, { from: acc1 })
+            await fundingMultitoken.withdrawDividend(1, stablecoin.address, { from: acc1 })
             const actualInterestAmount = BigNumber(await stablecoin.balanceOf(acc1)).minus(acc1BeforeBalance)
             const expectedInterestAmount = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).plus(depositAmount).times(INIT_INTEREST_RATE)
             Base.assertEpsilonEq(actualInterestAmount, expectedInterestAmount, 'funding interest earned incorrect')
@@ -660,13 +661,13 @@ contract('DInterest', accounts => {
 
             // verify earned interest
             const acc1BeforeBalance = BigNumber(await stablecoin.balanceOf(acc1))
-            await fundingMultitoken.withdrawDividend(1, { from: acc1 })
+            await fundingMultitoken.withdrawDividend(1, stablecoin.address, { from: acc1 })
             const actualAcc1InterestAmount = BigNumber(await stablecoin.balanceOf(acc1)).minus(acc1BeforeBalance)
             const expectedAcc1InterestAmount = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).plus(depositAmount).times(INIT_INTEREST_RATE).times(0.8).times(0.5)
             Base.assertEpsilonEq(actualAcc1InterestAmount, expectedAcc1InterestAmount, 'acc1 funding interest earned incorrect')
 
             const acc2BeforeBalance = BigNumber(await stablecoin.balanceOf(acc2))
-            await fundingMultitoken.withdrawDividend(1, { from: acc2 })
+            await fundingMultitoken.withdrawDividend(1, stablecoin.address, { from: acc2 })
             const actualAcc2InterestAmount = BigNumber(await stablecoin.balanceOf(acc2)).minus(acc2BeforeBalance)
             const expectedAcc2InterestAmount = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).plus(depositAmount).times(INIT_INTEREST_RATE).times(0.8).times(0.2)
             Base.assertEpsilonEq(actualAcc2InterestAmount, expectedAcc2InterestAmount, 'acc2 funding interest earned incorrect')
@@ -697,7 +698,7 @@ contract('DInterest', accounts => {
 
             // verify earned interest
             const acc1BeforeBalance = BigNumber(await stablecoin.balanceOf(acc1))
-            await fundingMultitoken.withdrawDividend(1, { from: acc1 })
+            await fundingMultitoken.withdrawDividend(1, stablecoin.address, { from: acc1 })
             const actualInterestAmount = BigNumber(await stablecoin.balanceOf(acc1)).minus(acc1BeforeBalance)
             const expectedInterestAmount = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).plus(depositAmount).times(INIT_INTEREST_RATE).times(0.1)
             Base.assertEpsilonEq(actualInterestAmount, expectedInterestAmount, 'funding interest earned incorrect')
@@ -723,7 +724,7 @@ contract('DInterest', accounts => {
             // verify refund
             {
               const acc1BeforeBalance = BigNumber(await stablecoin.balanceOf(acc1))
-              await fundingMultitoken.withdrawDividend(1, { from: acc1 })
+              await fundingMultitoken.withdrawDividend(1, stablecoin.address, { from: acc1 })
               const actualRefundAmount = BigNumber(await stablecoin.balanceOf(acc1)).minus(acc1BeforeBalance)
               const estimatedLostInterest = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).plus(depositAmount).times(INIT_INTEREST_RATE).times(0.9 + 0.5 - 1)
               const maxRefundAmount = deficitAmount.times(0.4)
@@ -739,7 +740,7 @@ contract('DInterest', accounts => {
 
             // verify earned interest
             const acc1BeforeBalance = BigNumber(await stablecoin.balanceOf(acc1))
-            await fundingMultitoken.withdrawDividend(1, { from: acc1 })
+            await fundingMultitoken.withdrawDividend(1, stablecoin.address, { from: acc1 })
             const actualInterestAmount = BigNumber(await stablecoin.balanceOf(acc1)).minus(acc1BeforeBalance)
             const expectedInterestAmount = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).plus(depositAmount).times(INIT_INTEREST_RATE).times(0.5)
             Base.assertEpsilonEq(actualInterestAmount, expectedInterestAmount, 'funding interest earned incorrect')
@@ -794,7 +795,7 @@ contract('DInterest', accounts => {
 
             // Redeem interest
             const beforeBalance = BigNumber(await stablecoin.balanceOf(acc2))
-            await fundingMultitoken.withdrawDividend(1, { from: acc2 })
+            await fundingMultitoken.withdrawDividend(1, stablecoin.address, { from: acc2 })
 
             // Check interest received
             const actualInterestReceived = BigNumber(await stablecoin.balanceOf(acc2)).minus(beforeBalance)

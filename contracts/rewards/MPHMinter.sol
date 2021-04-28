@@ -3,9 +3,12 @@ pragma solidity 0.8.3;
 
 import "./MPHMinterLegacy.sol";
 import "./Vesting02.sol";
+import "../tokens/FundingMultitoken.sol";
+import "../libs/DecMath.sol";
 
 contract MPHMinter is MPHMinterLegacy {
     using AddressUpgradeable for address;
+    using DecMath for uint256;
 
     Vesting02 public vesting02;
 
@@ -93,6 +96,31 @@ contract MPHMinter is MPHMinterLegacy {
             mph.ownerMint(account, amount);
         }
         return amount;
+    }
+
+    function distributeFundingRewards(uint256 fundingID, uint256 interestAmount)
+        external
+        onlyRole(WHITELISTED_POOL_ROLE)
+    {
+        if (interestAmount == 0) {
+            return;
+        }
+        uint256 mintMPHAmount =
+            interestAmount.decmul(
+                issuanceModel.poolFunderRewardMultiplier(msg.sender)
+            );
+        if (mintMPHAmount == 0) {
+            return;
+        }
+        FundingMultitoken fundingMultitoken =
+            DInterest(msg.sender).fundingMultitoken();
+        mph.ownerMint(address(this), mintMPHAmount);
+        mph.increaseAllowance(address(fundingMultitoken), mintMPHAmount);
+        fundingMultitoken.distributeDividends(
+            fundingID,
+            address(mph),
+            mintMPHAmount
+        );
     }
 
     /**

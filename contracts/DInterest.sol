@@ -1005,7 +1005,8 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         (
             uint256 withdrawAmount,
             uint256 feeAmount,
-            uint256 fundingInterestAmount
+            uint256 fundingInterestAmount,
+            uint256 refundAmount
         ) = _withdrawRecordData(depositID, virtualTokenAmount, early);
         return
             _withdrawTransferFunds(
@@ -1013,6 +1014,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                 withdrawAmount,
                 feeAmount,
                 fundingInterestAmount,
+                refundAmount,
                 rollover
             );
     }
@@ -1027,7 +1029,8 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         returns (
             uint256 withdrawAmount,
             uint256 feeAmount,
-            uint256 fundingInterestAmount
+            uint256 fundingInterestAmount,
+            uint256 refundAmount
         )
     {
         // Verify input
@@ -1057,9 +1060,13 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         // Compute token amounts
         uint256 depositAmount =
             virtualTokenAmount.decdiv(depositEntry.interestRate + PRECISION);
-        uint256 interestAmount = early ? 0 : virtualTokenAmount - depositAmount;
-        withdrawAmount = depositAmount + interestAmount;
-        feeAmount = interestAmount.decmul(depositEntry.feeRate);
+        {
+            uint256 interestAmount =
+                early ? 0 : virtualTokenAmount - depositAmount;
+            withdrawAmount = depositAmount + interestAmount;
+            feeAmount = interestAmount.decmul(depositEntry.feeRate);
+        }
+
         if (early) {
             // apply fee to withdrawAmount
             uint256 earlyWithdrawFee =
@@ -1114,7 +1121,10 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
 
             // Compute interest payout + refund
             // and update relevant state
-            fundingInterestAmount = _computeAndUpdateFundingInterestAfterWithdraw(
+            (
+                fundingInterestAmount,
+                refundAmount
+            ) = _computeAndUpdateFundingInterestAfterWithdraw(
                 depositEntry.fundingID,
                 recordedFundedPrincipalAmount,
                 early
@@ -1133,6 +1143,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 withdrawAmount,
         uint256 feeAmount,
         uint256 fundingInterestAmount,
+        uint256 refundAmount,
         bool rollover
     ) internal virtual returns (uint256 withdrawnStablecoinAmount) {
         // Withdraw funds from money market
@@ -1215,10 +1226,12 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                 fundingInterestAmount
             );
             // Mint funder rewards
-            mphMinter.distributeFundingRewards(
-                fundingID,
-                fundingInterestAmount
-            );
+            if (fundingInterestAmount >= refundAmount) {
+                mphMinter.distributeFundingRewards(
+                    fundingID,
+                    fundingInterestAmount - refundAmount
+                );
+            }
         }
     }
 
@@ -1386,13 +1399,18 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @param fundingID The ID of the floating-rate bond
         @param recordedFundedPrincipalAmount The amount of principal funded before the withdrawal
         @param early True if withdrawing before maturation, false otherwise
-        @return fundingInterestAmount The amount of interest to distribute to the floating-rate bond holders
+        @return fundingInterestAmount The amount of interest to distribute to the floating-rate bond holders, plus the refund amount
+        @return refundAmount The amount of refund caused by an early withdraw
      */
     function _computeAndUpdateFundingInterestAfterWithdraw(
         uint256 fundingID,
         uint256 recordedFundedPrincipalAmount,
         bool early
-    ) internal virtual returns (uint256 fundingInterestAmount) {
+    )
+        internal
+        virtual
+        returns (uint256 fundingInterestAmount, uint256 refundAmount)
+    {
         Funding storage f = _getFunding(fundingID);
         uint256 recordedMoneyMarketIncomeIndex =
             f.recordedMoneyMarketIncomeIndex;
@@ -1443,12 +1461,12 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
             Deposit memory depositEntry = _getDeposit(f.depositID);
             (, uint256 moneyMarketInterestRatePerSecond) =
                 interestOracle.updateAndQuery();
-            uint256 refundAmount =
+            refundAmount =
                 (((recordedFundedPrincipalAmount -
                     currentFundedPrincipalAmount) * PRECISION)
                     .decmul(moneyMarketInterestRatePerSecond) *
                     (depositEntry.maturationTimestamp - block.timestamp)) /
-                    PRECISION;
+                PRECISION;
             uint256 maxRefundAmount =
                 (recordedFundedPrincipalAmount - currentFundedPrincipalAmount)
                     .decdiv(
@@ -1460,10 +1478,8 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                     depositEntry.interestRate +
                         depositEntry.interestRate.decmul(depositEntry.feeRate)
                 );
-            fundingInterestAmount += MathUpgradeable.min(
-                refundAmount,
-                maxRefundAmount
-            );
+            refundAmount = MathUpgradeable.min(refundAmount, maxRefundAmount);
+            fundingInterestAmount += refundAmount;
         }
     }
 

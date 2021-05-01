@@ -45,8 +45,8 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 virtualTokenTotalSupply; // depositAmount + interestAmount, behaves like a zero coupon bond
         uint256 interestRate; // interestAmount = interestRate * depositAmount
         uint256 feeRate; // feeAmount = feeRate * interestAmount
-        uint256 maturationTimestamp; // Unix timestamp after which the deposit may be withdrawn, in seconds
-        uint256 depositTimestamp; // Unix timestamp at time of deposit, in seconds
+        uint32 maturationTimestamp; // Unix timestamp after which the deposit may be withdrawn, in seconds
+        uint32 depositTimestamp; // Unix timestamp at time of deposit, in seconds
         uint256 averageRecordedIncomeIndex; // Average income index at time of deposit, used for computing deposit surplus
         uint256 fundingID; // The ID of the associated Funding struct. 0 if not funded.
     }
@@ -813,8 +813,8 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                 virtualTokenTotalSupply: depositAmount + interestAmount,
                 interestRate: interestAmount.decdiv(depositAmount),
                 feeRate: feeAmount.decdiv(interestAmount),
-                maturationTimestamp: maturationTimestamp,
-                depositTimestamp: block.timestamp,
+                maturationTimestamp: uint32(maturationTimestamp),
+                depositTimestamp: uint32(block.timestamp),
                 fundingID: 0,
                 averageRecordedIncomeIndex: moneyMarket.incomeIndex()
             })

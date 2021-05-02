@@ -5,10 +5,12 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../IMoneyMarket.sol";
+import "../../libs/Rescuable.sol";
 import "./imports/ILendingPool.sol";
 import "./imports/ILendingPoolAddressesProvider.sol";
+import "./imports/IAaveMining.sol";
 
-contract AaveMarket is IMoneyMarket, OwnableUpgradeable {
+contract AaveMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
     using SafeERC20Upgradeable for ERC20Upgradeable;
     using AddressUpgradeable for address;
 
@@ -17,10 +19,14 @@ contract AaveMarket is IMoneyMarket, OwnableUpgradeable {
     ILendingPoolAddressesProvider public provider; // Used for fetching the current address of LendingPool
     ERC20Upgradeable public override stablecoin;
     ERC20Upgradeable public aToken;
+    IAaveMining public aaveMining;
+    address public rewards;
 
     function initialize(
         address _provider,
         address _aToken,
+        address _aaveMining,
+        address _rewards,
         address _stablecoin
     ) external initializer {
         __Ownable_init();
@@ -29,13 +35,16 @@ contract AaveMarket is IMoneyMarket, OwnableUpgradeable {
         require(
             _provider.isContract() &&
                 _aToken.isContract() &&
+                _aaveMining.isContract() &&
                 _stablecoin.isContract(),
             "AaveMarket: An input address is not a contract"
         );
 
         provider = ILendingPoolAddressesProvider(_provider);
         stablecoin = ERC20Upgradeable(_stablecoin);
+        aaveMining = IAaveMining(_aaveMining);
         aToken = ERC20Upgradeable(_aToken);
+        rewards = _rewards;
     }
 
     function deposit(uint256 amount) external override onlyOwner {
@@ -79,7 +88,11 @@ contract AaveMarket is IMoneyMarket, OwnableUpgradeable {
         return amountInUnderlying;
     }
 
-    function claimRewards() external override {}
+    function claimRewards() external override {
+        address[] memory assets = new address[](1);
+        assets[0] = address(aToken);
+        aaveMining.claimRewards(assets, type(uint256).max, rewards);
+    }
 
     function totalValue() external view override returns (uint256) {
         return aToken.balanceOf(address(this));
@@ -90,5 +103,24 @@ contract AaveMarket is IMoneyMarket, OwnableUpgradeable {
         return lendingPool.getReserveNormalizedIncome(address(stablecoin));
     }
 
-    function setRewards(address newValue) external override {}
+    /**
+        Param setters
+     */
+    function setRewards(address newValue) external override onlyOwner {
+        require(newValue.isContract(), "HarvestMarket: not contract");
+        rewards = newValue;
+        emit ESetParamAddress(msg.sender, "rewards", newValue);
+    }
+
+    /**
+        Rescuable
+     */
+    function _authorizeRescue(address token, address target)
+        internal
+        view
+        override
+    {
+        require(token != address(aToken), "AaveMarket: no steal");
+        require(msg.sender == owner(), "AaveMarket: not owner");
+    }
 }

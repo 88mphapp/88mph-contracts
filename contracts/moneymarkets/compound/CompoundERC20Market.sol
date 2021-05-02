@@ -6,10 +6,11 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
+import "../../libs/Rescuable.sol";
 import "./imports/ICERC20.sol";
 import "./imports/IComptroller.sol";
 
-contract CompoundERC20Market is IMoneyMarket, OwnableUpgradeable {
+contract CompoundERC20Market is IMoneyMarket, OwnableUpgradeable, Rescuable {
     using DecMath for uint256;
     using SafeERC20Upgradeable for ERC20Upgradeable;
     using AddressUpgradeable for address;
@@ -105,5 +106,17 @@ contract CompoundERC20Market is IMoneyMarket, OwnableUpgradeable {
         require(newValue.isContract(), "CompoundERC20Market: not contract");
         rewards = newValue;
         emit ESetParamAddress(msg.sender, "rewards", newValue);
+    }
+
+    /**
+        Rescuable
+     */
+    function _authorizeRescue(address token, address target)
+        internal
+        view
+        override
+    {
+        require(token != address(cToken), "CompoundERC20Market: no steal");
+        require(msg.sender == owner(), "CompoundERC20Market: not owner");
     }
 }

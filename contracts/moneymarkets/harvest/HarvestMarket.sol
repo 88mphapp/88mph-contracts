@@ -6,10 +6,11 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
+import "../../libs/Rescuable.sol";
 import "./imports/HarvestVault.sol";
 import "./imports/HarvestStaking.sol";
 
-contract HarvestMarket is IMoneyMarket, OwnableUpgradeable {
+contract HarvestMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
     using DecMath for uint256;
     using SafeERC20Upgradeable for ERC20Upgradeable;
     using AddressUpgradeable for address;
@@ -112,5 +113,17 @@ contract HarvestMarket is IMoneyMarket, OwnableUpgradeable {
         require(newValue.isContract(), "HarvestMarket: not contract");
         rewards = newValue;
         emit ESetParamAddress(msg.sender, "rewards", newValue);
+    }
+
+    /**
+        Rescuable
+     */
+    function _authorizeRescue(address token, address target)
+        internal
+        view
+        override
+    {
+        require(token != address(stakingPool), "HarvestMarket: no steal");
+        require(msg.sender == owner(), "HarvestMarket: not owner");
     }
 }

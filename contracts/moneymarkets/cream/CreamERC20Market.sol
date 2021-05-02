@@ -6,9 +6,10 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
+import "../../libs/Rescuable.sol";
 import "./imports/ICrERC20.sol";
 
-contract CreamERC20Market is IMoneyMarket, OwnableUpgradeable {
+contract CreamERC20Market is IMoneyMarket, OwnableUpgradeable, Rescuable {
     using DecMath for uint256;
     using SafeERC20Upgradeable for ERC20Upgradeable;
     using AddressUpgradeable for address;
@@ -18,7 +19,10 @@ contract CreamERC20Market is IMoneyMarket, OwnableUpgradeable {
     ICrERC20 public cToken;
     ERC20Upgradeable public override stablecoin;
 
-    function initialize(address _cToken, address _stablecoin) external initializer {
+    function initialize(address _cToken, address _stablecoin)
+        external
+        initializer
+    {
         __Ownable_init();
 
         // Verify input addresses
@@ -81,8 +85,17 @@ contract CreamERC20Market is IMoneyMarket, OwnableUpgradeable {
         return cToken.exchangeRateCurrent();
     }
 
-    /**
-        Param setters
-     */
     function setRewards(address newValue) external override onlyOwner {}
+
+    /**
+        Rescuable
+     */
+    function _authorizeRescue(address token, address target)
+        internal
+        view
+        override
+    {
+        require(token != address(cToken), "CreamERC20Market: no steal");
+        require(msg.sender == owner(), "CreamERC20Market: not owner");
+    }
 }

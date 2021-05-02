@@ -114,12 +114,20 @@ contract Factory {
         bytes32 salt,
         address _provider,
         address _aToken,
+        address _aaveMining,
+        address _rewards,
         address _stablecoin
     ) external returns (AaveMarket) {
         AaveMarket clone = AaveMarket(template.cloneDeterministic(salt));
 
         // initialize
-        clone.initialize(_provider, _aToken, _stablecoin);
+        clone.initialize(
+            _provider,
+            _aToken,
+            _aaveMining,
+            _rewards,
+            _stablecoin
+        );
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("AaveMarket", template, salt, address(clone));

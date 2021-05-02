@@ -4,11 +4,12 @@ pragma solidity 0.8.3;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+import "../../libs/Rescuable.sol";
 import "../IMoneyMarket.sol";
 import "../../libs/DecMath.sol";
 import "./imports/Vault.sol";
 
-contract YVaultMarket is IMoneyMarket, OwnableUpgradeable {
+contract YVaultMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
     using DecMath for uint256;
     using SafeERC20Upgradeable for ERC20Upgradeable;
     using AddressUpgradeable for address;
@@ -16,7 +17,10 @@ contract YVaultMarket is IMoneyMarket, OwnableUpgradeable {
     Vault public vault;
     ERC20Upgradeable public override stablecoin;
 
-    function initialize(address _vault, address _stablecoin) external initializer {
+    function initialize(address _vault, address _stablecoin)
+        external
+        initializer
+    {
         __Ownable_init();
 
         // Verify input addresses
@@ -80,4 +84,16 @@ contract YVaultMarket is IMoneyMarket, OwnableUpgradeable {
     }
 
     function setRewards(address newValue) external override {}
+
+    /**
+        Rescuable
+     */
+    function _authorizeRescue(address token, address target)
+        internal
+        view
+        override
+    {
+        require(token != address(vault), "YVaultMarket: no steal");
+        require(msg.sender == owner(), "YVaultMarket: not owner");
+    }
 }

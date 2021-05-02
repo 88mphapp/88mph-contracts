@@ -1,6 +1,6 @@
 // Libraries
 const BigNumber = require('bignumber.js')
-const { assert } = require('hardhat')
+const { assert, artifacts } = require('hardhat')
 
 // Contract artifacts
 const DInterest = module.exports.DInterest = artifacts.require('DInterest')
@@ -119,6 +119,8 @@ const aaveMoneyMarketModule = () => {
   let aToken
   let lendingPool
   let lendingPoolAddressesProvider
+  let aaveMining
+  let aave
 
   const deployMoneyMarket = async (accounts, factory, stablecoin, rewards) => {
     // Contract artifacts
@@ -126,6 +128,8 @@ const aaveMoneyMarketModule = () => {
     const ATokenMock = artifacts.require('ATokenMock')
     const LendingPoolMock = artifacts.require('LendingPoolMock')
     const LendingPoolAddressesProviderMock = artifacts.require('LendingPoolAddressesProviderMock')
+    const AaveMiningMock = artifacts.require('AaveMiningMock')
+    const ERC20Mock = artifacts.require('ERC20Mock')
 
     // Initialize mock Aave contracts
     aToken = await ATokenMock.new(stablecoin.address)
@@ -133,6 +137,8 @@ const aaveMoneyMarketModule = () => {
     await lendingPool.setReserveAToken(stablecoin.address, aToken.address)
     lendingPoolAddressesProvider = await LendingPoolAddressesProviderMock.new()
     await lendingPoolAddressesProvider.setLendingPoolImpl(lendingPool.address)
+    aave = await ERC20Mock.new()
+    aaveMining = await AaveMiningMock.new(aave.address)
 
     // Mint stablecoins
     const mintAmount = 1000 * STABLECOIN_PRECISION
@@ -140,7 +146,7 @@ const aaveMoneyMarketModule = () => {
 
     // Initialize the money market
     const marketTemplate = await AaveMarket.new()
-    const marketReceipt = await factory.createAaveMarket(marketTemplate.address, DEFAULT_SALT, lendingPoolAddressesProvider.address, aToken.address, stablecoin.address)
+    const marketReceipt = await factory.createAaveMarket(marketTemplate.address, DEFAULT_SALT, lendingPoolAddressesProvider.address, aToken.address, aaveMining.address, rewards, stablecoin.address)
     return await factoryReceiptToContract(marketReceipt, AaveMarket)
   }
 

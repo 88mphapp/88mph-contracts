@@ -245,4 +245,6 @@ contract MPHIssuanceModel02 is OwnableUpgradeable, IMPHIssuanceModel {
             newMultiplier
         );
     }
+
+    uint256[45] private __gap;
 }

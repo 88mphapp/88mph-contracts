@@ -132,4 +132,6 @@ abstract contract ERC1155Base is ERC1155Upgradeable, AccessControlUpgradeable {
             }
         }
     }
+
+    uint256[49] private __gap;
 }

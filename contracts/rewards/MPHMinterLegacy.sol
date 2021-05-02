@@ -298,4 +298,6 @@ contract MPHMinterLegacy is AccessControlUpgradeable {
         vesting = Vesting(newValue);
         emit ESetParamAddress(msg.sender, "vesting", newValue);
     }
+
+    uint256[45] private __gap;
 }

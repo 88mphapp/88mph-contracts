@@ -1648,4 +1648,6 @@ contract DInterest is
             stablecoin.safeTransfer(recipient, surplusMagnitude);
         }
     }
+
+    uint256[33] private __gap;
 }

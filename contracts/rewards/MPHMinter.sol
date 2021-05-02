@@ -134,4 +134,6 @@ contract MPHMinter is MPHMinterLegacy {
         vesting02 = Vesting02(newValue);
         emit ESetParamAddress(msg.sender, "vesting02", newValue);
     }
+
+    uint256[49] private __gap;
 }

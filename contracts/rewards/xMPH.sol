@@ -159,4 +159,6 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
         );
         rewardUnlockPeriod = newValue;
     }
+
+    uint256[45] private __gap;
 }

@@ -60,4 +60,6 @@ contract FundingMultitoken is ERC1155DividendToken {
         );
         _registerDividendToken(dividendToken);
     }
+
+    uint256[50] private __gap;
 }

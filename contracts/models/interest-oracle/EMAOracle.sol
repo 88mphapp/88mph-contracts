@@ -83,4 +83,6 @@ contract EMAOracle is IInterestOracle, Initializable {
     function query() public view override returns (uint256 value) {
         return emaStored;
     }
+
+    uint256[43] private __gap;
 }

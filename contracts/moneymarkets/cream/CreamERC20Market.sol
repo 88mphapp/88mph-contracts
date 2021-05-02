@@ -98,4 +98,6 @@ contract CreamERC20Market is IMoneyMarket, OwnableUpgradeable, Rescuable {
         require(token != address(cToken), "CreamERC20Market: no steal");
         require(msg.sender == owner(), "CreamERC20Market: not owner");
     }
+
+    uint256[48] private __gap;
 }

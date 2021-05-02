@@ -325,4 +325,6 @@ abstract contract ERC1155DividendToken is ERC1155Base {
             }
         }
     }
+
+    uint256[47] private __gap;
 }

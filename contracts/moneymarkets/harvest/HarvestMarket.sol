@@ -126,4 +126,6 @@ contract HarvestMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
         require(token != address(stakingPool), "HarvestMarket: no steal");
         require(msg.sender == owner(), "HarvestMarket: not owner");
     }
+
+    uint256[46] private __gap;
 }

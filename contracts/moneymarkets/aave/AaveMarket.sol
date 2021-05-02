@@ -123,4 +123,6 @@ contract AaveMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
         require(token != address(aToken), "AaveMarket: no steal");
         require(msg.sender == owner(), "AaveMarket: not owner");
     }
+
+    uint256[45] private __gap;
 }

@@ -44,4 +44,6 @@ contract NFT is ERC721URIStorageUpgradeable, OwnableUpgradeable {
     function setBaseURI(string calldata newURI) external onlyOwner {
         __baseURI = newURI;
     }
+
+    uint256[48] private __gap;
 }

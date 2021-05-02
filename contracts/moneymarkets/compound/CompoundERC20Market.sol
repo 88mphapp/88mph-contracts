@@ -119,4 +119,6 @@ contract CompoundERC20Market is IMoneyMarket, OwnableUpgradeable, Rescuable {
         require(token != address(cToken), "CompoundERC20Market: no steal");
         require(msg.sender == owner(), "CompoundERC20Market: not owner");
     }
+
+    uint256[46] private __gap;
 }

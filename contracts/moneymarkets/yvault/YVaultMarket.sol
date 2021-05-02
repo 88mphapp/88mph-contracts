@@ -96,4 +96,6 @@ contract YVaultMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
         require(token != address(vault), "YVaultMarket: no steal");
         require(msg.sender == owner(), "YVaultMarket: not owner");
     }
+
+    uint256[48] private __gap;
 }

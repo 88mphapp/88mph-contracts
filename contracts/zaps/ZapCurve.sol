@@ -9,6 +9,7 @@ import "./imports/CurveZapIn.sol";
 import "../DInterest.sol";
 import "../tokens/NFT.sol";
 import "../tokens/FundingMultitoken.sol";
+import "../rewards/Vesting02.sol";
 
 contract ZapCurve is ERC1155Receiver, IERC721Receiver {
     using SafeERC20Upgradeable for ERC20Upgradeable;
@@ -26,6 +27,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
 
     function zapCurveDeposit(
         address pool,
+        address vesting,
         address swapAddress,
         address inputToken,
         uint256 inputTokenAmount,
@@ -35,6 +37,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
         DInterest poolContract = DInterest(pool);
         ERC20Upgradeable stablecoin = poolContract.stablecoin();
         NFT depositNFT = poolContract.depositNFT();
+        Vesting02 vestingContract = Vesting02(vesting);
 
         // zap into curve
         uint256 outputTokenAmount =
@@ -52,6 +55,13 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
 
         // transfer deposit multitokens to msg.sender
         depositNFT.safeTransferFrom(address(this), msg.sender, depositID);
+
+        // transfer vest token out
+        vestingContract.safeTransferFrom(
+            address(this),
+            msg.sender,
+            vestingContract.depositIDToVestID(depositID)
+        );
     }
 
     function zapCurveFund(

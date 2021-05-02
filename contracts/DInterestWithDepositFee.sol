@@ -186,4 +186,6 @@ contract DInterestWithDepositFee is DInterest {
         DepositFee = newValue;
         emit ESetParamUint(msg.sender, "DepositFee", newValue);
     }
+
+    uint256[49] private __gap;
 }

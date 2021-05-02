@@ -145,4 +145,6 @@ contract ZeroCouponBond is
     ) external pure override returns (bytes4) {
         return this.onERC721Received.selector;
     }
+
+    uint256[43] private __gap;
 }

@@ -220,4 +220,6 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
     function setBaseURI(string calldata newURI) external onlyOwner {
         __baseURI = newURI;
     }
+
+    uint256[44] private __gap;
 }

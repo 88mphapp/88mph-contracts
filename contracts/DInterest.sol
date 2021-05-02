@@ -15,6 +15,7 @@ import "./tokens/FundingMultitoken.sol";
 import "./rewards/MPHMinter.sol";
 import "./models/interest-oracle/IInterestOracle.sol";
 import "./libs/DecMath.sol";
+import "./libs/Rescuable.sol";
 import "hardhat/console.sol";
 
 /**
@@ -23,7 +24,11 @@ import "hardhat/console.sol";
     @notice The main pool contract for fixed-rate deposits
     @dev The contract to interact with for most actions
  */
-contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
+contract DInterest is
+    ReentrancyGuardUpgradeable,
+    OwnableUpgradeable,
+    Rescuable
+{
     using SafeERC20Upgradeable for ERC20Upgradeable;
     using AddressUpgradeable for address;
     using DecMath for uint256;
@@ -1566,6 +1571,17 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     }
 
     /**
+        Rescuable
+     */
+    function _authorizeRescue(address token, address target)
+        internal
+        view
+        override
+    {
+        require(msg.sender == owner(), "DInterest: not owner");
+    }
+
+    /**
         Param setters (only callable by the owner)
      */
     function setFeeModel(address newValue) external onlyOwner {
@@ -1623,5 +1639,13 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         onlyOwner
     {
         depositNFT.setContractURI(newURI);
+    }
+
+    function skimSurplus(address recipient) external onlyOwner {
+        (bool isNegative, uint256 surplusMagnitude) = surplus();
+        if (!isNegative) {
+            surplusMagnitude = moneyMarket.withdraw(surplusMagnitude);
+            stablecoin.safeTransfer(recipient, surplusMagnitude);
+        }
     }
 }

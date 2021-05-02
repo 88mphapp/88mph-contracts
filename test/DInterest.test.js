@@ -820,6 +820,9 @@ contract('DInterest', accounts => {
             const deficitAmount = BigNumber((await dInterestPool.surplusOfDeposit.call(1)).surplusAmount)
             await dInterestPool.fund(1, Base.num2str(deficitAmount.times(0.9)), { from: acc1 })
 
+            // wait 0.1 year
+            await moneyMarketModule.timePass(0.1)
+
             // withdraw 100%
             const depositVirtualTokenTotalSupply = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, true).plus(depositAmount)
             await dInterestPool.withdraw(1, Base.num2str(depositVirtualTokenTotalSupply.times(1)), true, { from: acc0 })
@@ -830,10 +833,11 @@ contract('DInterest', accounts => {
               const acc1BeforeBalance = BigNumber(await stablecoin.balanceOf(acc1))
               await fundingMultitoken.withdrawDividend(1, stablecoin.address, { from: acc1 })
               const actualReceivedAmount = BigNumber(await stablecoin.balanceOf(acc1)).minus(acc1BeforeBalance)
-              const estimatedLostInterest = totalPrincipal.times(INIT_INTEREST_RATE).times(0.9)
+              const estimatedLostInterest = totalPrincipal.times(INIT_INTEREST_RATE).times(0.9).times(0.9)
               const maxRefundAmount = deficitAmount.times(0.9)
               const expectedRefundAmount = BigNumber.min(estimatedLostInterest, maxRefundAmount)
-              Base.assertEpsilonEq(actualReceivedAmount, expectedRefundAmount, 'funding refund incorrect')
+              const expectedInterestAmount = totalPrincipal.times(INIT_INTEREST_RATE).times(0.9).times(0.1)
+              Base.assertEpsilonEq(actualReceivedAmount, expectedRefundAmount.plus(expectedInterestAmount), 'funding refund incorrect')
             }
 
             // topup
@@ -847,8 +851,8 @@ contract('DInterest', accounts => {
               await dInterestPool.fund(1, Base.num2str(deficitAmount.times(0.6)), { from: acc1 })
             }
 
-            // wait 1 year
-            await moneyMarketModule.timePass(1)
+            // wait 0.9 year
+            await moneyMarketModule.timePass(0.9)
 
             // withdraw deposit
             await dInterestPool.withdraw(1, Base.INF, false, { from: acc0 })
@@ -858,7 +862,8 @@ contract('DInterest', accounts => {
             // note: because 100% was withdrawn, expect the funding ID to be 2
             await fundingMultitoken.withdrawDividend(2, stablecoin.address, { from: acc1 })
             const actualInterestAmount = BigNumber(await stablecoin.balanceOf(acc1)).minus(acc1BeforeBalance)
-            const expectedInterestAmount = totalPrincipal.times(INIT_INTEREST_RATE).times(0.6).times(1)
+            const newTotalPrincipal = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, 0.9 * Base.YEAR_IN_SEC, false).plus(depositAmount)
+            const expectedInterestAmount = newTotalPrincipal.times(INIT_INTEREST_RATE).times(0.6).times(0.9)
             Base.assertEpsilonEq(actualInterestAmount, expectedInterestAmount, 'funding interest earned incorrect')
           })
 
@@ -891,9 +896,22 @@ contract('DInterest', accounts => {
               Base.assertEpsilonEq(actualReceivedAmount, expectedRefundAmount, 'funding refund incorrect')
             }
 
+            // verify deficit
+            {
+              const deficitAmount = BigNumber((await dInterestPool.surplusOfDeposit.call(1)).surplusAmount)
+              Base.assertEpsilonEq(deficitAmount, 0, 'deficit after withdraw incorrect')
+            }
+
             // topup
             await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
             await dInterestPool.topupDeposit(1, Base.num2str(depositAmount), { from: acc0 })
+
+            // verify deficit
+            {
+              const deficitAmount = BigNumber((await dInterestPool.surplusOfDeposit.call(1)).surplusAmount)
+              const expectedDeficitAmount = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false)
+              Base.assertEpsilonEq(deficitAmount, expectedDeficitAmount, 'deficit after topup incorrect')
+            }
 
             // acc1 funds 90%
             {
@@ -1033,32 +1051,283 @@ contract('DInterest', accounts => {
       })
 
       describe('surplus', () => {
-        context('happy path', () => {
+        const depositAmount = 10 * Base.STABLECOIN_PRECISION
 
+        it('single deposit', async () => {
+          // acc0 deposits for 1 year
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          const blockNow = await Base.latestBlockTimestamp()
+          await dInterestPool.deposit(Base.num2str(depositAmount), blockNow + Base.YEAR_IN_SEC, { from: acc0 })
+
+          // check surplus
+          const surplusObj = await dInterestPool.surplus.call()
+          const surplusAmount = BigNumber(surplusObj.surplusAmount)
+          assert(surplusObj.isNegative, 'surplus not negative')
+          const expectedDeficit = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false)
+          Base.assertEpsilonEq(surplusAmount, expectedDeficit, 'surplus amount incorrect')
+
+          // wait 0.5 year
+          await moneyMarketModule.timePass(0.5)
+
+          // check surplus
+          {
+            const surplusObj = await dInterestPool.surplus.call()
+            const surplusAmount = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+            const expectedSurplus = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).minus(depositAmount * INIT_INTEREST_RATE * 0.5).times(-1)
+            Base.assertEpsilonEq(surplusAmount, expectedSurplus, 'surplus amount incorrect')
+          }
         })
 
-        context('edge cases', () => {
+        it('two deposits', async () => {
+          // acc0 deposits for 1 year
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          const blockNow = await Base.latestBlockTimestamp()
+          await dInterestPool.deposit(Base.num2str(depositAmount), blockNow + Base.YEAR_IN_SEC, { from: acc0 })
 
+          // acc0 deposits for 0.5 year
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          await dInterestPool.deposit(Base.num2str(depositAmount), blockNow + 0.5 * Base.YEAR_IN_SEC, { from: acc0 })
+
+          // check surplus
+          const surplusObj = await dInterestPool.surplus.call()
+          const surplusAmount = BigNumber(surplusObj.surplusAmount)
+          assert(surplusObj.isNegative, 'surplus not negative')
+          const expectedDeficit = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).plus(Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, 0.5 * Base.YEAR_IN_SEC, false))
+          Base.assertEpsilonEq(surplusAmount, expectedDeficit, 'surplus amount incorrect')
+
+          // wait 0.5 year
+          await moneyMarketModule.timePass(0.5)
+
+          // check surplus
+          {
+            const surplusObj = await dInterestPool.surplus.call()
+            const surplusAmount = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+            const expectedSurplus = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).plus(Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, 0.5 * Base.YEAR_IN_SEC, false)).minus(2 * depositAmount * INIT_INTEREST_RATE * 0.5).times(-1)
+            Base.assertEpsilonEq(surplusAmount, expectedSurplus, 'surplus amount incorrect')
+          }
+        })
+
+        it('two deposits at different times', async () => {
+          // acc0 deposits for 1 year
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          let blockNow = await Base.latestBlockTimestamp()
+          await dInterestPool.deposit(Base.num2str(depositAmount), blockNow + Base.YEAR_IN_SEC, { from: acc0 })
+
+          // wait 0.2 year
+          await moneyMarketModule.timePass(0.2)
+
+          // acc0 deposits for 0.5 year
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          blockNow = await Base.latestBlockTimestamp()
+          await dInterestPool.deposit(Base.num2str(depositAmount), blockNow + 0.5 * Base.YEAR_IN_SEC, { from: acc0 })
+
+          // check surplus
+          const surplusObj = await dInterestPool.surplus.call()
+          const surplusAmount = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+          const expectedSurplus = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).plus(Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, 0.5 * Base.YEAR_IN_SEC, false)).minus(depositAmount * INIT_INTEREST_RATE * 0.2).times(-1)
+          Base.assertEpsilonEq(surplusAmount, expectedSurplus, 'surplus amount incorrect')
+
+          // wait 0.5 year
+          await moneyMarketModule.timePass(0.5)
+
+          // check surplus
+          {
+            const surplusObj = await dInterestPool.surplus.call()
+            const surplusAmount = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+            const expectedSurplus = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).plus(Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, 0.5 * Base.YEAR_IN_SEC, false)).minus(depositAmount * INIT_INTEREST_RATE * 0.2).minus(depositAmount * INIT_INTEREST_RATE * (1 + 0.2 * INIT_INTEREST_RATE) * 0.5).minus(depositAmount * INIT_INTEREST_RATE * 0.5).times(-1)
+            Base.assertEpsilonEq(surplusAmount, expectedSurplus, 'surplus amount incorrect')
+          }
+        })
+
+        it('should be 0 after deposit & early withdraw', async () => {
+          // acc0 deposits for 1 year
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          const blockNow = await Base.latestBlockTimestamp()
+          await dInterestPool.deposit(Base.num2str(depositAmount), blockNow + Base.YEAR_IN_SEC, { from: acc0 })
+
+          // early withdraw
+          await dInterestPool.withdraw(1, Base.INF, true, { from: acc0 })
+
+          // check surplus
+          const surplusObj = await dInterestPool.surplus.call()
+          const surplusAmount = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+          Base.assertEpsilonEq(surplusAmount, 0, 'surplus amount incorrect')
+        })
+
+        it('should be 0 after deposit & fund', async () => {
+          // acc0 deposits for 1 year
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          const blockNow = await Base.latestBlockTimestamp()
+          await dInterestPool.deposit(Base.num2str(depositAmount), blockNow + Base.YEAR_IN_SEC, { from: acc0 })
+
+          // Fund deficit using acc2
+          await stablecoin.approve(dInterestPool.address, Base.INF, { from: acc2 })
+          await dInterestPool.fund(1, Base.INF, { from: acc2 })
+
+          // check surplus
+          const surplusObj = await dInterestPool.surplus.call()
+          const surplusAmount = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+          Base.assertEpsilonEq(surplusAmount, 0, 'surplus amount incorrect')
         })
       })
 
       describe('rawSurplusOfDeposit', () => {
-        context('happy path', () => {
+        const depositAmount = 10 * Base.STABLECOIN_PRECISION
 
+        it('simple deposit', async () => {
+          // acc0 deposits for 1 year
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          const blockNow = await Base.latestBlockTimestamp()
+          await dInterestPool.deposit(Base.num2str(depositAmount), blockNow + Base.YEAR_IN_SEC, { from: acc0 })
+
+          // check surplus
+          const surplusObj = await dInterestPool.rawSurplusOfDeposit.call(1)
+          const surplusAmount = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+          const expectedSurplus = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).times(-1)
+          Base.assertEpsilonEq(surplusAmount, expectedSurplus, 'surplus amount incorrect')
+
+          // wait 0.5 year
+          await moneyMarketModule.timePass(0.5)
+
+          // check surplus
+          {
+            const surplusObj = await dInterestPool.rawSurplusOfDeposit.call(1)
+            const surplusAmount = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+            const expectedSurplus = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).minus(depositAmount * INIT_INTEREST_RATE * 0.5).times(-1)
+            Base.assertEpsilonEq(surplusAmount, expectedSurplus, 'surplus amount incorrect')
+          }
         })
 
-        context('edge cases', () => {
+        it('should be 0 after deposit & early withdraw', async () => {
+          // acc0 deposits for 1 year
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          const blockNow = await Base.latestBlockTimestamp()
+          await dInterestPool.deposit(Base.num2str(depositAmount), blockNow + Base.YEAR_IN_SEC, { from: acc0 })
 
+          // early withdraw
+          await dInterestPool.withdraw(1, Base.INF, true, { from: acc0 })
+
+          // check surplus
+          const surplusObj = await dInterestPool.rawSurplusOfDeposit.call(1)
+          const surplusAmount = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+          Base.assertEpsilonEq(surplusAmount, 0, 'surplus amount incorrect')
+        })
+
+        it('should be the same after deposit & early withdraw & topup', async () => {
+          // acc0 deposits for 1 year
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          const blockNow = await Base.latestBlockTimestamp()
+          await dInterestPool.deposit(Base.num2str(depositAmount), blockNow + Base.YEAR_IN_SEC, { from: acc0 })
+
+          // early withdraw
+          await dInterestPool.withdraw(1, Base.INF, true, { from: acc0 })
+
+          // topup
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          await dInterestPool.topupDeposit(1, Base.num2str(depositAmount), { from: acc0 })
+
+          // check surplus
+          const surplusObj = await dInterestPool.rawSurplusOfDeposit.call(1)
+          const surplusAmount = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+          const expectedSurplus = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).times(-1)
+          Base.assertEpsilonEq(surplusAmount, expectedSurplus, 'surplus amount incorrect')
         })
       })
 
       describe('surplusOfDeposit', () => {
-        context('happy path', () => {
+        const depositAmount = 10 * Base.STABLECOIN_PRECISION
 
+        it('simple deposit', async () => {
+          // acc0 deposits for 1 year
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          const blockNow = await Base.latestBlockTimestamp()
+          await dInterestPool.deposit(Base.num2str(depositAmount), blockNow + Base.YEAR_IN_SEC, { from: acc0 })
+
+          // check surplus
+          const surplusObj = await dInterestPool.surplusOfDeposit.call(1)
+          const surplusAmount = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+          const expectedSurplus = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).times(-1)
+          Base.assertEpsilonEq(surplusAmount, expectedSurplus, 'surplus amount incorrect')
+
+          // wait 0.5 year
+          await moneyMarketModule.timePass(0.5)
+
+          // check surplus
+          {
+            const surplusObj = await dInterestPool.surplusOfDeposit.call(1)
+            const surplusAmount = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+            const expectedSurplus = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).minus(depositAmount * INIT_INTEREST_RATE * 0.5).times(-1)
+            Base.assertEpsilonEq(surplusAmount, expectedSurplus, 'surplus amount incorrect')
+          }
         })
 
-        context('edge cases', () => {
+        it('should be 0 after deposit & early withdraw', async () => {
+          // acc0 deposits for 1 year
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          const blockNow = await Base.latestBlockTimestamp()
+          await dInterestPool.deposit(Base.num2str(depositAmount), blockNow + Base.YEAR_IN_SEC, { from: acc0 })
 
+          // early withdraw
+          await dInterestPool.withdraw(1, Base.INF, true, { from: acc0 })
+
+          // check surplus
+          const surplusObj = await dInterestPool.surplusOfDeposit.call(1)
+          const surplusAmount = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+          Base.assertEpsilonEq(surplusAmount, 0, 'surplus amount incorrect')
+        })
+
+        it('should be the same after deposit & early withdraw & topup', async () => {
+          // acc0 deposits for 1 year
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          const blockNow = await Base.latestBlockTimestamp()
+          await dInterestPool.deposit(Base.num2str(depositAmount), blockNow + Base.YEAR_IN_SEC, { from: acc0 })
+
+          // early withdraw
+          await dInterestPool.withdraw(1, Base.INF, true, { from: acc0 })
+
+          // topup
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          await dInterestPool.topupDeposit(1, Base.num2str(depositAmount), { from: acc0 })
+
+          // check surplus
+          const surplusObj = await dInterestPool.surplusOfDeposit.call(1)
+          const surplusAmount = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+          const expectedSurplus = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).times(-1)
+          Base.assertEpsilonEq(surplusAmount, expectedSurplus, 'surplus amount incorrect')
+        })
+
+        it('should be 0 after fully funded', async () => {
+          // acc0 deposits for 1 year
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          const blockNow = await Base.latestBlockTimestamp()
+          await dInterestPool.deposit(Base.num2str(depositAmount), blockNow + Base.YEAR_IN_SEC, { from: acc0 })
+
+          // Fund deficit using acc2
+          await stablecoin.approve(dInterestPool.address, Base.INF, { from: acc2 })
+          await dInterestPool.fund(1, Base.INF, { from: acc2 })
+
+          // check surplus
+          const surplusObj = await dInterestPool.surplusOfDeposit.call(1)
+          const surplusAmount = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+          Base.assertEpsilonEq(surplusAmount, 0, 'surplus amount incorrect')
+        })
+
+        it('should be correct after partially funded', async () => {
+          // acc0 deposits for 1 year
+          await stablecoin.approve(dInterestPool.address, Base.num2str(depositAmount), { from: acc0 })
+          const blockNow = await Base.latestBlockTimestamp()
+          await dInterestPool.deposit(Base.num2str(depositAmount), blockNow + Base.YEAR_IN_SEC, { from: acc0 })
+
+          // Fund 30% deficit using acc2
+          const deficitAmount = BigNumber((await dInterestPool.surplusOfDeposit.call(1)).surplusAmount)
+          await stablecoin.approve(dInterestPool.address, Base.INF, { from: acc2 })
+          await dInterestPool.fund(1, Base.num2str(deficitAmount.times(0.3)), { from: acc2 })
+
+          // check surplus
+          const surplusObj = await dInterestPool.surplusOfDeposit.call(1)
+          const surplusAmount = BigNumber(surplusObj.surplusAmount).times(surplusObj.isNegative ? -1 : 1)
+          const expectedSurplus = Base.calcInterestAmount(depositAmount, INIT_INTEREST_RATE_PER_SECOND, Base.YEAR_IN_SEC, false).times(0.7).times(-1)
+          Base.assertEpsilonEq(surplusAmount, expectedSurplus, 'surplus amount incorrect')
         })
       })
 

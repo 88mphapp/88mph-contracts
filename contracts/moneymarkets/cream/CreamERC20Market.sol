@@ -97,13 +97,12 @@ contract CreamERC20Market is IMoneyMarket, OwnableUpgradeable, Rescuable {
     function setRewards(address newValue) external override onlyOwner {}
 
     /**
-        Rescuable
+        @dev See {Rescuable._authorizeRescue}
      */
-    function _authorizeRescue(address token, address /*target*/)
-        internal
-        view
-        override
-    {
+    function _authorizeRescue(
+        address token,
+        address /*target*/
+    ) internal view override {
         require(token != address(cToken), "CreamERC20Market: no steal");
         require(msg.sender == owner(), "CreamERC20Market: not owner");
     }

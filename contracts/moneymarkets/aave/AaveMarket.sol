@@ -124,13 +124,12 @@ contract AaveMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
     }
 
     /**
-        Rescuable
+        @dev See {Rescuable._authorizeRescue}
      */
-    function _authorizeRescue(address token, address /*target*/)
-        internal
-        view
-        override
-    {
+    function _authorizeRescue(
+        address token,
+        address /*target*/
+    ) internal view override {
         require(token != address(aToken), "AaveMarket: no steal");
         require(msg.sender == owner(), "AaveMarket: not owner");
     }

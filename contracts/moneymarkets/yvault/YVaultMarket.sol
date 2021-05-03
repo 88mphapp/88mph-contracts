@@ -95,13 +95,12 @@ contract YVaultMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
     function setRewards(address newValue) external override {}
 
     /**
-        Rescuable
+        @dev See {Rescuable._authorizeRescue}
      */
-    function _authorizeRescue(address token, address /*target*/)
-        internal
-        view
-        override
-    {
+    function _authorizeRescue(
+        address token,
+        address /*target*/
+    ) internal view override {
         require(token != address(vault), "YVaultMarket: no steal");
         require(msg.sender == owner(), "YVaultMarket: not owner");
     }

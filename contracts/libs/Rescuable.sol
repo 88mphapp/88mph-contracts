@@ -8,9 +8,18 @@ import {
     ERC20Upgradeable
 } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
+/**
+    @notice Inherit this to allow for rescuing ERC20 tokens sent to the contract in error.
+ */
 abstract contract Rescuable {
     using SafeERC20Upgradeable for ERC20Upgradeable;
 
+    /**
+        @notice Rescues ERC20 tokens sent to the contract in error.
+        @dev Need to implement {_authorizeRescue} to do access-control for this function.
+        @param token The ERC20 token to rescue
+        @param target The address to send the tokens to
+     */
     function rescue(address token, address target) external {
         // make sure we're not stealing funds or something
         _authorizeRescue(token, target);
@@ -23,5 +32,10 @@ abstract contract Rescuable {
         );
     }
 
+    /**
+        @dev Should revert if the rescue call should be stopped.
+        @param token The ERC20 token to rescue
+        @param target The address to send the tokens to
+     */
     function _authorizeRescue(address token, address target) internal virtual;
 }

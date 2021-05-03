@@ -125,13 +125,12 @@ contract HarvestMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
     }
 
     /**
-        Rescuable
+        @dev See {Rescuable._authorizeRescue}
      */
-    function _authorizeRescue(address token, address /*target*/)
-        internal
-        view
-        override
-    {
+    function _authorizeRescue(
+        address token,
+        address /*target*/
+    ) internal view override {
         require(token != address(stakingPool), "HarvestMarket: no steal");
         require(msg.sender == owner(), "HarvestMarket: not owner");
     }

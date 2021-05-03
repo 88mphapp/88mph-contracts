@@ -1583,7 +1583,7 @@ contract DInterest is
     }
 
     /**
-        Rescuable
+        @dev See {Rescuable._authorizeRescue}
      */
     function _authorizeRescue(
         address, /*token*/

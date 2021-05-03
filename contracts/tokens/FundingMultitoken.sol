@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
+import {ERC1155Upgradeable} from "../libs/ERC1155Upgradeable.sol";
 import {ERC1155DividendToken} from "../libs/ERC1155DividendToken.sol";
 import {WrappedERC1155Token} from "../libs/WrappedERC1155Token.sol";
 
@@ -98,6 +99,32 @@ contract FundingMultitoken is ERC1155DividendToken, WrappedERC1155Token {
         bytes memory data
     ) internal virtual override(ERC1155DividendToken, WrappedERC1155Token) {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
+    }
+
+    /**
+        @dev See {ERC1155Upgradeable._shouldSkipSafeTransferAcceptanceCheck}
+     */
+    function _shouldSkipSafeTransferAcceptanceCheck(
+        address operator,
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes memory data
+    )
+        internal
+        override(ERC1155Upgradeable, WrappedERC1155Token)
+        returns (bool)
+    {
+        return
+            WrappedERC1155Token._shouldSkipSafeTransferAcceptanceCheck(
+                operator,
+                from,
+                to,
+                id,
+                amount,
+                data
+            );
     }
 
     uint256[50] private __gap;

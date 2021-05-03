@@ -10,6 +10,7 @@ import {
 import {
     StringsUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
+import {ERC1155Upgradeable} from "./ERC1155Upgradeable.sol";
 import {ERC1155Base} from "./ERC1155Base.sol";
 import {ERC20Wrapper} from "./ERC20Wrapper.sol";
 
@@ -143,6 +144,27 @@ abstract contract WrappedERC1155Token is ERC1155Base {
                     wrapper.emitTransferEvent(from, to, amounts[i]);
                 }
             }
+        }
+    }
+
+    /**
+        @dev See {ERC1155Upgradeable._shouldSkipSafeTransferAcceptanceCheck}
+     */
+    function _shouldSkipSafeTransferAcceptanceCheck(
+        address operator,
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes memory data
+    ) internal virtual override(ERC1155Upgradeable) returns (bool) {
+        address wrapperAddress = tokenIDToWrapper[id];
+        if (wrapperAddress != address(0)) {
+            // has wrapper, check if operator is the wrapper
+            return operator == wrapperAddress;
+        } else {
+            // no wrapper, should do safety checks
+            return false;
         }
     }
 

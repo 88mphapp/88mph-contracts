@@ -512,6 +512,21 @@ contract ERC1155Upgradeable is
         bytes memory data
     ) internal virtual {}
 
+    /**
+        @dev Override this to return true to skip checking to.onERC1155Received during
+             single transfers.
+     */
+    function _shouldSkipSafeTransferAcceptanceCheck(
+        address operator,
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes memory data
+    ) internal virtual returns (bool) {
+        return false;
+    }
+
     function _doSafeTransferAcceptanceCheck(
         address operator,
         address from,
@@ -520,7 +535,17 @@ contract ERC1155Upgradeable is
         uint256 amount,
         bytes memory data
     ) private {
-        if (to.isContract()) {
+        if (
+            to.isContract() &&
+            !_shouldSkipSafeTransferAcceptanceCheck(
+                operator,
+                from,
+                to,
+                id,
+                amount,
+                data
+            )
+        ) {
             try
                 IERC1155ReceiverUpgradeable(to).onERC1155Received(
                     operator,

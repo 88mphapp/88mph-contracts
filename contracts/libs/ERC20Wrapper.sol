@@ -194,7 +194,7 @@ contract ERC20Wrapper is Initializable, IERC20Upgradeable {
     function emitTransferEvent(
         address from,
         address to,
-        address amount
+        uint256 amount
     ) external {
         require(
             msg.sender == address(parentMultitoken),

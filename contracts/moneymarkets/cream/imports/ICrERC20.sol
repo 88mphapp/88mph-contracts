@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-
 // Cream ERC20 market interface
 interface ICrERC20 {
     function transfer(address dst, uint256 amount) external returns (bool);
 
-    function transferFrom(address src, address dst, uint256 amount)
-        external
-        returns (bool);
+    function transferFrom(
+        address src,
+        address dst,
+        uint256 amount
+    ) external returns (bool);
 
     function approve(address spender, uint256 amount) external returns (bool);
 
@@ -24,7 +25,12 @@ interface ICrERC20 {
     function getAccountSnapshot(address account)
         external
         view
-        returns (uint256, uint256, uint256, uint256);
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        );
 
     function borrowRatePerBlock() external view returns (uint256);
 
@@ -47,9 +53,11 @@ interface ICrERC20 {
 
     function accrueInterest() external returns (uint256);
 
-    function seize(address liquidator, address borrower, uint256 seizeTokens)
-        external
-        returns (uint256);
+    function seize(
+        address liquidator,
+        address borrower,
+        uint256 seizeTokens
+    ) external returns (uint256);
 
     function mint(uint256 mintAmount) external returns (uint256);
 

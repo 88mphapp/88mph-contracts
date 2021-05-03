@@ -1,15 +1,23 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "./imports/CurveZapIn.sol";
-import "../DInterest.sol";
-import "../tokens/NFT.sol";
-import "../tokens/FundingMultitoken.sol";
-import "../rewards/Vesting02.sol";
+import {
+    ERC20Upgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {
+    SafeERC20Upgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import {
+    ERC1155Receiver
+} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
+import {
+    IERC721Receiver
+} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {CurveZapIn} from "./imports/CurveZapIn.sol";
+import {DInterest} from "../DInterest.sol";
+import {NFT} from "../tokens/NFT.sol";
+import {FundingMultitoken} from "../tokens/FundingMultitoken.sol";
+import {Vesting02} from "../rewards/Vesting02.sol";
 
 contract ZapCurve is ERC1155Receiver, IERC721Receiver {
     using SafeERC20Upgradeable for ERC20Upgradeable;

@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "./MPHMinterLegacy.sol";
-import "./Vesting02.sol";
-import "../tokens/FundingMultitoken.sol";
-import "../libs/DecMath.sol";
+import {
+    AddressUpgradeable
+} from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+import {MPHMinterLegacy} from "./MPHMinterLegacy.sol";
+import {Vesting02} from "./Vesting02.sol";
+import {FundingMultitoken} from "../tokens/FundingMultitoken.sol";
+import {DecMath} from "../libs/DecMath.sol";
+import {DInterest} from "../DInterest.sol";
 
 contract MPHMinter is MPHMinterLegacy {
     using AddressUpgradeable for address;

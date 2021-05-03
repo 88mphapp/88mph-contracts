@@ -1,12 +1,18 @@
-module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artifacts }) => {
-  const { deploy, log, get } = deployments
-  const { deployer } = await getNamedAccounts()
-  const poolConfig = require('../deploy-configs/get-pool-config')
-  const compoundConfig = require('../deploy-configs/protocols/compound.json')
+module.exports = async ({
+  web3,
+  getNamedAccounts,
+  deployments,
+  getChainId,
+  artifacts
+}) => {
+  const { deploy, log, get } = deployments;
+  const { deployer } = await getNamedAccounts();
+  const poolConfig = require("../deploy-configs/get-pool-config");
+  const compoundConfig = require("../deploy-configs/protocols/compound.json");
 
-  const dumperDeployment = await get('Dumper')
+  const dumperDeployment = await get("Dumper");
 
-  const deployResult = await deploy('CompoundERC20Market', {
+  const deployResult = await deploy("CompoundERC20Market", {
     from: deployer,
     args: [
       poolConfig.moneyMarketParams.cToken,
@@ -14,10 +20,10 @@ module.exports = async ({ web3, getNamedAccounts, deployments, getChainId, artif
       dumperDeployment.address,
       poolConfig.stablecoin
     ]
-  })
+  });
   if (deployResult.newlyDeployed) {
-    log(`CompoundERC20Market deployed at ${deployResult.address}`)
+    log(`CompoundERC20Market deployed at ${deployResult.address}`);
   }
-}
-module.exports.tags = ['CompoundERC20Market']
-module.exports.dependencies = ['Dumper']
+};
+module.exports.tags = ["CompoundERC20Market"];
+module.exports.dependencies = ["Dumper"];

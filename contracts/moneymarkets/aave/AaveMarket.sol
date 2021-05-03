@@ -1,14 +1,25 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-import "../IMoneyMarket.sol";
-import "../../libs/Rescuable.sol";
-import "./imports/ILendingPool.sol";
-import "./imports/ILendingPoolAddressesProvider.sol";
-import "./imports/IAaveMining.sol";
+import {
+    SafeERC20Upgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import {
+    ERC20Upgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {
+    OwnableUpgradeable
+} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {
+    AddressUpgradeable
+} from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+import {IMoneyMarket} from "../IMoneyMarket.sol";
+import {Rescuable} from "../../libs/Rescuable.sol";
+import {ILendingPool} from "./imports/ILendingPool.sol";
+import {
+    ILendingPoolAddressesProvider
+} from "./imports/ILendingPoolAddressesProvider.sol";
+import {IAaveMining} from "./imports/IAaveMining.sol";
 
 contract AaveMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
     using SafeERC20Upgradeable for ERC20Upgradeable;
@@ -115,7 +126,7 @@ contract AaveMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
     /**
         Rescuable
      */
-    function _authorizeRescue(address token, address target)
+    function _authorizeRescue(address token, address /*target*/)
         internal
         view
         override

@@ -1,13 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-import "../../libs/Rescuable.sol";
-import "../IMoneyMarket.sol";
-import "../../libs/DecMath.sol";
-import "./imports/Vault.sol";
+import {
+    SafeERC20Upgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import {
+    ERC20Upgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {
+    OwnableUpgradeable
+} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {
+    AddressUpgradeable
+} from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+import {Rescuable} from "../../libs/Rescuable.sol";
+import {IMoneyMarket} from "../IMoneyMarket.sol";
+import {DecMath} from "../../libs/DecMath.sol";
+import {Vault} from "./imports/Vault.sol";
 
 contract YVaultMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
     using DecMath for uint256;
@@ -88,7 +97,7 @@ contract YVaultMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
     /**
         Rescuable
      */
-    function _authorizeRescue(address token, address target)
+    function _authorizeRescue(address token, address /*target*/)
         internal
         view
         override

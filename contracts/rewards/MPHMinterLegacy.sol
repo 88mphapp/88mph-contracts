@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-import "./MPHToken.sol";
-import "../models/issuance/IMPHIssuanceModel.sol";
-import "./Vesting.sol";
-import "./Vesting02.sol";
+import {
+    AccessControlUpgradeable
+} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {
+    AddressUpgradeable
+} from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+import {MPHToken} from "./MPHToken.sol";
+import {IMPHIssuanceModel} from "../models/issuance/IMPHIssuanceModel.sol";
+import {Vesting} from "./Vesting.sol";
+import {Vesting02} from "./Vesting02.sol";
 
 contract MPHMinterLegacy is AccessControlUpgradeable {
     using AddressUpgradeable for address;

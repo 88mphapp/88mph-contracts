@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "../../moneymarkets/IMoneyMarket.sol";
+import {IMoneyMarket} from "../../moneymarkets/IMoneyMarket.sol";
 
 interface IInterestOracle {
     function updateAndQuery() external returns (bool updated, uint256 value);

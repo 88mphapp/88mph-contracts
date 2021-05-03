@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "../libs/ERC1155DividendToken.sol";
-import "../libs/WrappedERC1155Token.sol";
+import {ERC1155DividendToken} from "../libs/ERC1155DividendToken.sol";
+import {WrappedERC1155Token} from "../libs/WrappedERC1155Token.sol";
 
 contract FundingMultitoken is ERC1155DividendToken, WrappedERC1155Token {
     bytes32 public constant DIVIDEND_ROLE = keccak256("DIVIDEND_ROLE");

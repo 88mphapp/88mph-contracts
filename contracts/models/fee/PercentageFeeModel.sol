@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "./IFeeModel.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IFeeModel} from "./IFeeModel.sol";
 
 contract PercentageFeeModel is IFeeModel, Ownable {
     uint256 internal constant PRECISION = 10**18;

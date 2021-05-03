@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./imports/OneSplitAudit.sol";
-import "../xMPH.sol";
-import "../../libs/AdminControlled.sol";
+import {
+    SafeERC20
+} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {
+    IERC20
+} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {OneSplitAudit} from "./imports/OneSplitAudit.sol";
+import {xMPH} from "../xMPH.sol";
+import {AdminControlled} from "../../libs/AdminControlled.sol";
 
 contract OneSplitDumper is AdminControlled {
     using SafeERC20 for IERC20;

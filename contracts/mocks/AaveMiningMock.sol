@@ -2,7 +2,7 @@
 pragma solidity 0.8.3;
 
 // interfaces
-import "./ERC20Mock.sol";
+import {ERC20Mock} from "./ERC20Mock.sol";
 
 contract AaveMiningMock {
     uint256 public constant CLAIM_AMOUNT = 10**18;
@@ -13,8 +13,8 @@ contract AaveMiningMock {
     }
 
     function claimRewards(
-        address[] calldata assets,
-        uint256 amount,
+        address[] calldata, /*assets*/
+        uint256, /*amount*/
         address to
     ) external returns (uint256) {
         aave.mint(to, CLAIM_AMOUNT);

@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/proxy/Clones.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "./tokens/FundingMultitoken.sol";
-import "./tokens/NFT.sol";
-import "./zero-coupon-bond/ZeroCouponBond.sol";
-import "./models/interest-oracle/EMAOracle.sol";
-import "./moneymarkets/aave/AaveMarket.sol";
-import "./moneymarkets/compound/CompoundERC20Market.sol";
-import "./moneymarkets/cream/CreamERC20Market.sol";
-import "./moneymarkets/harvest/HarvestMarket.sol";
-import "./moneymarkets/yvault/YVaultMarket.sol";
-import "./DInterest.sol";
-import "./DInterestWithDepositFee.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {FundingMultitoken} from "./tokens/FundingMultitoken.sol";
+import {NFT} from "./tokens/NFT.sol";
+import {ZeroCouponBond} from "./zero-coupon-bond/ZeroCouponBond.sol";
+import {EMAOracle} from "./models/interest-oracle/EMAOracle.sol";
+import {AaveMarket} from "./moneymarkets/aave/AaveMarket.sol";
+import {
+    CompoundERC20Market
+} from "./moneymarkets/compound/CompoundERC20Market.sol";
+import {CreamERC20Market} from "./moneymarkets/cream/CreamERC20Market.sol";
+import {HarvestMarket} from "./moneymarkets/harvest/HarvestMarket.sol";
+import {YVaultMarket} from "./moneymarkets/yvault/YVaultMarket.sol";
+import {DInterest} from "./DInterest.sol";
+import {DInterestWithDepositFee} from "./DInterestWithDepositFee.sol";
 
 contract Factory {
     using Clones for address;

@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "../../libs/DecMath.sol";
-import "./IInterestOracle.sol";
+import {
+    Initializable
+} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {DecMath} from "../../libs/DecMath.sol";
+import {IInterestOracle} from "./IInterestOracle.sol";
+import {IMoneyMarket} from "../../moneymarkets/IMoneyMarket.sol";
 
 contract EMAOracle is IInterestOracle, Initializable {
     using DecMath for uint256;

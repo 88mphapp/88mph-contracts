@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-import "../../libs/DecMath.sol";
-import "./IMPHIssuanceModel.sol";
+import {
+    OwnableUpgradeable
+} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {
+    AddressUpgradeable
+} from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+import {DecMath} from "../../libs/DecMath.sol";
+import {IMPHIssuanceModel} from "./IMPHIssuanceModel.sol";
 
 contract MPHIssuanceModel02 is OwnableUpgradeable, IMPHIssuanceModel {
     using AddressUpgradeable for address;

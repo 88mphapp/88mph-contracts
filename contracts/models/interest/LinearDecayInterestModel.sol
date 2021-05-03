@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "../../libs/DecMath.sol";
-import "./IInterestModel.sol";
+import {DecMath} from "../../libs/DecMath.sol";
+import {IInterestModel} from "./IInterestModel.sol";
 
 contract LinearDecayInterestModel is IInterestModel {
     using DecMath for uint256;

@@ -1,10 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
-import "./ERC1155Base.sol";
+import {
+    ClonesUpgradeable
+} from "@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol";
+import {
+    IERC20Upgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {
+    StringsUpgradeable
+} from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
+import {ERC1155Base} from "./ERC1155Base.sol";
 import {ERC20Wrapper} from "./ERC20Wrapper.sol";
 
 /**

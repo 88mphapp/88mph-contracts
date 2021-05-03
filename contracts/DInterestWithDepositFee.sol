@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "./DInterest.sol";
+import {
+    ERC20Upgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {
+    SafeERC20Upgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import {DecMath} from "./libs/DecMath.sol";
+import {DInterest} from "./DInterest.sol";
 
 /**
     @dev A variant of DInterest that supports money markets with deposit fees

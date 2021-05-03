@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../imports/Curve.sol";
-import "../../../libs/AdminControlled.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ICurveFi, Zap} from "../imports/Curve.sol";
+import {AdminControlled} from "../../../libs/AdminControlled.sol";
 
 contract CurveLPWithdrawer is AdminControlled {
     function curveWithdraw2(

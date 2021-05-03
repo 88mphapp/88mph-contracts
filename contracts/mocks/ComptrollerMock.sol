@@ -2,13 +2,13 @@
 pragma solidity 0.8.3;
 
 // interfaces
-import "./ERC20Mock.sol";
+import {ERC20Mock} from "./ERC20Mock.sol";
 
 contract ComptrollerMock {
     uint256 public constant CLAIM_AMOUNT = 10**18;
     ERC20Mock public comp;
 
-    constructor (address _comp) {
+    constructor(address _comp) {
         comp = ERC20Mock(_comp);
     }
 

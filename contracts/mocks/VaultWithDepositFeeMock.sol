@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "../libs/DecMath.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {DecMath} from "../libs/DecMath.sol";
 
 contract VaultWithDepositFeeMock is ERC20 {
     using DecMath for uint256;

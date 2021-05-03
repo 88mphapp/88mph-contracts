@@ -126,14 +126,22 @@ abstract contract WrappedERC1155Token is ERC1155Base {
     ) internal virtual override {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
 
-        if (!deployWrapperOnMint) {
-            return;
-        }
-
         if (from == address(0)) {
             // Mint
+            if (!deployWrapperOnMint) {
+                return;
+            }
             for (uint256 i = 0; i < ids.length; i++) {
                 _deployWrapper(ids[i]);
+            }
+        } else if (to != address(0)) {
+            // Transfer
+            for (uint256 i = 0; i < ids.length; i++) {
+                address wrapperAddress = tokenIDToWrapper[ids[i]];
+                if (wrapperAddress != address(0)) {
+                    ERC20Wrapper wrapper = ERC20Wrapper(wrapperAddress);
+                    wrapper.emitTransferEvent(from, to, amounts[i]);
+                }
             }
         }
     }

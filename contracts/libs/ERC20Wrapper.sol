@@ -188,6 +188,22 @@ contract ERC20Wrapper is Initializable, IERC20Upgradeable {
     }
 
     /**
+        @dev Only callable by the parentMultitoken. Emits a transfer event when the parent token
+             is transferred.
+     */
+    function emitTransferEvent(
+        address from,
+        address to,
+        address amount
+    ) external {
+        require(
+            msg.sender == address(parentMultitoken),
+            "ERC20Wrapper: not parent"
+        );
+        emit Transfer(from, to, amount);
+    }
+
+    /**
      * @dev Moves tokens `amount` from `sender` to `recipient`.
      *
      * This is internal function is equivalent to {transfer}, and can be used to

@@ -6,7 +6,8 @@
   "scripts": {
     "test": "npx hardhat test",
     "compile": "npx hardhat compile",
-    "prettier": "npx prettier --write '**/*.js' 'contracts/**/*.sol' '**/*.json' '**/*.md'"
+    "prettier": "npx prettier --write '**/*.js' 'contracts/**/*.sol' '**/*.json' '**/*.md'",
+    "prepare": "husky install"
   },
   "keywords": [
     "ethereum",
@@ -28,6 +29,8 @@
     "hardhat-docgen": "^1.1.0",
     "hardhat-gas-reporter": "^1.0.4",
     "hardhat-spdx-license-identifier": "^2.0.3",
+    "husky": "^6.0.0",
+    "lint-staged": "^10.5.4",
     "mocha": "^8.1.3",
     "prettier": "^1.19.1",
     "prettier-plugin-solidity": "^1.0.0-beta.10",
@@ -37,5 +40,8 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.1.0",
     "@openzeppelin/contracts-upgradeable": "^4.1.0"
+  },
+  "lint-staged": {
+    "*.{js,sol,md,json}": "prettier --write"
   }
 }

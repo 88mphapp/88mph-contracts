@@ -15,11 +15,6 @@ contract MPHMinterLegacy is AccessControlUpgradeable {
     bytes32 public constant WHITELISTED_POOL_ROLE =
         keccak256("WHITELISTED_POOL_ROLE");
 
-    modifier onlyRole(bytes32 role) {
-        require(hasRole(role, msg.sender), "MPHMinter: no role");
-        _;
-    }
-
     event ESetParamAddress(
         address indexed sender,
         string indexed paramName,

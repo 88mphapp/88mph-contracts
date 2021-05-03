@@ -71,7 +71,8 @@ contract('DInterest', accounts => {
         const depositNFTReceipt = await factory.createNFT(nftTemplate.address, Base.DEFAULT_SALT, '88mph Deposit', '88mph-Deposit')
         depositNFT = await Base.factoryReceiptToContract(depositNFTReceipt, Base.NFT)
         const fundingMultitokenTemplate = await Base.FundingMultitoken.new()
-        const fundingNFTReceipt = await factory.createFundingMultitoken(fundingMultitokenTemplate.address, Base.DEFAULT_SALT, [stablecoin.address, mph.address], 'https://api.88mph.app/funding-metadata/')
+        const erc20WrapperTemplate = await Base.ERC20Wrapper.new()
+        const fundingNFTReceipt = await factory.createFundingMultitoken(fundingMultitokenTemplate.address, Base.DEFAULT_SALT, 'https://api.88mph.app/funding-metadata/', [stablecoin.address, mph.address], erc20WrapperTemplate.address, true, '88mph Floating-rate Bond: ', '88MPH-FRB-', Base.STABLECOIN_DECIMALS)
         fundingMultitoken = await Base.factoryReceiptToContract(fundingNFTReceipt, Base.FundingMultitoken)
 
         // Initialize the interest oracle

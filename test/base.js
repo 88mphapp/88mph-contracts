@@ -16,10 +16,12 @@ const EMAOracle = module.exports.EMAOracle = artifacts.require('EMAOracle')
 const MPHIssuanceModel = module.exports.MPHIssuanceModel = artifacts.require('MPHIssuanceModel02')
 const Vesting = module.exports.Vesting = artifacts.require('Vesting')
 const Vesting02 = module.exports.Vesting02 = artifacts.require('Vesting02')
+const ERC20Wrapper = module.exports.ERC20Wrapper = artifacts.require('ERC20Wrapper')
 
 // Constants
 const PRECISION = module.exports.PRECISION = 1e18
 const STABLECOIN_PRECISION = module.exports.STABLECOIN_PRECISION = 1e6
+const STABLECOIN_DECIMALS = module.exports.STABLECOIN_DECIMALS = 6
 const YEAR_IN_SEC = module.exports.YEAR_IN_SEC = 31556952 // Number of seconds in a year
 const multiplierIntercept = module.exports.multiplierIntercept = 0.5 * PRECISION
 const multiplierSlope = module.exports.multiplierSlope = 0.25 / YEAR_IN_SEC * PRECISION

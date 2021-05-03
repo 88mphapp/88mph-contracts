@@ -1,28 +1,56 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "./ERC1155DividendToken.sol";
+import "../libs/ERC1155DividendToken.sol";
+import "../libs/WrappedERC1155Token.sol";
 
-contract FundingMultitoken is ERC1155DividendToken {
+contract FundingMultitoken is ERC1155DividendToken, WrappedERC1155Token {
     bytes32 public constant DIVIDEND_ROLE = keccak256("DIVIDEND_ROLE");
 
     function __FundingMultitoken_init(
-        address[] memory dividendTokens,
         address admin,
-        string memory uri
+        string calldata uri,
+        address[] memory dividendTokens,
+        address _wrapperTemplate,
+        bool _deployWrapperOnMint,
+        string memory _baseName,
+        string memory _baseSymbol,
+        uint8 _decimals
     ) internal initializer {
-        __ERC1155DividendToken_init(dividendTokens, admin, uri);
+        __ERC1155Base_init(admin, uri);
+        __ERC1155DividendToken_init_unchained(dividendTokens);
+        __WrappedERC1155Token_init_unchained(
+            _wrapperTemplate,
+            _deployWrapperOnMint,
+            _baseName,
+            _baseSymbol,
+            _decimals
+        );
         __FundingMultitoken_init_unchained();
     }
 
     function __FundingMultitoken_init_unchained() internal initializer {}
 
     function initialize(
-        address[] calldata dividendTokens,
         address admin,
-        string calldata uri
+        string calldata uri,
+        address[] calldata dividendTokens,
+        address _wrapperTemplate,
+        bool _deployWrapperOnMint,
+        string memory _baseName,
+        string memory _baseSymbol,
+        uint8 _decimals
     ) external virtual initializer {
-        __FundingMultitoken_init(dividendTokens, admin, uri);
+        __FundingMultitoken_init(
+            admin,
+            uri,
+            dividendTokens,
+            _wrapperTemplate,
+            _deployWrapperOnMint,
+            _baseName,
+            _baseSymbol,
+            _decimals
+        );
     }
 
     function distributeDividends(
@@ -55,10 +83,21 @@ contract FundingMultitoken is ERC1155DividendToken {
 
     function registerDividendToken(address dividendToken) external {
         require(
-            hasRole(DEFAULT_ADMIN_ROLE, _msgSender()),
-            "FundingMultitoken: must have admin role"
+            hasRole(DIVIDEND_ROLE, _msgSender()),
+            "FundingMultitoken: must have dividend role"
         );
         _registerDividendToken(dividendToken);
+    }
+
+    function _beforeTokenTransfer(
+        address operator,
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    ) internal virtual override(ERC1155DividendToken, WrappedERC1155Token) {
+        super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
     }
 
     uint256[50] private __gap;

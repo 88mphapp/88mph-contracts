@@ -44,14 +44,28 @@ contract Factory {
     function createFundingMultitoken(
         address template,
         bytes32 salt,
-        address[] calldata dividendTokens,
-        string calldata _uri
+        string calldata _uri,
+        address[] calldata _dividendTokens,
+        address _wrapperTemplate,
+        bool _deployWrapperOnMint,
+        string memory _baseName,
+        string memory _baseSymbol,
+        uint8 _decimals
     ) external returns (FundingMultitoken) {
         FundingMultitoken clone =
             FundingMultitoken(template.cloneDeterministic(salt));
 
         // initialize
-        clone.initialize(dividendTokens, msg.sender, _uri);
+        clone.initialize(
+            msg.sender,
+            _uri,
+            _dividendTokens,
+            _wrapperTemplate,
+            _deployWrapperOnMint,
+            _baseName,
+            _baseSymbol,
+            _decimals
+        );
 
         emit CreateClone("FundingMultitoken", template, salt, address(clone));
         return clone;

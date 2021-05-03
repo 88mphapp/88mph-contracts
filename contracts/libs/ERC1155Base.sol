@@ -1,9 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {ERC1155Upgradeable} from "./ERC1155Upgradeable.sol";
+import {
+    AccessControlUpgradeable
+} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
+/**
+    @notice An extension of ERC1155 that provides access-controlled minting and burning,
+            as well as a total supply getter for each token ID.
+ */
 abstract contract ERC1155Base is ERC1155Upgradeable, AccessControlUpgradeable {
     bytes32 public constant MINTER_BURNER_ROLE =
         keccak256("MINTER_BURNER_ROLE");

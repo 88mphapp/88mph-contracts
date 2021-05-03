@@ -1,11 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "./ERC1155Base.sol";
+import {
+    SafeCastUpgradeable
+} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
+import {
+    IERC20Upgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {
+    SafeERC20Upgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import {ERC1155Base} from "./ERC1155Base.sol";
 
+/**
+    @notice An extension of ERC1155Base that allows distributing dividends to all holders
+            of an token ID. Also supports multiple dividend tokens.
+ */
 abstract contract ERC1155DividendToken is ERC1155Base {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using SafeCastUpgradeable for uint256;

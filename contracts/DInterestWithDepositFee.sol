@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import {
-    ERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {
-    SafeERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import {DecMath} from "./libs/DecMath.sol";
 import {DInterest} from "./DInterest.sol";
 
@@ -15,44 +9,8 @@ import {DInterest} from "./DInterest.sol";
  */
 contract DInterestWithDepositFee is DInterest {
     using DecMath for uint256;
-    using SafeERC20Upgradeable for ERC20Upgradeable;
 
     uint256 public DepositFee; // The deposit fee charged by the money market
-
-    function __DInterestWithDepositFee_init(
-        uint256 _MaxDepositPeriod,
-        uint256 _MinDepositAmount,
-        uint256 _DepositFee,
-        address _moneyMarket,
-        address _stablecoin,
-        address _feeModel,
-        address _interestModel,
-        address _interestOracle,
-        address _depositNFT,
-        address _fundingMultitoken,
-        address _mphMinter
-    ) internal initializer {
-        __DInterest_init(
-            _MaxDepositPeriod,
-            _MinDepositAmount,
-            _moneyMarket,
-            _stablecoin,
-            _feeModel,
-            _interestModel,
-            _interestOracle,
-            _depositNFT,
-            _fundingMultitoken,
-            _mphMinter
-        );
-        __DInterestWithDepositFee_init_unchained(_DepositFee);
-    }
-
-    function __DInterestWithDepositFee_init_unchained(uint256 _DepositFee)
-        internal
-        initializer
-    {
-        DepositFee = _DepositFee;
-    }
 
     /**
         @param _MaxDepositPeriod The maximum deposit period, in seconds
@@ -80,10 +38,9 @@ contract DInterestWithDepositFee is DInterest {
         address _fundingMultitoken,
         address _mphMinter
     ) external virtual initializer {
-        __DInterestWithDepositFee_init(
+        __DInterest_init(
             _MaxDepositPeriod,
             _MinDepositAmount,
-            _DepositFee,
             _moneyMarket,
             _stablecoin,
             _feeModel,
@@ -93,6 +50,7 @@ contract DInterestWithDepositFee is DInterest {
             _fundingMultitoken,
             _mphMinter
         );
+        DepositFee = _DepositFee;
     }
 
     /**

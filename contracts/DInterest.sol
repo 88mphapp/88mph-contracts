@@ -17,9 +17,6 @@ import {
     OwnableUpgradeable
 } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {
-    MathUpgradeable
-} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
-import {
     MulticallUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
 import {IMoneyMarket} from "./moneymarkets/IMoneyMarket.sol";
@@ -1518,7 +1515,9 @@ contract DInterest is
                     depositEntry.interestRate +
                         depositEntry.interestRate.decmul(depositEntry.feeRate)
                 );
-            refundAmount = MathUpgradeable.min(refundAmount, maxRefundAmount);
+            refundAmount = refundAmount <= maxRefundAmount
+                ? refundAmount
+                : maxRefundAmount;
             fundingInterestAmount += refundAmount;
         }
     }

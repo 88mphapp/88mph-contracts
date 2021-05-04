@@ -19,6 +19,9 @@ import {
 import {
     MathUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
+import {
+    MulticallUpgradeable
+} from "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
 import {IMoneyMarket} from "./moneymarkets/IMoneyMarket.sol";
 import {IFeeModel} from "./models/fee/IFeeModel.sol";
 import {IInterestModel} from "./models/interest/IInterestModel.sol";
@@ -28,6 +31,7 @@ import {MPHMinter} from "./rewards/MPHMinter.sol";
 import {IInterestOracle} from "./models/interest-oracle/IInterestOracle.sol";
 import {DecMath} from "./libs/DecMath.sol";
 import {Rescuable} from "./libs/Rescuable.sol";
+import {Sponsorable} from "./libs/Sponsorable.sol";
 import {console} from "hardhat/console.sol";
 
 /**
@@ -39,7 +43,9 @@ import {console} from "hardhat/console.sol";
 contract DInterest is
     ReentrancyGuardUpgradeable,
     OwnableUpgradeable,
-    Rescuable
+    Rescuable,
+    MulticallUpgradeable,
+    Sponsorable
 {
     using SafeERC20Upgradeable for ERC20Upgradeable;
     using AddressUpgradeable for address;
@@ -283,7 +289,7 @@ contract DInterest is
         nonReentrant
         returns (uint256 depositID, uint256 interestAmount)
     {
-        return _deposit(depositAmount, maturationTimestamp, false);
+        return _deposit(msg.sender, depositAmount, maturationTimestamp, false);
     }
 
     /**
@@ -298,7 +304,7 @@ contract DInterest is
         nonReentrant
         returns (uint256 interestAmount)
     {
-        return _topupDeposit(depositID, depositAmount);
+        return _topupDeposit(msg.sender, depositID, depositAmount);
     }
 
     /**
@@ -313,7 +319,7 @@ contract DInterest is
         nonReentrant
         returns (uint256 newDepositID, uint256 interestAmount)
     {
-        return _rolloverDeposit(depositID, maturationTimestamp);
+        return _rolloverDeposit(msg.sender, depositID, maturationTimestamp);
     }
 
     /**
@@ -330,7 +336,8 @@ contract DInterest is
         uint256 virtualTokenAmount,
         bool early
     ) external nonReentrant returns (uint256 withdrawnStablecoinAmount) {
-        return _withdraw(depositID, virtualTokenAmount, early, false);
+        return
+            _withdraw(msg.sender, depositID, virtualTokenAmount, early, false);
     }
 
     /**
@@ -350,7 +357,7 @@ contract DInterest is
         nonReentrant
         returns (uint256 fundingID)
     {
-        return _fund(depositID, fundAmount);
+        return _fund(msg.sender, depositID, fundAmount);
     }
 
     /**
@@ -367,140 +374,127 @@ contract DInterest is
     }
 
     /**
-        @notice Create multiple deposits. See {deposit} for details.
+        Sponsored action functions
      */
-    function multiDeposit(
-        uint256[] calldata depositAmountList,
-        uint256[] calldata maturationTimestampList
+
+    function sponsoredDeposit(
+        uint256 depositAmount,
+        uint256 maturationTimestamp,
+        Sponsorship calldata sponsorship
     )
         external
         nonReentrant
-        returns (
-            uint256[] memory depositIDList,
-            uint256[] memory interestAmountList
+        sponsored(
+            sponsorship,
+            this.sponsoredDeposit.selector,
+            abi.encode(depositAmount, maturationTimestamp)
         )
+        returns (uint256 depositID, uint256 interestAmount)
     {
-        require(
-            depositAmountList.length == maturationTimestampList.length,
-            "DInterest: List lengths unequal"
-        );
-        depositIDList = new uint256[](depositAmountList.length);
-        interestAmountList = new uint256[](depositAmountList.length);
-        for (uint256 i = 0; i < depositAmountList.length; i++) {
-            (depositIDList[i], interestAmountList[i]) = _deposit(
-                depositAmountList[i],
-                maturationTimestampList[i],
+        return
+            _deposit(
+                sponsorship.sender,
+                depositAmount,
+                maturationTimestamp,
                 false
             );
-        }
     }
 
-    /**
-        @notice Tops up multiple deposits. See {topupDeposit} for details.
-     */
-    function multiTopupDeposit(
-        uint256[] calldata depositIDList,
-        uint256[] calldata depositAmountList
-    ) external nonReentrant returns (uint256[] memory interestAmountList) {
-        require(
-            depositIDList.length == depositAmountList.length,
-            "DInterest: List lengths unequal"
-        );
-        interestAmountList = new uint256[](depositIDList.length);
-        for (uint256 i = 0; i < depositIDList.length; i++) {
-            interestAmountList[i] = _topupDeposit(
-                depositIDList[i],
-                depositAmountList[i]
-            );
-        }
-    }
-
-    /**
-        @notice Rolls over multiple deposits. See {rollover} for details.
-     */
-    function multiRolloverDeposit(
-        uint256[] calldata depositIDList,
-        uint256[] calldata maturationTimestampList
+    function sponsoredTopupDeposit(
+        uint256 depositID,
+        uint256 depositAmount,
+        Sponsorship calldata sponsorship
     )
         external
         nonReentrant
-        returns (
-            uint256[] memory newDepositIDList,
-            uint256[] memory interestAmountList
+        sponsored(
+            sponsorship,
+            this.sponsoredTopupDeposit.selector,
+            abi.encode(depositID, depositAmount)
         )
+        returns (uint256 interestAmount)
     {
-        require(
-            depositIDList.length == maturationTimestampList.length,
-            "DInterest: List lengths unequal"
-        );
-        newDepositIDList = new uint256[](depositIDList.length);
-        interestAmountList = new uint256[](depositIDList.length);
-        for (uint256 i = 0; i < depositIDList.length; i++) {
-            (newDepositIDList[i], interestAmountList[i]) = _rolloverDeposit(
-                depositIDList[i],
-                maturationTimestampList[i]
-            );
-        }
+        return _topupDeposit(sponsorship.sender, depositID, depositAmount);
     }
 
-    /**
-        @notice Withdraws multiple deposits. See {withdraw} for details.
-     */
-    function multiWithdraw(
-        uint256[] calldata depositIDList,
-        uint256[] calldata virtualTokenAmountList,
-        bool[] calldata earlyList
+    function sponsoredRolloverDeposit(
+        uint256 depositID,
+        uint256 maturationTimestamp,
+        Sponsorship calldata sponsorship
     )
         external
         nonReentrant
-        returns (uint256[] memory withdrawnStablecoinAmountList)
+        sponsored(
+            sponsorship,
+            this.sponsoredRolloverDeposit.selector,
+            abi.encode(depositID, maturationTimestamp)
+        )
+        returns (uint256 newDepositID, uint256 interestAmount)
     {
-        require(
-            depositIDList.length == virtualTokenAmountList.length &&
-                depositIDList.length == earlyList.length,
-            "DInterest: List lengths unequal"
-        );
-        withdrawnStablecoinAmountList = new uint256[](depositIDList.length);
-        for (uint256 i = 0; i < depositIDList.length; i++) {
-            withdrawnStablecoinAmountList[i] = _withdraw(
-                depositIDList[i],
-                virtualTokenAmountList[i],
-                earlyList[i],
+        return
+            _rolloverDeposit(
+                sponsorship.sender,
+                depositID,
+                maturationTimestamp
+            );
+    }
+
+    function sponsoredWithdraw(
+        uint256 depositID,
+        uint256 virtualTokenAmount,
+        bool early,
+        Sponsorship calldata sponsorship
+    )
+        external
+        nonReentrant
+        sponsored(
+            sponsorship,
+            this.sponsoredWithdraw.selector,
+            abi.encode(depositID, virtualTokenAmount, early)
+        )
+        returns (uint256 withdrawnStablecoinAmount)
+    {
+        return
+            _withdraw(
+                sponsorship.sender,
+                depositID,
+                virtualTokenAmount,
+                early,
                 false
             );
-        }
     }
 
-    /**
-        @notice Mints floating-rate bonds for multiple deposits. See {fund} for details.
-     */
-    function multiFund(
-        uint256[] calldata depositIDList,
-        uint256[] calldata fundAmountList
-    ) external nonReentrant returns (uint256[] memory fundingIDList) {
-        require(
-            depositIDList.length == fundAmountList.length,
-            "DInterest: List lengths unequal"
-        );
-        fundingIDList = new uint256[](depositIDList.length);
-        for (uint256 i = 0; i < depositIDList.length; i++) {
-            fundingIDList[i] = _fund(depositIDList[i], fundAmountList[i]);
-        }
-    }
-
-    /**
-        @notice Triggers interest payout for multiple floating-rate bonds.
-                See {payInterestToFunders} for details.
-     */
-    function multiPayInterestToFunders(uint256[] calldata fundingIDList)
+    function sponsoredFund(
+        uint256 depositID,
+        uint256 fundAmount,
+        Sponsorship calldata sponsorship
+    )
         external
         nonReentrant
-        returns (uint256[] memory interestAmountList)
+        sponsored(
+            sponsorship,
+            this.sponsoredFund.selector,
+            abi.encode(depositID, fundAmount)
+        )
+        returns (uint256 fundingID)
     {
-        interestAmountList = new uint256[](fundingIDList.length);
-        for (uint256 i = 0; i < fundingIDList.length; i++) {
-            interestAmountList[i] = _payInterestToFunders(fundingIDList[i]);
-        }
+        return _fund(sponsorship.sender, depositID, fundAmount);
+    }
+
+    function sponsoredPayInterestToFunders(
+        uint256 fundingID,
+        Sponsorship calldata sponsorship
+    )
+        external
+        nonReentrant
+        sponsored(
+            sponsorship,
+            this.sponsoredPayInterestToFunders.selector,
+            abi.encode(fundingID)
+        )
+        returns (uint256 interestAmount)
+    {
+        return _payInterestToFunders(fundingID);
     }
 
     /**
@@ -784,18 +778,21 @@ contract DInterest is
         @dev See {deposit}
      */
     function _deposit(
+        address sender,
         uint256 depositAmount,
         uint256 maturationTimestamp,
         bool rollover
     ) internal virtual returns (uint256 depositID, uint256 interestAmount) {
         (depositID, interestAmount) = _depositRecordData(
+            sender,
             depositAmount,
             maturationTimestamp
         );
-        _depositTransferFunds(depositAmount, rollover);
+        _depositTransferFunds(sender, depositAmount, rollover);
     }
 
     function _depositRecordData(
+        address sender,
         uint256 depositAmount,
         uint256 maturationTimestamp
     ) internal virtual returns (uint256 depositID, uint256 interestAmount) {
@@ -843,14 +840,14 @@ contract DInterest is
         totalFeeOwed += feeAmount;
 
         // Mint depositNFT
-        depositNFT.mint(msg.sender, depositID);
+        depositNFT.mint(sender, depositID);
 
-        // Vest MPH to msg.sender
-        mphMinter.createVestForDeposit(msg.sender, depositID);
+        // Vest MPH to sender
+        mphMinter.createVestForDeposit(sender, depositID);
 
         // Emit event
         emit EDeposit(
-            msg.sender,
+            sender,
             depositID,
             depositAmount,
             interestAmount,
@@ -859,19 +856,16 @@ contract DInterest is
         );
     }
 
-    function _depositTransferFunds(uint256 depositAmount, bool rollover)
-        internal
-        virtual
-    {
+    function _depositTransferFunds(
+        address sender,
+        uint256 depositAmount,
+        bool rollover
+    ) internal virtual {
         // Only transfer funds from sender if it's not a rollover
         // because if it is the funds are already in the contract
         if (!rollover) {
             // Transfer `depositAmount` stablecoin to DInterest
-            stablecoin.safeTransferFrom(
-                msg.sender,
-                address(this),
-                depositAmount
-            );
+            stablecoin.safeTransferFrom(sender, address(this), depositAmount);
 
             // Lend `depositAmount` stablecoin to money market
             stablecoin.safeIncreaseAllowance(
@@ -885,23 +879,27 @@ contract DInterest is
     /**
         @dev See {topupDeposit}
      */
-    function _topupDeposit(uint256 depositID, uint256 depositAmount)
-        internal
-        virtual
-        returns (uint256 interestAmount)
-    {
-        interestAmount = _topupDepositRecordData(depositID, depositAmount);
-        _topupDepositTransferFunds(depositAmount);
+    function _topupDeposit(
+        address sender,
+        uint256 depositID,
+        uint256 depositAmount
+    ) internal virtual returns (uint256 interestAmount) {
+        interestAmount = _topupDepositRecordData(
+            sender,
+            depositID,
+            depositAmount
+        );
+        _topupDepositTransferFunds(sender, depositAmount);
     }
 
-    function _topupDepositRecordData(uint256 depositID, uint256 depositAmount)
-        internal
-        virtual
-        returns (uint256 interestAmount)
-    {
+    function _topupDepositRecordData(
+        address sender,
+        uint256 depositID,
+        uint256 depositAmount
+    ) internal virtual returns (uint256 interestAmount) {
         Deposit memory depositEntry = _getDeposit(depositID);
         require(
-            depositNFT.ownerOf(depositID) == msg.sender,
+            depositNFT.ownerOf(depositID) == sender,
             "DInterest: not owner"
         );
 
@@ -967,7 +965,7 @@ contract DInterest is
 
         // Emit event
         emit ETopupDeposit(
-            msg.sender,
+            sender,
             depositID,
             depositAmount,
             interestAmount,
@@ -975,12 +973,12 @@ contract DInterest is
         );
     }
 
-    function _topupDepositTransferFunds(uint256 depositAmount)
+    function _topupDepositTransferFunds(address sender, uint256 depositAmount)
         internal
         virtual
     {
         // Transfer `depositAmount` stablecoin to DInterest
-        stablecoin.safeTransferFrom(msg.sender, address(this), depositAmount);
+        stablecoin.safeTransferFrom(sender, address(this), depositAmount);
 
         // Lend `depositAmount` stablecoin to money market
         stablecoin.safeIncreaseAllowance(address(moneyMarket), depositAmount);
@@ -990,23 +988,24 @@ contract DInterest is
     /**
         @dev See {rolloverDeposit}
      */
-    function _rolloverDeposit(uint256 depositID, uint256 maturationTimestamp)
-        internal
-        virtual
-        returns (uint256 newDepositID, uint256 interestAmount)
-    {
+    function _rolloverDeposit(
+        address sender,
+        uint256 depositID,
+        uint256 maturationTimestamp
+    ) internal virtual returns (uint256 newDepositID, uint256 interestAmount) {
         // withdraw from existing deposit
         uint256 withdrawnStablecoinAmount =
-            _withdraw(depositID, type(uint256).max, false, true);
+            _withdraw(sender, depositID, type(uint256).max, false, true);
 
         // deposit funds into a new deposit
         (newDepositID, interestAmount) = _deposit(
+            sender,
             withdrawnStablecoinAmount,
             maturationTimestamp,
             true
         );
 
-        emit ERolloverDeposit(msg.sender, depositID, newDepositID);
+        emit ERolloverDeposit(sender, depositID, newDepositID);
     }
 
     /**
@@ -1014,6 +1013,7 @@ contract DInterest is
         @param rollover True if being called from {_rolloverDeposit}, false otherwise
      */
     function _withdraw(
+        address sender,
         uint256 depositID,
         uint256 virtualTokenAmount,
         bool early,
@@ -1024,9 +1024,10 @@ contract DInterest is
             uint256 feeAmount,
             uint256 fundingInterestAmount,
             uint256 refundAmount
-        ) = _withdrawRecordData(depositID, virtualTokenAmount, early);
+        ) = _withdrawRecordData(sender, depositID, virtualTokenAmount, early);
         return
             _withdrawTransferFunds(
+                sender,
                 _getDeposit(depositID).fundingID,
                 withdrawAmount,
                 feeAmount,
@@ -1037,6 +1038,7 @@ contract DInterest is
     }
 
     function _withdrawRecordData(
+        address sender,
         uint256 depositID,
         uint256 virtualTokenAmount,
         bool early
@@ -1068,6 +1070,10 @@ contract DInterest is
                 "DInterest: immature"
             );
         }
+        require(
+            depositNFT.ownerOf(depositID) == sender,
+            "DInterest: not owner"
+        );
 
         // Check if withdrawing all funds
         if (virtualTokenAmount == type(uint256).max) {
@@ -1152,10 +1158,11 @@ contract DInterest is
         _getDeposit(depositID).virtualTokenTotalSupply -= virtualTokenAmount;
 
         // Emit event
-        emit EWithdraw(msg.sender, depositID, virtualTokenAmount, feeAmount);
+        emit EWithdraw(sender, depositID, virtualTokenAmount, feeAmount);
     }
 
     function _withdrawTransferFunds(
+        address sender,
         uint256 fundingID,
         uint256 withdrawAmount,
         uint256 feeAmount,
@@ -1222,7 +1229,7 @@ contract DInterest is
             }
 
             if (withdrawnStablecoinAmount > 0) {
-                stablecoin.safeTransfer(msg.sender, withdrawnStablecoinAmount);
+                stablecoin.safeTransfer(sender, withdrawnStablecoinAmount);
             }
         }
 
@@ -1255,21 +1262,25 @@ contract DInterest is
     /**
         @dev See {fund}
      */
-    function _fund(uint256 depositID, uint256 fundAmount)
-        internal
-        virtual
-        returns (uint256 fundingID)
-    {
+    function _fund(
+        address sender,
+        uint256 depositID,
+        uint256 fundAmount
+    ) internal virtual returns (uint256 fundingID) {
         uint256 actualFundAmount;
-        (fundingID, actualFundAmount) = _fundRecordData(depositID, fundAmount);
-        _fundTransferFunds(actualFundAmount);
+        (fundingID, actualFundAmount) = _fundRecordData(
+            sender,
+            depositID,
+            fundAmount
+        );
+        _fundTransferFunds(sender, actualFundAmount);
     }
 
-    function _fundRecordData(uint256 depositID, uint256 fundAmount)
-        internal
-        virtual
-        returns (uint256 fundingID, uint256 actualFundAmount)
-    {
+    function _fundRecordData(
+        address sender,
+        uint256 depositID,
+        uint256 fundAmount
+    ) internal virtual returns (uint256 fundingID, uint256 actualFundAmount) {
         Deposit storage depositEntry = _getDeposit(depositID);
 
         (bool isNegative, uint256 surplusMagnitude) = surplus();
@@ -1334,7 +1345,7 @@ contract DInterest is
                 principalPerToken;
         }
         // Mint funding multitoken
-        fundingMultitoken.mint(msg.sender, fundingID, mintTokenAmount);
+        fundingMultitoken.mint(sender, fundingID, mintTokenAmount);
 
         // Update relevant values
         sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex +=
@@ -1343,14 +1354,17 @@ contract DInterest is
         totalFundedPrincipalAmount += totalPrincipalToFund;
 
         // Emit event
-        emit EFund(msg.sender, fundingID, fundAmount, mintTokenAmount);
+        emit EFund(sender, fundingID, fundAmount, mintTokenAmount);
 
         actualFundAmount = fundAmount;
     }
 
-    function _fundTransferFunds(uint256 fundAmount) internal virtual {
+    function _fundTransferFunds(address sender, uint256 fundAmount)
+        internal
+        virtual
+    {
         // Transfer `fundAmount` stablecoins from msg.sender
-        stablecoin.safeTransferFrom(msg.sender, address(this), fundAmount);
+        stablecoin.safeTransferFrom(sender, address(this), fundAmount);
 
         // Deposit `fundAmount` stablecoins into moneyMarket
         stablecoin.safeIncreaseAllowance(address(moneyMarket), fundAmount);

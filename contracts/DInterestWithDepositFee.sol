@@ -103,6 +103,7 @@ contract DInterestWithDepositFee is DInterest {
         @dev See {deposit}
      */
     function _deposit(
+        address sender,
         uint256 depositAmount,
         uint256 maturationTimestamp,
         bool rollover
@@ -113,43 +114,44 @@ contract DInterestWithDepositFee is DInterest {
         returns (uint256 depositID, uint256 interestAmount)
     {
         (depositID, interestAmount) = _depositRecordData(
+            sender,
             _applyDepositFee(depositAmount),
             maturationTimestamp
         );
-        _depositTransferFunds(depositAmount, rollover);
+        _depositTransferFunds(sender, depositAmount, rollover);
     }
 
     /**
         @dev See {topupDeposit}
      */
-    function _topupDeposit(uint256 depositID, uint256 depositAmount)
-        internal
-        virtual
-        override
-        returns (uint256 interestAmount)
-    {
+    function _topupDeposit(
+        address sender,
+        uint256 depositID,
+        uint256 depositAmount
+    ) internal virtual override returns (uint256 interestAmount) {
         interestAmount = _topupDepositRecordData(
+            sender,
             depositID,
             _applyDepositFee(depositAmount)
         );
-        _topupDepositTransferFunds(depositAmount);
+        _topupDepositTransferFunds(sender, depositAmount);
     }
 
     /**
         @dev See {fund}
      */
-    function _fund(uint256 depositID, uint256 fundAmount)
-        internal
-        virtual
-        override
-        returns (uint256 fundingID)
-    {
+    function _fund(
+        address sender,
+        uint256 depositID,
+        uint256 fundAmount
+    ) internal virtual override returns (uint256 fundingID) {
         uint256 actualFundAmount;
         (fundingID, actualFundAmount) = _fundRecordData(
+            sender,
             depositID,
             _applyDepositFee(fundAmount)
         );
-        _fundTransferFunds(_unapplyDepositFee(fundAmount));
+        _fundTransferFunds(sender, _unapplyDepositFee(fundAmount));
     }
 
     /**

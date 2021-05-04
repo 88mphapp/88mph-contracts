@@ -11,20 +11,7 @@ contract("DInterest", accounts => {
   const devWallet = accounts[4];
 
   // Contract instances
-  let stablecoin;
-  let dInterestPool;
-  let market;
-  let feeModel;
-  let interestModel;
-  let interestOracle;
-  let depositNFT;
-  let fundingMultitoken;
-  let mph;
-  let mphMinter;
-  let mphIssuanceModel;
-  let vesting;
-  let vesting02;
-  let factory;
+  let baseContracts;
 
   // Constants
   const INIT_INTEREST_RATE = 0.1; // 10% APY
@@ -34,172 +21,7 @@ contract("DInterest", accounts => {
     const moneyMarketModule = moduleInfo.moduleGenerator();
     context(`Money market: ${moduleInfo.name}`, () => {
       beforeEach(async () => {
-        stablecoin = await Base.ERC20Mock.new();
-
-        // Mint stablecoin
-        const mintAmount = 1000 * Base.STABLECOIN_PRECISION;
-        await stablecoin.mint(acc0, Base.num2str(mintAmount));
-        await stablecoin.mint(acc1, Base.num2str(mintAmount));
-        await stablecoin.mint(acc2, Base.num2str(mintAmount));
-
-        // Initialize MPH
-        mph = await Base.MPHToken.new();
-        await mph.initialize();
-        vesting = await Base.Vesting.new(mph.address);
-        vesting02 = await Base.Vesting02.new();
-        mphIssuanceModel = await Base.MPHIssuanceModel.new();
-        await mphIssuanceModel.initialize(
-          Base.DevRewardMultiplier,
-          Base.GovRewardMultiplier
-        );
-        mphMinter = await Base.MPHMinter.new();
-        await mphMinter.initialize(
-          mph.address,
-          govTreasury,
-          devWallet,
-          mphIssuanceModel.address,
-          vesting.address,
-          vesting02.address
-        );
-        await vesting02.initialize(
-          mphMinter.address,
-          mph.address,
-          "Vested MPH",
-          "veMPH"
-        );
-        await mph.transferOwnership(mphMinter.address);
-        await mphMinter.grantRole(Base.WHITELISTER_ROLE, acc0, { from: acc0 });
-
-        // Set infinite MPH approval
-        await mph.approve(mphMinter.address, Base.INF, { from: acc0 });
-        await mph.approve(mphMinter.address, Base.INF, { from: acc1 });
-        await mph.approve(mphMinter.address, Base.INF, { from: acc2 });
-
-        // Deploy factory
-        factory = await Base.Factory.new();
-
-        // Deploy moneyMarket
-        market = await moneyMarketModule.deployMoneyMarket(
-          accounts,
-          factory,
-          stablecoin,
-          govTreasury
-        );
-
-        // Initialize the NFTs
-        const nftTemplate = await Base.NFT.new();
-        const depositNFTReceipt = await factory.createNFT(
-          nftTemplate.address,
-          Base.DEFAULT_SALT,
-          "88mph Deposit",
-          "88mph-Deposit"
-        );
-        depositNFT = await Base.factoryReceiptToContract(
-          depositNFTReceipt,
-          Base.NFT
-        );
-        const fundingMultitokenTemplate = await Base.FundingMultitoken.new();
-        const erc20WrapperTemplate = await Base.ERC20Wrapper.new();
-        const fundingNFTReceipt = await factory.createFundingMultitoken(
-          fundingMultitokenTemplate.address,
-          Base.DEFAULT_SALT,
-          "https://api.88mph.app/funding-metadata/",
-          [stablecoin.address, mph.address],
-          erc20WrapperTemplate.address,
-          true,
-          "88mph Floating-rate Bond: ",
-          "88MPH-FRB-",
-          Base.STABLECOIN_DECIMALS
-        );
-        fundingMultitoken = await Base.factoryReceiptToContract(
-          fundingNFTReceipt,
-          Base.FundingMultitoken
-        );
-
-        // Initialize the interest oracle
-        const interestOracleTemplate = await Base.EMAOracle.new();
-        const interestOracleReceipt = await factory.createEMAOracle(
-          interestOracleTemplate.address,
-          Base.DEFAULT_SALT,
-          Base.num2str(
-            (INIT_INTEREST_RATE * Base.PRECISION) / Base.YEAR_IN_SEC
-          ),
-          Base.EMAUpdateInterval,
-          Base.EMASmoothingFactor,
-          Base.EMAAverageWindowInIntervals,
-          market.address
-        );
-        interestOracle = await Base.factoryReceiptToContract(
-          interestOracleReceipt,
-          Base.EMAOracle
-        );
-
-        // Initialize the DInterest pool
-        feeModel = await Base.PercentageFeeModel.new(
-          govTreasury,
-          Base.interestFee,
-          Base.earlyWithdrawFee
-        );
-        interestModel = await Base.LinearDecayInterestModel.new(
-          Base.num2str(Base.multiplierIntercept),
-          Base.num2str(Base.multiplierSlope)
-        );
-        const dInterestTemplate = await Base.DInterest.new();
-        const dInterestReceipt = await factory.createDInterest(
-          dInterestTemplate.address,
-          Base.DEFAULT_SALT,
-          Base.MaxDepositPeriod,
-          Base.MinDepositAmount,
-          market.address,
-          stablecoin.address,
-          feeModel.address,
-          interestModel.address,
-          interestOracle.address,
-          depositNFT.address,
-          fundingMultitoken.address,
-          mphMinter.address
-        );
-        dInterestPool = await Base.factoryReceiptToContract(
-          dInterestReceipt,
-          Base.DInterest
-        );
-
-        // Set MPH minting multiplier for DInterest pool
-        await mphMinter.grantRole(
-          Base.WHITELISTED_POOL_ROLE,
-          dInterestPool.address,
-          { from: acc0 }
-        );
-        await mphIssuanceModel.setPoolDepositorRewardMintMultiplier(
-          dInterestPool.address,
-          Base.PoolDepositorRewardMintMultiplier
-        );
-        await mphIssuanceModel.setPoolFunderRewardMultiplier(
-          dInterestPool.address,
-          Base.PoolFunderRewardMultiplier
-        );
-        await mphIssuanceModel.setPoolFunderRewardVestPeriod(
-          dInterestPool.address,
-          Base.PoolFunderRewardVestPeriod
-        );
-
-        // Transfer the ownership of the money market to the DInterest pool
-        await market.transferOwnership(dInterestPool.address);
-
-        // Transfer NFT ownerships to the DInterest pool
-        await depositNFT.transferOwnership(dInterestPool.address);
-        await fundingMultitoken.grantRole(
-          Base.MINTER_BURNER_ROLE,
-          dInterestPool.address
-        );
-        await fundingMultitoken.grantRole(
-          Base.DIVIDEND_ROLE,
-          dInterestPool.address
-        );
-        await fundingMultitoken.grantRole(
-          Base.DIVIDEND_ROLE,
-          mphMinter.address
-        );
+        baseContracts = await Base.setupTest(accounts, moneyMarketModule);
       });
 
       describe("deposit", () => {
@@ -208,13 +30,13 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               Base.num2str(blockNow + Base.YEAR_IN_SEC),
               { from: acc0 }
@@ -229,7 +51,9 @@ contract("DInterest", accounts => {
             );
 
             // Verify totalDeposit
-            const totalDeposit = BigNumber(await dInterestPool.totalDeposit());
+            const totalDeposit = BigNumber(
+              await baseContracts.dInterestPool.totalDeposit()
+            );
             Base.assertEpsilonEq(
               totalDeposit,
               depositAmount,
@@ -238,7 +62,7 @@ contract("DInterest", accounts => {
 
             // Verify totalInterestOwed
             const totalInterestOwed = BigNumber(
-              await dInterestPool.totalInterestOwed()
+              await baseContracts.dInterestPool.totalInterestOwed()
             );
             Base.assertEpsilonEq(
               totalInterestOwed,
@@ -247,7 +71,9 @@ contract("DInterest", accounts => {
             );
 
             // Verify totalFeeOwed
-            const totalFeeOwed = BigNumber(await dInterestPool.totalFeeOwed());
+            const totalFeeOwed = BigNumber(
+              await baseContracts.dInterestPool.totalFeeOwed()
+            );
             const expectedTotalFeeOwed = totalInterestOwed
               .plus(totalFeeOwed)
               .minus(Base.applyFee(totalInterestOwed.plus(totalFeeOwed)));
@@ -262,29 +88,29 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
             const acc0BeforeBalance = BigNumber(
-              await stablecoin.balanceOf(acc0)
+              await baseContracts.stablecoin.balanceOf(acc0)
             );
             const dInterestPoolBeforeBalance = BigNumber(
-              await market.totalValue.call()
+              await baseContracts.market.totalValue.call()
             );
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               Base.num2str(blockNow + Base.YEAR_IN_SEC),
               { from: acc0 }
             );
 
             const acc0CurrentBalance = BigNumber(
-              await stablecoin.balanceOf(acc0)
+              await baseContracts.stablecoin.balanceOf(acc0)
             );
             const dInterestPoolCurrentBalance = BigNumber(
-              await market.totalValue.call()
+              await baseContracts.market.totalValue.call()
             );
 
             // Verify stablecoin transferred out of account
@@ -308,14 +134,14 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 second
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
             try {
-              await dInterestPool.deposit(
+              await baseContracts.dInterestPool.deposit(
                 Base.num2str(depositAmount),
                 Base.num2str(blockNow + 1),
                 { from: acc0 }
@@ -328,14 +154,14 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 10 years
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
             try {
-              await dInterestPool.deposit(
+              await baseContracts.dInterestPool.deposit(
                 Base.num2str(depositAmount),
                 Base.num2str(blockNow + 10 * Base.YEAR_IN_SEC),
                 { from: acc0 }
@@ -348,14 +174,14 @@ contract("DInterest", accounts => {
             const depositAmount = 0.001 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
             try {
-              await dInterestPool.deposit(
+              await baseContracts.dInterestPool.deposit(
                 Base.num2str(depositAmount),
                 Base.num2str(blockNow + Base.YEAR_IN_SEC),
                 { from: acc0 }
@@ -372,27 +198,31 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               Base.num2str(blockNow + Base.YEAR_IN_SEC),
               { from: acc0 }
             );
 
             // topup
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
-            await dInterestPool.topupDeposit(1, Base.num2str(depositAmount), {
-              from: acc0
-            });
+            await baseContracts.dInterestPool.topupDeposit(
+              1,
+              Base.num2str(depositAmount),
+              {
+                from: acc0
+              }
+            );
 
             // Calculate interest amount
             const expectedInterest = Base.calcInterestAmount(
@@ -403,7 +233,9 @@ contract("DInterest", accounts => {
             );
 
             // Verify totalDeposit
-            const totalDeposit = BigNumber(await dInterestPool.totalDeposit());
+            const totalDeposit = BigNumber(
+              await baseContracts.dInterestPool.totalDeposit()
+            );
             Base.assertEpsilonEq(
               totalDeposit,
               2 * depositAmount,
@@ -412,7 +244,7 @@ contract("DInterest", accounts => {
 
             // Verify totalInterestOwed
             const totalInterestOwed = BigNumber(
-              await dInterestPool.totalInterestOwed()
+              await baseContracts.dInterestPool.totalInterestOwed()
             );
             Base.assertEpsilonEq(
               totalInterestOwed,
@@ -421,7 +253,9 @@ contract("DInterest", accounts => {
             );
 
             // Verify totalFeeOwed
-            const totalFeeOwed = BigNumber(await dInterestPool.totalFeeOwed());
+            const totalFeeOwed = BigNumber(
+              await baseContracts.dInterestPool.totalFeeOwed()
+            );
             const expectedTotalFeeOwed = totalInterestOwed
               .plus(totalFeeOwed)
               .minus(Base.applyFee(totalInterestOwed.plus(totalFeeOwed)));
@@ -436,13 +270,13 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               Base.num2str(blockNow + Base.YEAR_IN_SEC),
               { from: acc0 }
@@ -450,25 +284,29 @@ contract("DInterest", accounts => {
 
             // topup
             const acc0BeforeBalance = BigNumber(
-              await stablecoin.balanceOf(acc0)
+              await baseContracts.stablecoin.balanceOf(acc0)
             );
             const dInterestPoolBeforeBalance = BigNumber(
-              await market.totalValue.call()
+              await baseContracts.market.totalValue.call()
             );
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
-            await dInterestPool.topupDeposit(1, Base.num2str(depositAmount), {
-              from: acc0
-            });
+            await baseContracts.dInterestPool.topupDeposit(
+              1,
+              Base.num2str(depositAmount),
+              {
+                from: acc0
+              }
+            );
 
             const acc0CurrentBalance = BigNumber(
-              await stablecoin.balanceOf(acc0)
+              await baseContracts.stablecoin.balanceOf(acc0)
             );
             const dInterestPoolCurrentBalance = BigNumber(
-              await market.totalValue.call()
+              await baseContracts.market.totalValue.call()
             );
 
             // Verify stablecoin transferred out of account
@@ -490,48 +328,56 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               Base.num2str(blockNow + Base.YEAR_IN_SEC),
               { from: acc0 }
             );
 
             // topup
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
-            await dInterestPool.topupDeposit(1, Base.num2str(depositAmount), {
-              from: acc0
-            });
+            await baseContracts.dInterestPool.topupDeposit(
+              1,
+              Base.num2str(depositAmount),
+              {
+                from: acc0
+              }
+            );
 
             // wait 1 year
             await moneyMarketModule.timePass(1);
 
             // withdraw
             const acc0BeforeBalance = BigNumber(
-              await stablecoin.balanceOf(acc0)
+              await baseContracts.stablecoin.balanceOf(acc0)
             );
             const dInterestPoolBeforeBalance = BigNumber(
-              await market.totalValue.call()
+              await baseContracts.market.totalValue.call()
             );
-            await dInterestPool.withdraw(1, Base.INF, false, { from: acc0 });
+            await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
+              from: acc0
+            });
             const acc0CurrentBalance = BigNumber(
-              await stablecoin.balanceOf(acc0)
+              await baseContracts.stablecoin.balanceOf(acc0)
             );
             const dInterestPoolCurrentBalance = BigNumber(
-              await market.totalValue.call()
+              await baseContracts.market.totalValue.call()
             );
 
             // Verify totalDeposit
-            const totalDeposit = BigNumber(await dInterestPool.totalDeposit());
+            const totalDeposit = BigNumber(
+              await baseContracts.dInterestPool.totalDeposit()
+            );
             Base.assertEpsilonEq(
               totalDeposit,
               0,
@@ -540,7 +386,7 @@ contract("DInterest", accounts => {
 
             // Verify totalInterestOwed
             const totalInterestOwed = BigNumber(
-              await dInterestPool.totalInterestOwed()
+              await baseContracts.dInterestPool.totalInterestOwed()
             );
             Base.assertEpsilonEq(
               totalInterestOwed,
@@ -549,7 +395,9 @@ contract("DInterest", accounts => {
             );
 
             // Verify totalFeeOwed
-            const totalFeeOwed = BigNumber(await dInterestPool.totalFeeOwed());
+            const totalFeeOwed = BigNumber(
+              await baseContracts.dInterestPool.totalFeeOwed()
+            );
             Base.assertEpsilonEq(
               totalFeeOwed,
               0,
@@ -599,13 +447,13 @@ contract("DInterest", accounts => {
 
           beforeEach(async () => {
             // acc0 deposits
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               Base.num2str(blockNow + Base.YEAR_IN_SEC),
               { from: acc0 }
@@ -630,14 +478,18 @@ contract("DInterest", accounts => {
               Base.YEAR_IN_SEC,
               true
             ).plus(valueOfFirstDepositAfterMaturation);
-            await dInterestPool.rolloverDeposit(
+            await baseContracts.dInterestPool.rolloverDeposit(
               Base.num2str(1),
               Base.num2str(blockNow + Base.YEAR_IN_SEC),
               { from: acc0 }
             );
 
-            const deposit1 = await dInterestPool.getDeposit(Base.num2str(1));
-            const deposit2 = await dInterestPool.getDeposit(Base.num2str(2));
+            const deposit1 = await baseContracts.dInterestPool.getDeposit(
+              Base.num2str(1)
+            );
+            const deposit2 = await baseContracts.dInterestPool.getDeposit(
+              Base.num2str(2)
+            );
             assert.equal(
               deposit1.virtualTokenTotalSupply,
               0,
@@ -665,13 +517,13 @@ contract("DInterest", accounts => {
 
           beforeEach(async () => {
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               Base.num2str(blockNow + Base.YEAR_IN_SEC),
               { from: acc0 }
@@ -684,17 +536,19 @@ contract("DInterest", accounts => {
           context("full withdrawal", () => {
             it("should update global variables correctly", async () => {
               // Withdraw
-              await dInterestPool.withdraw(1, Base.INF, false, { from: acc0 });
+              await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
+                from: acc0
+              });
 
               // Verify totalDeposit
               const totalDeposit = BigNumber(
-                await dInterestPool.totalDeposit()
+                await baseContracts.dInterestPool.totalDeposit()
               );
               Base.assertEpsilonEq(totalDeposit, 0, "totalDeposit incorrect");
 
               // Verify totalInterestOwed
               const totalInterestOwed = BigNumber(
-                await dInterestPool.totalInterestOwed()
+                await baseContracts.dInterestPool.totalInterestOwed()
               );
               Base.assertEpsilonEq(
                 totalInterestOwed,
@@ -704,27 +558,29 @@ contract("DInterest", accounts => {
 
               // Verify totalFeeOwed
               const totalFeeOwed = BigNumber(
-                await dInterestPool.totalFeeOwed()
+                await baseContracts.dInterestPool.totalFeeOwed()
               );
               Base.assertEpsilonEq(totalFeeOwed, 0, "totalFeeOwed incorrect");
             });
 
             it("should transfer funds correctly", async function() {
               const acc0BeforeBalance = BigNumber(
-                await stablecoin.balanceOf(acc0)
+                await baseContracts.stablecoin.balanceOf(acc0)
               );
               const dInterestPoolBeforeBalance = BigNumber(
-                await market.totalValue.call()
+                await baseContracts.market.totalValue.call()
               );
 
               // Withdraw
-              await dInterestPool.withdraw(1, Base.INF, false, { from: acc0 });
+              await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
+                from: acc0
+              });
 
               const acc0CurrentBalance = BigNumber(
-                await stablecoin.balanceOf(acc0)
+                await baseContracts.stablecoin.balanceOf(acc0)
               );
               const dInterestPoolCurrentBalance = BigNumber(
-                await market.totalValue.call()
+                await baseContracts.market.totalValue.call()
               );
 
               // Verify stablecoin transferred into account
@@ -767,7 +623,8 @@ contract("DInterest", accounts => {
 
             beforeEach(async () => {
               virtualTokenTotalSupply = BigNumber(
-                (await dInterestPool.getDeposit(1)).virtualTokenTotalSupply
+                (await baseContracts.dInterestPool.getDeposit(1))
+                  .virtualTokenTotalSupply
               );
               withdrawVirtualTokenAmount = virtualTokenTotalSupply
                 .times(withdrawProportion)
@@ -776,7 +633,7 @@ contract("DInterest", accounts => {
 
             it("should update global variables correctly", async () => {
               // Withdraw
-              await dInterestPool.withdraw(
+              await baseContracts.dInterestPool.withdraw(
                 1,
                 Base.num2str(withdrawVirtualTokenAmount),
                 false,
@@ -785,7 +642,7 @@ contract("DInterest", accounts => {
 
               // Verify totalDeposit
               const totalDeposit = BigNumber(
-                await dInterestPool.totalDeposit()
+                await baseContracts.dInterestPool.totalDeposit()
               );
               Base.assertEpsilonEq(
                 totalDeposit,
@@ -795,7 +652,7 @@ contract("DInterest", accounts => {
 
               // Verify totalInterestOwed
               const totalInterestOwed = BigNumber(
-                await dInterestPool.totalInterestOwed()
+                await baseContracts.dInterestPool.totalInterestOwed()
               );
               const expectedInterest = Base.calcInterestAmount(
                 depositAmount,
@@ -811,7 +668,7 @@ contract("DInterest", accounts => {
 
               // Verify totalFeeOwed
               const totalFeeOwed = BigNumber(
-                await dInterestPool.totalFeeOwed()
+                await baseContracts.dInterestPool.totalFeeOwed()
               );
               const expectedTotalFeeOwed = Base.calcFeeAmount(
                 Base.calcInterestAmount(
@@ -830,14 +687,14 @@ contract("DInterest", accounts => {
 
             it("should transfer funds correctly", async function() {
               const acc0BeforeBalance = BigNumber(
-                await stablecoin.balanceOf(acc0)
+                await baseContracts.stablecoin.balanceOf(acc0)
               );
               const dInterestPoolBeforeBalance = BigNumber(
-                await market.totalValue.call()
+                await baseContracts.market.totalValue.call()
               );
 
               // Withdraw
-              await dInterestPool.withdraw(
+              await baseContracts.dInterestPool.withdraw(
                 1,
                 Base.num2str(withdrawVirtualTokenAmount),
                 false,
@@ -845,10 +702,10 @@ contract("DInterest", accounts => {
               );
 
               const acc0CurrentBalance = BigNumber(
-                await stablecoin.balanceOf(acc0)
+                await baseContracts.stablecoin.balanceOf(acc0)
               );
               const dInterestPoolCurrentBalance = BigNumber(
-                await market.totalValue.call()
+                await baseContracts.market.totalValue.call()
               );
 
               // Verify stablecoin transferred into account
@@ -893,13 +750,13 @@ contract("DInterest", accounts => {
 
           beforeEach(async () => {
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               Base.num2str(blockNow + Base.YEAR_IN_SEC),
               { from: acc0 }
@@ -912,17 +769,19 @@ contract("DInterest", accounts => {
           context("full withdrawal", () => {
             it("should update global variables correctly", async () => {
               // Withdraw
-              await dInterestPool.withdraw(1, Base.INF, true, { from: acc0 });
+              await baseContracts.dInterestPool.withdraw(1, Base.INF, true, {
+                from: acc0
+              });
 
               // Verify totalDeposit
               const totalDeposit = BigNumber(
-                await dInterestPool.totalDeposit()
+                await baseContracts.dInterestPool.totalDeposit()
               );
               Base.assertEpsilonEq(totalDeposit, 0, "totalDeposit incorrect");
 
               // Verify totalInterestOwed
               const totalInterestOwed = BigNumber(
-                await dInterestPool.totalInterestOwed()
+                await baseContracts.dInterestPool.totalInterestOwed()
               );
               Base.assertEpsilonEq(
                 totalInterestOwed,
@@ -932,27 +791,29 @@ contract("DInterest", accounts => {
 
               // Verify totalFeeOwed
               const totalFeeOwed = BigNumber(
-                await dInterestPool.totalFeeOwed()
+                await baseContracts.dInterestPool.totalFeeOwed()
               );
               Base.assertEpsilonEq(totalFeeOwed, 0, "totalFeeOwed incorrect");
             });
 
             it("should transfer funds correctly", async () => {
               const acc0BeforeBalance = BigNumber(
-                await stablecoin.balanceOf(acc0)
+                await baseContracts.stablecoin.balanceOf(acc0)
               );
               const dInterestPoolBeforeBalance = BigNumber(
-                await market.totalValue.call()
+                await baseContracts.market.totalValue.call()
               );
 
               // Withdraw
-              await dInterestPool.withdraw(1, Base.INF, true, { from: acc0 });
+              await baseContracts.dInterestPool.withdraw(1, Base.INF, true, {
+                from: acc0
+              });
 
               const acc0CurrentBalance = BigNumber(
-                await stablecoin.balanceOf(acc0)
+                await baseContracts.stablecoin.balanceOf(acc0)
               );
               const dInterestPoolCurrentBalance = BigNumber(
-                await market.totalValue.call()
+                await baseContracts.market.totalValue.call()
               );
 
               // Verify stablecoin transferred into account
@@ -983,7 +844,8 @@ contract("DInterest", accounts => {
 
             beforeEach(async () => {
               virtualTokenTotalSupply = BigNumber(
-                (await dInterestPool.getDeposit(1)).virtualTokenTotalSupply
+                (await baseContracts.dInterestPool.getDeposit(1))
+                  .virtualTokenTotalSupply
               );
               withdrawVirtualTokenAmount = virtualTokenTotalSupply
                 .times(withdrawProportion)
@@ -992,7 +854,7 @@ contract("DInterest", accounts => {
 
             it("should update global variables correctly", async () => {
               // Withdraw
-              await dInterestPool.withdraw(
+              await baseContracts.dInterestPool.withdraw(
                 1,
                 Base.num2str(withdrawVirtualTokenAmount),
                 true,
@@ -1001,7 +863,7 @@ contract("DInterest", accounts => {
 
               // Verify totalDeposit
               const totalDeposit = BigNumber(
-                await dInterestPool.totalDeposit()
+                await baseContracts.dInterestPool.totalDeposit()
               );
               Base.assertEpsilonEq(
                 totalDeposit,
@@ -1011,7 +873,7 @@ contract("DInterest", accounts => {
 
               // Verify totalInterestOwed
               const totalInterestOwed = BigNumber(
-                await dInterestPool.totalInterestOwed()
+                await baseContracts.dInterestPool.totalInterestOwed()
               );
               const expectedInterest = Base.calcInterestAmount(
                 depositAmount,
@@ -1027,7 +889,7 @@ contract("DInterest", accounts => {
 
               // Verify totalFeeOwed
               const totalFeeOwed = BigNumber(
-                await dInterestPool.totalFeeOwed()
+                await baseContracts.dInterestPool.totalFeeOwed()
               );
               const expectedTotalFeeOwed = Base.calcFeeAmount(
                 Base.calcInterestAmount(
@@ -1046,14 +908,14 @@ contract("DInterest", accounts => {
 
             it("should transfer funds correctly", async function() {
               const acc0BeforeBalance = BigNumber(
-                await stablecoin.balanceOf(acc0)
+                await baseContracts.stablecoin.balanceOf(acc0)
               );
               const dInterestPoolBeforeBalance = BigNumber(
-                await market.totalValue.call()
+                await baseContracts.market.totalValue.call()
               );
 
               // Withdraw
-              await dInterestPool.withdraw(
+              await baseContracts.dInterestPool.withdraw(
                 1,
                 Base.num2str(withdrawVirtualTokenAmount),
                 true,
@@ -1061,10 +923,10 @@ contract("DInterest", accounts => {
               );
 
               const acc0CurrentBalance = BigNumber(
-                await stablecoin.balanceOf(acc0)
+                await baseContracts.stablecoin.balanceOf(acc0)
               );
               const dInterestPoolCurrentBalance = BigNumber(
-                await market.totalValue.call()
+                await baseContracts.market.totalValue.call()
               );
 
               // Verify stablecoin transferred into account
@@ -1098,13 +960,13 @@ contract("DInterest", accounts => {
             const depositAmount = 10 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             let blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               blockNow + Base.YEAR_IN_SEC,
               { from: acc0 }
@@ -1114,13 +976,13 @@ contract("DInterest", accounts => {
             await moneyMarketModule.timePass(0.5);
 
             // acc1 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc1 }
             );
             blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               blockNow + Base.YEAR_IN_SEC,
               { from: acc1 }
@@ -1130,11 +992,17 @@ contract("DInterest", accounts => {
             await moneyMarketModule.timePass(0.5);
 
             // acc0 withdraws
-            const acc0BeforeBalance = await stablecoin.balanceOf(acc0);
-            await dInterestPool.withdraw(1, Base.INF, false, { from: acc0 });
+            const acc0BeforeBalance = await baseContracts.stablecoin.balanceOf(
+              acc0
+            );
+            await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
+              from: acc0
+            });
 
             // Verify withdrawn amount
-            const acc0CurrentBalance = await stablecoin.balanceOf(acc0);
+            const acc0CurrentBalance = await baseContracts.stablecoin.balanceOf(
+              acc0
+            );
             const acc0WithdrawnAmountExpected = Base.calcInterestAmount(
               depositAmount,
               INIT_INTEREST_RATE_PER_SECOND,
@@ -1151,7 +1019,9 @@ contract("DInterest", accounts => {
             );
 
             // Verify totalDeposit
-            const totalDeposit0 = BigNumber(await dInterestPool.totalDeposit());
+            const totalDeposit0 = BigNumber(
+              await baseContracts.dInterestPool.totalDeposit()
+            );
             Base.assertEpsilonEq(
               totalDeposit0,
               depositAmount,
@@ -1162,11 +1032,17 @@ contract("DInterest", accounts => {
             await moneyMarketModule.timePass(0.5);
 
             // acc1 withdraws
-            const acc1BeforeBalance = await stablecoin.balanceOf(acc1);
-            await dInterestPool.withdraw(2, Base.INF, false, { from: acc1 });
+            const acc1BeforeBalance = await baseContracts.stablecoin.balanceOf(
+              acc1
+            );
+            await baseContracts.dInterestPool.withdraw(2, Base.INF, false, {
+              from: acc1
+            });
 
             // Verify withdrawn amount
-            const acc1CurrentBalance = await stablecoin.balanceOf(acc1);
+            const acc1CurrentBalance = await baseContracts.stablecoin.balanceOf(
+              acc1
+            );
             const acc1WithdrawnAmountExpected = Base.calcInterestAmount(
               depositAmount,
               INIT_INTEREST_RATE_PER_SECOND,
@@ -1183,7 +1059,9 @@ contract("DInterest", accounts => {
             );
 
             // Verify totalDeposit
-            const totalDeposit1 = BigNumber(await dInterestPool.totalDeposit());
+            const totalDeposit1 = BigNumber(
+              await baseContracts.dInterestPool.totalDeposit()
+            );
             Base.assertEpsilonEq(
               totalDeposit1,
               0,
@@ -1201,39 +1079,49 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               Base.num2str(blockNow + Base.YEAR_IN_SEC),
               { from: acc0 }
             );
 
             // acc1 funds deposit
-            await stablecoin.approve(dInterestPool.address, Base.INF, {
-              from: acc1
-            });
-            await dInterestPool.fund(1, Base.INF, { from: acc1 });
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
+              Base.INF,
+              {
+                from: acc1
+              }
+            );
+            await baseContracts.dInterestPool.fund(1, Base.INF, { from: acc1 });
 
             // wait 1 year
             await moneyMarketModule.timePass(1);
 
             // withdraw deposit
-            await dInterestPool.withdraw(1, Base.INF, false, { from: acc0 });
+            await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
+              from: acc0
+            });
 
             // verify earned interest
             const acc1BeforeBalance = BigNumber(
-              await stablecoin.balanceOf(acc1)
+              await baseContracts.stablecoin.balanceOf(acc1)
             );
-            await fundingMultitoken.withdrawDividend(1, stablecoin.address, {
-              from: acc1
-            });
+            await baseContracts.fundingMultitoken.withdrawDividend(
+              1,
+              baseContracts.stablecoin.address,
+              {
+                from: acc1
+              }
+            );
             const actualInterestAmount = BigNumber(
-              await stablecoin.balanceOf(acc1)
+              await baseContracts.stablecoin.balanceOf(acc1)
             ).minus(acc1BeforeBalance);
             const totalPrincipal = Base.calcInterestAmount(
               depositAmount,
@@ -1255,13 +1143,13 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               Base.num2str(blockNow + Base.YEAR_IN_SEC),
               { from: acc0 }
@@ -1271,23 +1159,32 @@ contract("DInterest", accounts => {
             await moneyMarketModule.timePass(0.2);
 
             // acc1 funds 50%
-            await stablecoin.approve(dInterestPool.address, Base.INF, {
-              from: acc1
-            });
-            const deficitAmount = BigNumber(
-              (await dInterestPool.surplusOfDeposit.call(1)).surplusAmount
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
+              Base.INF,
+              {
+                from: acc1
+              }
             );
-            await dInterestPool.fund(
+            const deficitAmount = BigNumber(
+              (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
+                .surplusAmount
+            );
+            await baseContracts.dInterestPool.fund(
               1,
               Base.num2str(deficitAmount.times(0.5)),
               { from: acc1 }
             );
 
             // acc1 funds 20%
-            await stablecoin.approve(dInterestPool.address, Base.INF, {
-              from: acc2
-            });
-            await dInterestPool.fund(
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
+              Base.INF,
+              {
+                from: acc2
+              }
+            );
+            await baseContracts.dInterestPool.fund(
               1,
               Base.num2str(deficitAmount.times(0.2)),
               { from: acc2 }
@@ -1297,7 +1194,9 @@ contract("DInterest", accounts => {
             await moneyMarketModule.timePass(0.8);
 
             // withdraw deposit
-            await dInterestPool.withdraw(1, Base.INF, false, { from: acc0 });
+            await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
+              from: acc0
+            });
 
             // verify earned interest
             const totalPrincipal = Base.calcInterestAmount(
@@ -1308,13 +1207,17 @@ contract("DInterest", accounts => {
             ).plus(depositAmount);
 
             const acc1BeforeBalance = BigNumber(
-              await stablecoin.balanceOf(acc1)
+              await baseContracts.stablecoin.balanceOf(acc1)
             );
-            await fundingMultitoken.withdrawDividend(1, stablecoin.address, {
-              from: acc1
-            });
+            await baseContracts.fundingMultitoken.withdrawDividend(
+              1,
+              baseContracts.stablecoin.address,
+              {
+                from: acc1
+              }
+            );
             const actualAcc1InterestAmount = BigNumber(
-              await stablecoin.balanceOf(acc1)
+              await baseContracts.stablecoin.balanceOf(acc1)
             ).minus(acc1BeforeBalance);
             const expectedAcc1InterestAmount = totalPrincipal
               .times(INIT_INTEREST_RATE)
@@ -1327,13 +1230,17 @@ contract("DInterest", accounts => {
             );
 
             const acc2BeforeBalance = BigNumber(
-              await stablecoin.balanceOf(acc2)
+              await baseContracts.stablecoin.balanceOf(acc2)
             );
-            await fundingMultitoken.withdrawDividend(1, stablecoin.address, {
-              from: acc2
-            });
+            await baseContracts.fundingMultitoken.withdrawDividend(
+              1,
+              baseContracts.stablecoin.address,
+              {
+                from: acc2
+              }
+            );
             const actualAcc2InterestAmount = BigNumber(
-              await stablecoin.balanceOf(acc2)
+              await baseContracts.stablecoin.balanceOf(acc2)
             ).minus(acc2BeforeBalance);
             const expectedAcc2InterestAmount = totalPrincipal
               .times(INIT_INTEREST_RATE)
@@ -1350,26 +1257,31 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               Base.num2str(blockNow + Base.YEAR_IN_SEC),
               { from: acc0 }
             );
 
             // acc1 funds 10%
-            await stablecoin.approve(dInterestPool.address, Base.INF, {
-              from: acc1
-            });
-            const deficitAmount = BigNumber(
-              (await dInterestPool.surplusOfDeposit.call(1)).surplusAmount
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
+              Base.INF,
+              {
+                from: acc1
+              }
             );
-            await dInterestPool.fund(
+            const deficitAmount = BigNumber(
+              (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
+                .surplusAmount
+            );
+            await baseContracts.dInterestPool.fund(
               1,
               Base.num2str(deficitAmount.times(0.1)),
               { from: acc1 }
@@ -1382,7 +1294,7 @@ contract("DInterest", accounts => {
               Base.YEAR_IN_SEC,
               true
             ).plus(depositAmount);
-            await dInterestPool.withdraw(
+            await baseContracts.dInterestPool.withdraw(
               1,
               Base.num2str(depositVirtualTokenTotalSupply.times(0.5)),
               true,
@@ -1393,17 +1305,23 @@ contract("DInterest", accounts => {
             await moneyMarketModule.timePass(1);
 
             // withdraw deposit
-            await dInterestPool.withdraw(1, Base.INF, false, { from: acc0 });
+            await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
+              from: acc0
+            });
 
             // verify earned interest
             const acc1BeforeBalance = BigNumber(
-              await stablecoin.balanceOf(acc1)
+              await baseContracts.stablecoin.balanceOf(acc1)
             );
-            await fundingMultitoken.withdrawDividend(1, stablecoin.address, {
-              from: acc1
-            });
+            await baseContracts.fundingMultitoken.withdrawDividend(
+              1,
+              baseContracts.stablecoin.address,
+              {
+                from: acc1
+              }
+            );
             const actualInterestAmount = BigNumber(
-              await stablecoin.balanceOf(acc1)
+              await baseContracts.stablecoin.balanceOf(acc1)
             ).minus(acc1BeforeBalance);
             const totalPrincipal = Base.calcInterestAmount(
               depositAmount,
@@ -1425,26 +1343,31 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               Base.num2str(blockNow + Base.YEAR_IN_SEC),
               { from: acc0 }
             );
 
             // acc1 funds 90%
-            await stablecoin.approve(dInterestPool.address, Base.INF, {
-              from: acc1
-            });
-            const deficitAmount = BigNumber(
-              (await dInterestPool.surplusOfDeposit.call(1)).surplusAmount
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
+              Base.INF,
+              {
+                from: acc1
+              }
             );
-            await dInterestPool.fund(
+            const deficitAmount = BigNumber(
+              (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
+                .surplusAmount
+            );
+            await baseContracts.dInterestPool.fund(
               1,
               Base.num2str(deficitAmount.times(0.9)),
               { from: acc1 }
@@ -1457,7 +1380,7 @@ contract("DInterest", accounts => {
               Base.YEAR_IN_SEC,
               true
             ).plus(depositAmount);
-            await dInterestPool.withdraw(
+            await baseContracts.dInterestPool.withdraw(
               1,
               Base.num2str(depositVirtualTokenTotalSupply.times(0.5)),
               true,
@@ -1473,13 +1396,17 @@ contract("DInterest", accounts => {
             ).plus(depositAmount);
             {
               const acc1BeforeBalance = BigNumber(
-                await stablecoin.balanceOf(acc1)
+                await baseContracts.stablecoin.balanceOf(acc1)
               );
-              await fundingMultitoken.withdrawDividend(1, stablecoin.address, {
-                from: acc1
-              });
+              await baseContracts.fundingMultitoken.withdrawDividend(
+                1,
+                baseContracts.stablecoin.address,
+                {
+                  from: acc1
+                }
+              );
               const actualRefundAmount = BigNumber(
-                await stablecoin.balanceOf(acc1)
+                await baseContracts.stablecoin.balanceOf(acc1)
               ).minus(acc1BeforeBalance);
               const estimatedLostInterest = totalPrincipal
                 .times(INIT_INTEREST_RATE)
@@ -1500,17 +1427,23 @@ contract("DInterest", accounts => {
             await moneyMarketModule.timePass(1);
 
             // withdraw deposit
-            await dInterestPool.withdraw(1, Base.INF, false, { from: acc0 });
+            await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
+              from: acc0
+            });
 
             // verify earned interest
             const acc1BeforeBalance = BigNumber(
-              await stablecoin.balanceOf(acc1)
+              await baseContracts.stablecoin.balanceOf(acc1)
             );
-            await fundingMultitoken.withdrawDividend(1, stablecoin.address, {
-              from: acc1
-            });
+            await baseContracts.fundingMultitoken.withdrawDividend(
+              1,
+              baseContracts.stablecoin.address,
+              {
+                from: acc1
+              }
+            );
             const actualInterestAmount = BigNumber(
-              await stablecoin.balanceOf(acc1)
+              await baseContracts.stablecoin.balanceOf(acc1)
             ).minus(acc1BeforeBalance);
             const expectedInterestAmount = totalPrincipal
               .times(INIT_INTEREST_RATE)
@@ -1528,13 +1461,13 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               Base.num2str(blockNow + Base.YEAR_IN_SEC),
               { from: acc0 }
@@ -1542,13 +1475,18 @@ contract("DInterest", accounts => {
 
             // acc1 funds 10%
             {
-              await stablecoin.approve(dInterestPool.address, Base.INF, {
-                from: acc1
-              });
-              const deficitAmount = BigNumber(
-                (await dInterestPool.surplusOfDeposit.call(1)).surplusAmount
+              await baseContracts.stablecoin.approve(
+                baseContracts.dInterestPool.address,
+                Base.INF,
+                {
+                  from: acc1
+                }
               );
-              await dInterestPool.fund(
+              const deficitAmount = BigNumber(
+                (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
+                  .surplusAmount
+              );
+              await baseContracts.dInterestPool.fund(
                 1,
                 Base.num2str(deficitAmount.times(0.1)),
                 { from: acc1 }
@@ -1560,13 +1498,18 @@ contract("DInterest", accounts => {
 
             // acc2 funds 70%
             {
-              await stablecoin.approve(dInterestPool.address, Base.INF, {
-                from: acc2
-              });
-              const deficitAmount = BigNumber(
-                (await dInterestPool.surplusOfDeposit.call(1)).surplusAmount
+              await baseContracts.stablecoin.approve(
+                baseContracts.dInterestPool.address,
+                Base.INF,
+                {
+                  from: acc2
+                }
               );
-              await dInterestPool.fund(
+              const deficitAmount = BigNumber(
+                (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
+                  .surplusAmount
+              );
+              await baseContracts.dInterestPool.fund(
                 1,
                 Base.num2str(deficitAmount.times(0.7).div(0.9)),
                 { from: acc2 }
@@ -1577,7 +1520,9 @@ contract("DInterest", accounts => {
             await moneyMarketModule.timePass(0.8);
 
             // withdraw deposit
-            await dInterestPool.withdraw(1, Base.INF, false, { from: acc0 });
+            await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
+              from: acc0
+            });
 
             // verify earned interest for acc1
             const totalPrincipal = Base.calcInterestAmount(
@@ -1588,13 +1533,17 @@ contract("DInterest", accounts => {
             ).plus(depositAmount);
             {
               const acc1BeforeBalance = BigNumber(
-                await stablecoin.balanceOf(acc1)
+                await baseContracts.stablecoin.balanceOf(acc1)
               );
-              await fundingMultitoken.withdrawDividend(1, stablecoin.address, {
-                from: acc1
-              });
+              await baseContracts.fundingMultitoken.withdrawDividend(
+                1,
+                baseContracts.stablecoin.address,
+                {
+                  from: acc1
+                }
+              );
               const actualInterestAmount = BigNumber(
-                await stablecoin.balanceOf(acc1)
+                await baseContracts.stablecoin.balanceOf(acc1)
               ).minus(acc1BeforeBalance);
               const expectedInterestAmount = totalPrincipal
                 .times(INIT_INTEREST_RATE)
@@ -1609,13 +1558,17 @@ contract("DInterest", accounts => {
             // verify earned interest for acc2
             {
               const acc2BeforeBalance = BigNumber(
-                await stablecoin.balanceOf(acc2)
+                await baseContracts.stablecoin.balanceOf(acc2)
               );
-              await fundingMultitoken.withdrawDividend(1, stablecoin.address, {
-                from: acc2
-              });
+              await baseContracts.fundingMultitoken.withdrawDividend(
+                1,
+                baseContracts.stablecoin.address,
+                {
+                  from: acc2
+                }
+              );
               const actualInterestAmount = BigNumber(
-                await stablecoin.balanceOf(acc2)
+                await baseContracts.stablecoin.balanceOf(acc2)
               ).minus(acc2BeforeBalance);
               const expectedInterestAmount = totalPrincipal
                 .times(INIT_INTEREST_RATE)
@@ -1635,26 +1588,31 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               Base.num2str(blockNow + Base.YEAR_IN_SEC),
               { from: acc0 }
             );
 
             // acc1 funds 90%
-            await stablecoin.approve(dInterestPool.address, Base.INF, {
-              from: acc1
-            });
-            const deficitAmount = BigNumber(
-              (await dInterestPool.surplusOfDeposit.call(1)).surplusAmount
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
+              Base.INF,
+              {
+                from: acc1
+              }
             );
-            await dInterestPool.fund(
+            const deficitAmount = BigNumber(
+              (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
+                .surplusAmount
+            );
+            await baseContracts.dInterestPool.fund(
               1,
               Base.num2str(deficitAmount.times(0.9)),
               { from: acc1 }
@@ -1670,7 +1628,7 @@ contract("DInterest", accounts => {
               Base.YEAR_IN_SEC,
               true
             ).plus(depositAmount);
-            await dInterestPool.withdraw(
+            await baseContracts.dInterestPool.withdraw(
               1,
               Base.num2str(depositVirtualTokenTotalSupply.times(1)),
               true,
@@ -1686,13 +1644,17 @@ contract("DInterest", accounts => {
             ).plus(depositAmount);
             {
               const acc1BeforeBalance = BigNumber(
-                await stablecoin.balanceOf(acc1)
+                await baseContracts.stablecoin.balanceOf(acc1)
               );
-              await fundingMultitoken.withdrawDividend(1, stablecoin.address, {
-                from: acc1
-              });
+              await baseContracts.fundingMultitoken.withdrawDividend(
+                1,
+                baseContracts.stablecoin.address,
+                {
+                  from: acc1
+                }
+              );
               const actualReceivedAmount = BigNumber(
-                await stablecoin.balanceOf(acc1)
+                await baseContracts.stablecoin.balanceOf(acc1)
               ).minus(acc1BeforeBalance);
               const estimatedLostInterest = totalPrincipal
                 .times(INIT_INTEREST_RATE)
@@ -1715,24 +1677,33 @@ contract("DInterest", accounts => {
             }
 
             // topup
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
-            await dInterestPool.topupDeposit(1, Base.num2str(depositAmount), {
-              from: acc0
-            });
+            await baseContracts.dInterestPool.topupDeposit(
+              1,
+              Base.num2str(depositAmount),
+              {
+                from: acc0
+              }
+            );
 
             // acc1 funds 60%
             {
-              await stablecoin.approve(dInterestPool.address, Base.INF, {
-                from: acc1
-              });
-              const deficitAmount = BigNumber(
-                (await dInterestPool.surplusOfDeposit.call(1)).surplusAmount
+              await baseContracts.stablecoin.approve(
+                baseContracts.dInterestPool.address,
+                Base.INF,
+                {
+                  from: acc1
+                }
               );
-              await dInterestPool.fund(
+              const deficitAmount = BigNumber(
+                (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
+                  .surplusAmount
+              );
+              await baseContracts.dInterestPool.fund(
                 1,
                 Base.num2str(deficitAmount.times(0.6)),
                 { from: acc1 }
@@ -1743,18 +1714,24 @@ contract("DInterest", accounts => {
             await moneyMarketModule.timePass(0.9);
 
             // withdraw deposit
-            await dInterestPool.withdraw(1, Base.INF, false, { from: acc0 });
+            await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
+              from: acc0
+            });
 
             // verify earned interest
             const acc1BeforeBalance = BigNumber(
-              await stablecoin.balanceOf(acc1)
+              await baseContracts.stablecoin.balanceOf(acc1)
             );
             // note: because 100% was withdrawn, expect the funding ID to be 2
-            await fundingMultitoken.withdrawDividend(2, stablecoin.address, {
-              from: acc1
-            });
+            await baseContracts.fundingMultitoken.withdrawDividend(
+              2,
+              baseContracts.stablecoin.address,
+              {
+                from: acc1
+              }
+            );
             const actualInterestAmount = BigNumber(
-              await stablecoin.balanceOf(acc1)
+              await baseContracts.stablecoin.balanceOf(acc1)
             ).minus(acc1BeforeBalance);
             const newTotalPrincipal = Base.calcInterestAmount(
               depositAmount,
@@ -1777,26 +1754,31 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               Base.num2str(blockNow + Base.YEAR_IN_SEC),
               { from: acc0 }
             );
 
             // acc1 funds 90%
-            await stablecoin.approve(dInterestPool.address, Base.INF, {
-              from: acc1
-            });
-            const deficitAmount = BigNumber(
-              (await dInterestPool.surplusOfDeposit.call(1)).surplusAmount
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
+              Base.INF,
+              {
+                from: acc1
+              }
             );
-            await dInterestPool.fund(
+            const deficitAmount = BigNumber(
+              (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
+                .surplusAmount
+            );
+            await baseContracts.dInterestPool.fund(
               1,
               Base.num2str(deficitAmount.times(0.9)),
               { from: acc1 }
@@ -1809,7 +1791,7 @@ contract("DInterest", accounts => {
               Base.YEAR_IN_SEC,
               true
             ).plus(depositAmount);
-            await dInterestPool.withdraw(
+            await baseContracts.dInterestPool.withdraw(
               1,
               Base.num2str(depositVirtualTokenTotalSupply.times(0.99)),
               true,
@@ -1825,13 +1807,17 @@ contract("DInterest", accounts => {
             ).plus(depositAmount);
             {
               const acc1BeforeBalance = BigNumber(
-                await stablecoin.balanceOf(acc1)
+                await baseContracts.stablecoin.balanceOf(acc1)
               );
-              await fundingMultitoken.withdrawDividend(1, stablecoin.address, {
-                from: acc1
-              });
+              await baseContracts.fundingMultitoken.withdrawDividend(
+                1,
+                baseContracts.stablecoin.address,
+                {
+                  from: acc1
+                }
+              );
               const actualReceivedAmount = BigNumber(
-                await stablecoin.balanceOf(acc1)
+                await baseContracts.stablecoin.balanceOf(acc1)
               ).minus(acc1BeforeBalance);
               const estimatedLostInterest = totalPrincipal
                 .times(INIT_INTEREST_RATE)
@@ -1851,7 +1837,8 @@ contract("DInterest", accounts => {
             // verify deficit
             {
               const deficitAmount = BigNumber(
-                (await dInterestPool.surplusOfDeposit.call(1)).surplusAmount
+                (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
+                  .surplusAmount
               );
               Base.assertEpsilonEq(
                 deficitAmount,
@@ -1861,19 +1848,24 @@ contract("DInterest", accounts => {
             }
 
             // topup
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
-            await dInterestPool.topupDeposit(1, Base.num2str(depositAmount), {
-              from: acc0
-            });
+            await baseContracts.dInterestPool.topupDeposit(
+              1,
+              Base.num2str(depositAmount),
+              {
+                from: acc0
+              }
+            );
 
             // verify deficit
             {
               const deficitAmount = BigNumber(
-                (await dInterestPool.surplusOfDeposit.call(1)).surplusAmount
+                (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
+                  .surplusAmount
               );
               const expectedDeficitAmount = Base.calcInterestAmount(
                 depositAmount,
@@ -1890,13 +1882,18 @@ contract("DInterest", accounts => {
 
             // acc1 funds 90%
             {
-              await stablecoin.approve(dInterestPool.address, Base.INF, {
-                from: acc1
-              });
-              const deficitAmount = BigNumber(
-                (await dInterestPool.surplusOfDeposit.call(1)).surplusAmount
+              await baseContracts.stablecoin.approve(
+                baseContracts.dInterestPool.address,
+                Base.INF,
+                {
+                  from: acc1
+                }
               );
-              await dInterestPool.fund(
+              const deficitAmount = BigNumber(
+                (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
+                  .surplusAmount
+              );
+              await baseContracts.dInterestPool.fund(
                 1,
                 Base.num2str(deficitAmount.times(0.9)),
                 { from: acc1 }
@@ -1907,17 +1904,23 @@ contract("DInterest", accounts => {
             await moneyMarketModule.timePass(1);
 
             // withdraw deposit
-            await dInterestPool.withdraw(1, Base.INF, false, { from: acc0 });
+            await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
+              from: acc0
+            });
 
             // verify earned interest
             const acc1BeforeBalance = BigNumber(
-              await stablecoin.balanceOf(acc1)
+              await baseContracts.stablecoin.balanceOf(acc1)
             );
-            await fundingMultitoken.withdrawDividend(1, stablecoin.address, {
-              from: acc1
-            });
+            await baseContracts.fundingMultitoken.withdrawDividend(
+              1,
+              baseContracts.stablecoin.address,
+              {
+                from: acc1
+              }
+            );
             const actualInterestAmount = BigNumber(
-              await stablecoin.balanceOf(acc1)
+              await baseContracts.stablecoin.balanceOf(acc1)
             ).minus(acc1BeforeBalance);
             const expectedInterestAmount = totalPrincipal
               .times(INIT_INTEREST_RATE)
@@ -1937,48 +1940,64 @@ contract("DInterest", accounts => {
             const depositAmount = 10 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits stablecoin into the DInterest pool for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               blockNow + Base.YEAR_IN_SEC,
               { from: acc0 }
             );
 
             // Fund deficit using acc2
-            await stablecoin.approve(dInterestPool.address, Base.INF, {
-              from: acc2
-            });
-            await dInterestPool.fund(1, Base.INF, { from: acc2 });
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
+              Base.INF,
+              {
+                from: acc2
+              }
+            );
+            await baseContracts.dInterestPool.fund(1, Base.INF, { from: acc2 });
 
             // Wait 0.3 year
             await moneyMarketModule.timePass(0.3);
 
             // Payout interest
-            await dInterestPool.payInterestToFunders(1, { from: acc2 });
+            await baseContracts.dInterestPool.payInterestToFunders(1, {
+              from: acc2
+            });
 
             // Wait 0.7 year
             await moneyMarketModule.timePass(0.7);
 
             // Payout interest
-            await dInterestPool.payInterestToFunders(1, { from: acc2 });
-
-            // Withdraw deposit
-            await dInterestPool.withdraw(1, Base.INF, false, { from: acc0 });
-
-            // Redeem interest
-            const beforeBalance = BigNumber(await stablecoin.balanceOf(acc2));
-            await fundingMultitoken.withdrawDividend(1, stablecoin.address, {
+            await baseContracts.dInterestPool.payInterestToFunders(1, {
               from: acc2
             });
 
+            // Withdraw deposit
+            await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
+              from: acc0
+            });
+
+            // Redeem interest
+            const beforeBalance = BigNumber(
+              await baseContracts.stablecoin.balanceOf(acc2)
+            );
+            await baseContracts.fundingMultitoken.withdrawDividend(
+              1,
+              baseContracts.stablecoin.address,
+              {
+                from: acc2
+              }
+            );
+
             // Check interest received
             const actualInterestReceived = BigNumber(
-              await stablecoin.balanceOf(acc2)
+              await baseContracts.stablecoin.balanceOf(acc2)
             ).minus(beforeBalance);
             const totalPrincipal = Base.calcInterestAmount(
               depositAmount,
@@ -2008,7 +2027,7 @@ contract("DInterest", accounts => {
             depositTime,
             false
           );
-          const actualInterestAmount = await dInterestPool.calculateInterestAmount.call(
+          const actualInterestAmount = await baseContracts.dInterestPool.calculateInterestAmount.call(
             depositAmount,
             depositTime
           );
@@ -2028,7 +2047,7 @@ contract("DInterest", accounts => {
             depositTime,
             false
           );
-          const actualInterestAmount = await dInterestPool.calculateInterestAmount.call(
+          const actualInterestAmount = await baseContracts.dInterestPool.calculateInterestAmount.call(
             depositAmount,
             depositTime
           );
@@ -2048,7 +2067,7 @@ contract("DInterest", accounts => {
             depositTime,
             false
           );
-          const actualInterestAmount = await dInterestPool.calculateInterestAmount.call(
+          const actualInterestAmount = await baseContracts.dInterestPool.calculateInterestAmount.call(
             depositAmount,
             depositTime
           );
@@ -2068,7 +2087,7 @@ contract("DInterest", accounts => {
             depositTime,
             false
           );
-          const actualInterestAmount = await dInterestPool.calculateInterestAmount.call(
+          const actualInterestAmount = await baseContracts.dInterestPool.calculateInterestAmount.call(
             depositAmount,
             depositTime
           );
@@ -2086,33 +2105,37 @@ contract("DInterest", accounts => {
             const depositAmount = 10 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await stablecoin.approve(
-              dInterestPool.address,
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
               Base.num2str(depositAmount),
               { from: acc0 }
             );
             const blockNow = await Base.latestBlockTimestamp();
-            await dInterestPool.deposit(
+            await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
               blockNow + Base.YEAR_IN_SEC,
               { from: acc0 }
             );
 
             // Fund deficit using acc2
-            await stablecoin.approve(dInterestPool.address, Base.INF, {
-              from: acc2
-            });
-            await dInterestPool.fund(1, Base.INF, { from: acc2 });
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
+              Base.INF,
+              {
+                from: acc2
+              }
+            );
+            await baseContracts.dInterestPool.fund(1, Base.INF, { from: acc2 });
 
             // Wait 1 year
             await moneyMarketModule.timePass(1);
 
             // Surplus should be zero, because the interest owed to funders should be deducted from surplus
-            const surplusObj = await dInterestPool.surplus.call();
+            const surplusObj = await baseContracts.dInterestPool.surplus.call();
             Base.assertEpsilonEq(0, surplusObj.surplusAmount, "surplus not 0");
 
             // totalInterestOwedToFunders() should return the interest generated by the deposit
-            const totalInterestOwedToFunders = await dInterestPool.totalInterestOwedToFunders.call();
+            const totalInterestOwedToFunders = await baseContracts.dInterestPool.totalInterestOwedToFunders.call();
             const totalPrincipal = Base.calcInterestAmount(
               depositAmount,
               INIT_INTEREST_RATE_PER_SECOND,
@@ -2136,20 +2159,20 @@ contract("DInterest", accounts => {
 
         it("single deposit", async () => {
           // acc0 deposits for 1 year
-          await stablecoin.approve(
-            dInterestPool.address,
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
             Base.num2str(depositAmount),
             { from: acc0 }
           );
           const blockNow = await Base.latestBlockTimestamp();
-          await dInterestPool.deposit(
+          await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
             blockNow + Base.YEAR_IN_SEC,
             { from: acc0 }
           );
 
           // check surplus
-          const surplusObj = await dInterestPool.surplus.call();
+          const surplusObj = await baseContracts.dInterestPool.surplus.call();
           const surplusAmount = BigNumber(surplusObj.surplusAmount);
           assert(surplusObj.isNegative, "surplus not negative");
           const expectedDeficit = Base.calcInterestAmount(
@@ -2169,7 +2192,7 @@ contract("DInterest", accounts => {
 
           // check surplus
           {
-            const surplusObj = await dInterestPool.surplus.call();
+            const surplusObj = await baseContracts.dInterestPool.surplus.call();
             const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
               surplusObj.isNegative ? -1 : 1
             );
@@ -2191,32 +2214,32 @@ contract("DInterest", accounts => {
 
         it("two deposits", async () => {
           // acc0 deposits for 1 year
-          await stablecoin.approve(
-            dInterestPool.address,
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
             Base.num2str(depositAmount),
             { from: acc0 }
           );
           const blockNow = await Base.latestBlockTimestamp();
-          await dInterestPool.deposit(
+          await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
             blockNow + Base.YEAR_IN_SEC,
             { from: acc0 }
           );
 
           // acc0 deposits for 0.5 year
-          await stablecoin.approve(
-            dInterestPool.address,
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
             Base.num2str(depositAmount),
             { from: acc0 }
           );
-          await dInterestPool.deposit(
+          await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
             blockNow + 0.5 * Base.YEAR_IN_SEC,
             { from: acc0 }
           );
 
           // check surplus
-          const surplusObj = await dInterestPool.surplus.call();
+          const surplusObj = await baseContracts.dInterestPool.surplus.call();
           const surplusAmount = BigNumber(surplusObj.surplusAmount);
           assert(surplusObj.isNegative, "surplus not negative");
           const expectedDeficit = Base.calcInterestAmount(
@@ -2243,7 +2266,7 @@ contract("DInterest", accounts => {
 
           // check surplus
           {
-            const surplusObj = await dInterestPool.surplus.call();
+            const surplusObj = await baseContracts.dInterestPool.surplus.call();
             const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
               surplusObj.isNegative ? -1 : 1
             );
@@ -2273,13 +2296,13 @@ contract("DInterest", accounts => {
 
         it("two deposits at different times", async () => {
           // acc0 deposits for 1 year
-          await stablecoin.approve(
-            dInterestPool.address,
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
             Base.num2str(depositAmount),
             { from: acc0 }
           );
           let blockNow = await Base.latestBlockTimestamp();
-          await dInterestPool.deposit(
+          await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
             blockNow + Base.YEAR_IN_SEC,
             { from: acc0 }
@@ -2289,20 +2312,20 @@ contract("DInterest", accounts => {
           await moneyMarketModule.timePass(0.2);
 
           // acc0 deposits for 0.5 year
-          await stablecoin.approve(
-            dInterestPool.address,
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
             Base.num2str(depositAmount),
             { from: acc0 }
           );
           blockNow = await Base.latestBlockTimestamp();
-          await dInterestPool.deposit(
+          await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
             blockNow + 0.5 * Base.YEAR_IN_SEC,
             { from: acc0 }
           );
 
           // check surplus
-          const surplusObj = await dInterestPool.surplus.call();
+          const surplusObj = await baseContracts.dInterestPool.surplus.call();
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
             surplusObj.isNegative ? -1 : 1
           );
@@ -2333,7 +2356,7 @@ contract("DInterest", accounts => {
 
           // check surplus
           {
-            const surplusObj = await dInterestPool.surplus.call();
+            const surplusObj = await baseContracts.dInterestPool.surplus.call();
             const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
               surplusObj.isNegative ? -1 : 1
             );
@@ -2370,23 +2393,25 @@ contract("DInterest", accounts => {
 
         it("should be 0 after deposit & early withdraw", async () => {
           // acc0 deposits for 1 year
-          await stablecoin.approve(
-            dInterestPool.address,
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
             Base.num2str(depositAmount),
             { from: acc0 }
           );
           const blockNow = await Base.latestBlockTimestamp();
-          await dInterestPool.deposit(
+          await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
             blockNow + Base.YEAR_IN_SEC,
             { from: acc0 }
           );
 
           // early withdraw
-          await dInterestPool.withdraw(1, Base.INF, true, { from: acc0 });
+          await baseContracts.dInterestPool.withdraw(1, Base.INF, true, {
+            from: acc0
+          });
 
           // check surplus
-          const surplusObj = await dInterestPool.surplus.call();
+          const surplusObj = await baseContracts.dInterestPool.surplus.call();
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
             surplusObj.isNegative ? -1 : 1
           );
@@ -2395,26 +2420,30 @@ contract("DInterest", accounts => {
 
         it("should be 0 after deposit & fund", async () => {
           // acc0 deposits for 1 year
-          await stablecoin.approve(
-            dInterestPool.address,
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
             Base.num2str(depositAmount),
             { from: acc0 }
           );
           const blockNow = await Base.latestBlockTimestamp();
-          await dInterestPool.deposit(
+          await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
             blockNow + Base.YEAR_IN_SEC,
             { from: acc0 }
           );
 
           // Fund deficit using acc2
-          await stablecoin.approve(dInterestPool.address, Base.INF, {
-            from: acc2
-          });
-          await dInterestPool.fund(1, Base.INF, { from: acc2 });
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
+            Base.INF,
+            {
+              from: acc2
+            }
+          );
+          await baseContracts.dInterestPool.fund(1, Base.INF, { from: acc2 });
 
           // check surplus
-          const surplusObj = await dInterestPool.surplus.call();
+          const surplusObj = await baseContracts.dInterestPool.surplus.call();
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
             surplusObj.isNegative ? -1 : 1
           );
@@ -2427,20 +2456,22 @@ contract("DInterest", accounts => {
 
         it("simple deposit", async () => {
           // acc0 deposits for 1 year
-          await stablecoin.approve(
-            dInterestPool.address,
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
             Base.num2str(depositAmount),
             { from: acc0 }
           );
           const blockNow = await Base.latestBlockTimestamp();
-          await dInterestPool.deposit(
+          await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
             blockNow + Base.YEAR_IN_SEC,
             { from: acc0 }
           );
 
           // check surplus
-          const surplusObj = await dInterestPool.rawSurplusOfDeposit.call(1);
+          const surplusObj = await baseContracts.dInterestPool.rawSurplusOfDeposit.call(
+            1
+          );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
             surplusObj.isNegative ? -1 : 1
           );
@@ -2461,7 +2492,9 @@ contract("DInterest", accounts => {
 
           // check surplus
           {
-            const surplusObj = await dInterestPool.rawSurplusOfDeposit.call(1);
+            const surplusObj = await baseContracts.dInterestPool.rawSurplusOfDeposit.call(
+              1
+            );
             const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
               surplusObj.isNegative ? -1 : 1
             );
@@ -2483,23 +2516,27 @@ contract("DInterest", accounts => {
 
         it("should be 0 after deposit & early withdraw", async () => {
           // acc0 deposits for 1 year
-          await stablecoin.approve(
-            dInterestPool.address,
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
             Base.num2str(depositAmount),
             { from: acc0 }
           );
           const blockNow = await Base.latestBlockTimestamp();
-          await dInterestPool.deposit(
+          await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
             blockNow + Base.YEAR_IN_SEC,
             { from: acc0 }
           );
 
           // early withdraw
-          await dInterestPool.withdraw(1, Base.INF, true, { from: acc0 });
+          await baseContracts.dInterestPool.withdraw(1, Base.INF, true, {
+            from: acc0
+          });
 
           // check surplus
-          const surplusObj = await dInterestPool.rawSurplusOfDeposit.call(1);
+          const surplusObj = await baseContracts.dInterestPool.rawSurplusOfDeposit.call(
+            1
+          );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
             surplusObj.isNegative ? -1 : 1
           );
@@ -2508,33 +2545,41 @@ contract("DInterest", accounts => {
 
         it("should be the same after deposit & early withdraw & topup", async () => {
           // acc0 deposits for 1 year
-          await stablecoin.approve(
-            dInterestPool.address,
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
             Base.num2str(depositAmount),
             { from: acc0 }
           );
           const blockNow = await Base.latestBlockTimestamp();
-          await dInterestPool.deposit(
+          await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
             blockNow + Base.YEAR_IN_SEC,
             { from: acc0 }
           );
 
           // early withdraw
-          await dInterestPool.withdraw(1, Base.INF, true, { from: acc0 });
-
-          // topup
-          await stablecoin.approve(
-            dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
-          await dInterestPool.topupDeposit(1, Base.num2str(depositAmount), {
+          await baseContracts.dInterestPool.withdraw(1, Base.INF, true, {
             from: acc0
           });
 
+          // topup
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
+            Base.num2str(depositAmount),
+            { from: acc0 }
+          );
+          await baseContracts.dInterestPool.topupDeposit(
+            1,
+            Base.num2str(depositAmount),
+            {
+              from: acc0
+            }
+          );
+
           // check surplus
-          const surplusObj = await dInterestPool.rawSurplusOfDeposit.call(1);
+          const surplusObj = await baseContracts.dInterestPool.rawSurplusOfDeposit.call(
+            1
+          );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
             surplusObj.isNegative ? -1 : 1
           );
@@ -2557,20 +2602,22 @@ contract("DInterest", accounts => {
 
         it("simple deposit", async () => {
           // acc0 deposits for 1 year
-          await stablecoin.approve(
-            dInterestPool.address,
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
             Base.num2str(depositAmount),
             { from: acc0 }
           );
           const blockNow = await Base.latestBlockTimestamp();
-          await dInterestPool.deposit(
+          await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
             blockNow + Base.YEAR_IN_SEC,
             { from: acc0 }
           );
 
           // check surplus
-          const surplusObj = await dInterestPool.surplusOfDeposit.call(1);
+          const surplusObj = await baseContracts.dInterestPool.surplusOfDeposit.call(
+            1
+          );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
             surplusObj.isNegative ? -1 : 1
           );
@@ -2591,7 +2638,9 @@ contract("DInterest", accounts => {
 
           // check surplus
           {
-            const surplusObj = await dInterestPool.surplusOfDeposit.call(1);
+            const surplusObj = await baseContracts.dInterestPool.surplusOfDeposit.call(
+              1
+            );
             const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
               surplusObj.isNegative ? -1 : 1
             );
@@ -2613,23 +2662,27 @@ contract("DInterest", accounts => {
 
         it("should be 0 after deposit & early withdraw", async () => {
           // acc0 deposits for 1 year
-          await stablecoin.approve(
-            dInterestPool.address,
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
             Base.num2str(depositAmount),
             { from: acc0 }
           );
           const blockNow = await Base.latestBlockTimestamp();
-          await dInterestPool.deposit(
+          await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
             blockNow + Base.YEAR_IN_SEC,
             { from: acc0 }
           );
 
           // early withdraw
-          await dInterestPool.withdraw(1, Base.INF, true, { from: acc0 });
+          await baseContracts.dInterestPool.withdraw(1, Base.INF, true, {
+            from: acc0
+          });
 
           // check surplus
-          const surplusObj = await dInterestPool.surplusOfDeposit.call(1);
+          const surplusObj = await baseContracts.dInterestPool.surplusOfDeposit.call(
+            1
+          );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
             surplusObj.isNegative ? -1 : 1
           );
@@ -2638,33 +2691,41 @@ contract("DInterest", accounts => {
 
         it("should be the same after deposit & early withdraw & topup", async () => {
           // acc0 deposits for 1 year
-          await stablecoin.approve(
-            dInterestPool.address,
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
             Base.num2str(depositAmount),
             { from: acc0 }
           );
           const blockNow = await Base.latestBlockTimestamp();
-          await dInterestPool.deposit(
+          await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
             blockNow + Base.YEAR_IN_SEC,
             { from: acc0 }
           );
 
           // early withdraw
-          await dInterestPool.withdraw(1, Base.INF, true, { from: acc0 });
-
-          // topup
-          await stablecoin.approve(
-            dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
-          await dInterestPool.topupDeposit(1, Base.num2str(depositAmount), {
+          await baseContracts.dInterestPool.withdraw(1, Base.INF, true, {
             from: acc0
           });
 
+          // topup
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
+            Base.num2str(depositAmount),
+            { from: acc0 }
+          );
+          await baseContracts.dInterestPool.topupDeposit(
+            1,
+            Base.num2str(depositAmount),
+            {
+              from: acc0
+            }
+          );
+
           // check surplus
-          const surplusObj = await dInterestPool.surplusOfDeposit.call(1);
+          const surplusObj = await baseContracts.dInterestPool.surplusOfDeposit.call(
+            1
+          );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
             surplusObj.isNegative ? -1 : 1
           );
@@ -2683,26 +2744,32 @@ contract("DInterest", accounts => {
 
         it("should be 0 after fully funded", async () => {
           // acc0 deposits for 1 year
-          await stablecoin.approve(
-            dInterestPool.address,
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
             Base.num2str(depositAmount),
             { from: acc0 }
           );
           const blockNow = await Base.latestBlockTimestamp();
-          await dInterestPool.deposit(
+          await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
             blockNow + Base.YEAR_IN_SEC,
             { from: acc0 }
           );
 
           // Fund deficit using acc2
-          await stablecoin.approve(dInterestPool.address, Base.INF, {
-            from: acc2
-          });
-          await dInterestPool.fund(1, Base.INF, { from: acc2 });
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
+            Base.INF,
+            {
+              from: acc2
+            }
+          );
+          await baseContracts.dInterestPool.fund(1, Base.INF, { from: acc2 });
 
           // check surplus
-          const surplusObj = await dInterestPool.surplusOfDeposit.call(1);
+          const surplusObj = await baseContracts.dInterestPool.surplusOfDeposit.call(
+            1
+          );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
             surplusObj.isNegative ? -1 : 1
           );
@@ -2711,13 +2778,13 @@ contract("DInterest", accounts => {
 
         it("should be correct after partially funded", async () => {
           // acc0 deposits for 1 year
-          await stablecoin.approve(
-            dInterestPool.address,
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
             Base.num2str(depositAmount),
             { from: acc0 }
           );
           const blockNow = await Base.latestBlockTimestamp();
-          await dInterestPool.deposit(
+          await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
             blockNow + Base.YEAR_IN_SEC,
             { from: acc0 }
@@ -2725,17 +2792,28 @@ contract("DInterest", accounts => {
 
           // Fund 30% deficit using acc2
           const deficitAmount = BigNumber(
-            (await dInterestPool.surplusOfDeposit.call(1)).surplusAmount
+            (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
+              .surplusAmount
           );
-          await stablecoin.approve(dInterestPool.address, Base.INF, {
-            from: acc2
-          });
-          await dInterestPool.fund(1, Base.num2str(deficitAmount.times(0.3)), {
-            from: acc2
-          });
+          await baseContracts.stablecoin.approve(
+            baseContracts.dInterestPool.address,
+            Base.INF,
+            {
+              from: acc2
+            }
+          );
+          await baseContracts.dInterestPool.fund(
+            1,
+            Base.num2str(deficitAmount.times(0.3)),
+            {
+              from: acc2
+            }
+          );
 
           // check surplus
-          const surplusObj = await dInterestPool.surplusOfDeposit.call(1);
+          const surplusObj = await baseContracts.dInterestPool.surplusOfDeposit.call(
+            1
+          );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
             surplusObj.isNegative ? -1 : 1
           );

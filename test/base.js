@@ -477,3 +477,195 @@ const moneyMarketModuleList = (module.exports.moneyMarketModuleList = [
     moduleGenerator: yvaultMoneyMarketModule
   }
 ]);
+
+const setupTest = (module.exports.setupTest = async (
+  accounts,
+  moneyMarketModule
+) => {
+  let stablecoin;
+  let dInterestPool;
+  let market;
+  let feeModel;
+  let interestModel;
+  let interestOracle;
+  let depositNFT;
+  let fundingMultitoken;
+  let mph;
+  let mphMinter;
+  let mphIssuanceModel;
+  let vesting;
+  let vesting02;
+  let factory;
+
+  // Accounts
+  const acc0 = accounts[0];
+  const acc1 = accounts[1];
+  const acc2 = accounts[2];
+  const govTreasury = accounts[3];
+  const devWallet = accounts[4];
+
+  const INIT_INTEREST_RATE = 0.1; // 10% APY
+  const INIT_INTEREST_RATE_PER_SECOND = 0.1 / YEAR_IN_SEC; // 10% APY
+
+  stablecoin = await ERC20Mock.new();
+
+  // Mint stablecoin
+  const mintAmount = 1000 * STABLECOIN_PRECISION;
+  await stablecoin.mint(acc0, num2str(mintAmount));
+  await stablecoin.mint(acc1, num2str(mintAmount));
+  await stablecoin.mint(acc2, num2str(mintAmount));
+
+  // Initialize MPH
+  mph = await MPHToken.new();
+  await mph.initialize();
+  vesting = await Vesting.new(mph.address);
+  vesting02 = await Vesting02.new();
+  mphIssuanceModel = await MPHIssuanceModel.new();
+  await mphIssuanceModel.initialize(DevRewardMultiplier, GovRewardMultiplier);
+  mphMinter = await MPHMinter.new();
+  await mphMinter.initialize(
+    mph.address,
+    govTreasury,
+    devWallet,
+    mphIssuanceModel.address,
+    vesting.address,
+    vesting02.address
+  );
+  await vesting02.initialize(
+    mphMinter.address,
+    mph.address,
+    "Vested MPH",
+    "veMPH"
+  );
+  await mph.transferOwnership(mphMinter.address);
+  await mphMinter.grantRole(WHITELISTER_ROLE, acc0, { from: acc0 });
+
+  // Set infinite MPH approval
+  await mph.approve(mphMinter.address, INF, { from: acc0 });
+  await mph.approve(mphMinter.address, INF, { from: acc1 });
+  await mph.approve(mphMinter.address, INF, { from: acc2 });
+
+  // Deploy factory
+  factory = await Factory.new();
+
+  // Deploy moneyMarket
+  market = await moneyMarketModule.deployMoneyMarket(
+    accounts,
+    factory,
+    stablecoin,
+    govTreasury
+  );
+
+  // Initialize the NFTs
+  const nftTemplate = await NFT.new();
+  const depositNFTReceipt = await factory.createNFT(
+    nftTemplate.address,
+    DEFAULT_SALT,
+    "88mph Deposit",
+    "88mph-Deposit"
+  );
+  depositNFT = await factoryReceiptToContract(depositNFTReceipt, NFT);
+  const fundingMultitokenTemplate = await FundingMultitoken.new();
+  const erc20WrapperTemplate = await ERC20Wrapper.new();
+  const fundingNFTReceipt = await factory.createFundingMultitoken(
+    fundingMultitokenTemplate.address,
+    DEFAULT_SALT,
+    "https://api.88mph.app/funding-metadata/",
+    [stablecoin.address, mph.address],
+    erc20WrapperTemplate.address,
+    true,
+    "88mph Floating-rate Bond: ",
+    "88MPH-FRB-",
+    STABLECOIN_DECIMALS
+  );
+  fundingMultitoken = await factoryReceiptToContract(
+    fundingNFTReceipt,
+    FundingMultitoken
+  );
+
+  // Initialize the interest oracle
+  const interestOracleTemplate = await EMAOracle.new();
+  const interestOracleReceipt = await factory.createEMAOracle(
+    interestOracleTemplate.address,
+    DEFAULT_SALT,
+    num2str((INIT_INTEREST_RATE * PRECISION) / YEAR_IN_SEC),
+    EMAUpdateInterval,
+    EMASmoothingFactor,
+    EMAAverageWindowInIntervals,
+    market.address
+  );
+  interestOracle = await factoryReceiptToContract(
+    interestOracleReceipt,
+    EMAOracle
+  );
+
+  // Initialize the DInterest pool
+  feeModel = await PercentageFeeModel.new(
+    govTreasury,
+    interestFee,
+    earlyWithdrawFee
+  );
+  interestModel = await LinearDecayInterestModel.new(
+    num2str(multiplierIntercept),
+    num2str(multiplierSlope)
+  );
+  const dInterestTemplate = await DInterest.new();
+  const dInterestReceipt = await factory.createDInterest(
+    dInterestTemplate.address,
+    DEFAULT_SALT,
+    MaxDepositPeriod,
+    MinDepositAmount,
+    market.address,
+    stablecoin.address,
+    feeModel.address,
+    interestModel.address,
+    interestOracle.address,
+    depositNFT.address,
+    fundingMultitoken.address,
+    mphMinter.address
+  );
+  dInterestPool = await factoryReceiptToContract(dInterestReceipt, DInterest);
+
+  // Set MPH minting multiplier for DInterest pool
+  await mphMinter.grantRole(WHITELISTED_POOL_ROLE, dInterestPool.address, {
+    from: acc0
+  });
+  await mphIssuanceModel.setPoolDepositorRewardMintMultiplier(
+    dInterestPool.address,
+    PoolDepositorRewardMintMultiplier
+  );
+  await mphIssuanceModel.setPoolFunderRewardMultiplier(
+    dInterestPool.address,
+    PoolFunderRewardMultiplier
+  );
+  await mphIssuanceModel.setPoolFunderRewardVestPeriod(
+    dInterestPool.address,
+    PoolFunderRewardVestPeriod
+  );
+
+  // Transfer the ownership of the money market to the DInterest pool
+  await market.transferOwnership(dInterestPool.address);
+
+  // Transfer NFT ownerships to the DInterest pool
+  await depositNFT.transferOwnership(dInterestPool.address);
+  await fundingMultitoken.grantRole(MINTER_BURNER_ROLE, dInterestPool.address);
+  await fundingMultitoken.grantRole(DIVIDEND_ROLE, dInterestPool.address);
+  await fundingMultitoken.grantRole(DIVIDEND_ROLE, mphMinter.address);
+
+  return {
+    stablecoin,
+    dInterestPool,
+    market,
+    feeModel,
+    interestModel,
+    interestOracle,
+    depositNFT,
+    fundingMultitoken,
+    mph,
+    mphMinter,
+    mphIssuanceModel,
+    vesting,
+    vesting02,
+    factory
+  };
+});

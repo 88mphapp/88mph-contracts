@@ -137,4 +137,6 @@ abstract contract Sponsorable {
         // transfer tokens to sponsor
         token.safeTransfer(sponsor, sponsorFeeAmount);
     }
+
+    uint256[49] private __gap;
 }

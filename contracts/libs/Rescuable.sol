@@ -38,4 +38,6 @@ abstract contract Rescuable {
         @param target The address to send the tokens to
      */
     function _authorizeRescue(address token, address target) internal virtual;
+
+    uint256[50] private __gap;
 }

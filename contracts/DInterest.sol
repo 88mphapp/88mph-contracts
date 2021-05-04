@@ -662,33 +662,42 @@ contract DInterest is
              the information before this time is forgotten.
         @param depositID The ID of the deposit
         @param virtualTokenAmount The amount of virtual tokens to burn
-        @param timestamp The Unix timestamp to query, in seconds
         @return withdrawableAmount The amount of stablecoins (after fee) that can be withdrawn
         @return feeAmount The amount of fees that will be given to the beneficiary
      */
     function withdrawableAmountOfDeposit(
         uint256 depositID,
-        uint256 virtualTokenAmount,
-        uint256 timestamp
+        uint256 virtualTokenAmount
     ) external view returns (uint256 withdrawableAmount, uint256 feeAmount) {
         // Verify input
         Deposit memory depositEntry = _getDeposit(depositID);
-        if (
-            virtualTokenAmount == 0 ||
-            timestamp <= depositEntry.depositTimestamp
-        ) {
+        if (virtualTokenAmount == 0) {
             return (0, 0);
+        } else {
+            if (virtualTokenAmount > depositEntry.virtualTokenTotalSupply) {
+                virtualTokenAmount = depositEntry.virtualTokenTotalSupply;
+            }
         }
 
         // Compute token amounts
+        bool early = block.timestamp < depositEntry.maturationTimestamp;
         uint256 depositAmount =
             virtualTokenAmount.decdiv(depositEntry.interestRate + PRECISION);
-        uint256 interestAmount =
-            timestamp >= depositEntry.maturationTimestamp
-                ? virtualTokenAmount - depositAmount
-                : 0;
+        uint256 interestAmount = early ? 0 : virtualTokenAmount - depositAmount;
         feeAmount = interestAmount.decmul(depositEntry.feeRate);
         withdrawableAmount = depositAmount + interestAmount;
+
+        if (early) {
+            // apply fee to withdrawAmount
+            uint256 earlyWithdrawFee =
+                feeModel.getEarlyWithdrawFeeAmount(
+                    address(this),
+                    depositID,
+                    withdrawableAmount
+                );
+            feeAmount += earlyWithdrawFee;
+            withdrawableAmount -= earlyWithdrawFee;
+        }
     }
 
     /**
@@ -1076,7 +1085,7 @@ contract DInterest is
         );
 
         // Check if withdrawing all funds
-        if (virtualTokenAmount == type(uint256).max) {
+        if (virtualTokenAmount > depositEntry.virtualTokenTotalSupply) {
             virtualTokenAmount = depositEntry.virtualTokenTotalSupply;
         }
 

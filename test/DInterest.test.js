@@ -2834,13 +2834,215 @@ contract("DInterest", accounts => {
       });
 
       describe("withdrawableAmountOfDeposit", () => {
-        context("happy path", () => {});
+        context("happy path", () => {
+          it("simple deposit", async () => {
+            const depositAmount = 10 * Base.STABLECOIN_PRECISION;
+
+            // acc0 deposits stablecoin into the DInterest pool for 1 year
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
+              Base.num2str(depositAmount),
+              { from: acc0 }
+            );
+            const blockNow = await Base.latestBlockTimestamp();
+            await baseContracts.dInterestPool.deposit(
+              Base.num2str(depositAmount),
+              blockNow + Base.YEAR_IN_SEC,
+              { from: acc0 }
+            );
+
+            // Verify withdrawableAmountOfDeposit
+            {
+              const withdrawableAmountOfDeposit = BigNumber(
+                (
+                  await baseContracts.dInterestPool.withdrawableAmountOfDeposit(
+                    1,
+                    Base.INF
+                  )
+                ).withdrawableAmount
+              );
+              const expectedAmount = Base.applyEarlyWithdrawFee(depositAmount);
+              Base.assertEpsilonEq(
+                withdrawableAmountOfDeposit,
+                expectedAmount,
+                "withdrawableAmountOfDeposit incorrect"
+              );
+            }
+
+            // Wait 1 year
+            await moneyMarketModule.timePass(1);
+
+            // Verify withdrawableAmountOfDeposit
+            {
+              const withdrawableAmountOfDeposit = BigNumber(
+                (
+                  await baseContracts.dInterestPool.withdrawableAmountOfDeposit(
+                    1,
+                    Base.INF
+                  )
+                ).withdrawableAmount
+              );
+              const expectedAmount = Base.calcInterestAmount(
+                depositAmount,
+                INIT_INTEREST_RATE_PER_SECOND,
+                Base.YEAR_IN_SEC,
+                true
+              ).plus(depositAmount);
+              Base.assertEpsilonEq(
+                withdrawableAmountOfDeposit,
+                expectedAmount,
+                "withdrawableAmountOfDeposit incorrect"
+              );
+            }
+
+            // Withdraw
+            await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
+              from: acc0
+            });
+
+            // Verify withdrawableAmountOfDeposit
+            {
+              const withdrawableAmountOfDeposit = BigNumber(
+                (
+                  await baseContracts.dInterestPool.withdrawableAmountOfDeposit(
+                    1,
+                    Base.INF
+                  )
+                ).withdrawableAmount
+              );
+              Base.assertEpsilonEq(
+                withdrawableAmountOfDeposit,
+                0,
+                "withdrawableAmountOfDeposit incorrect"
+              );
+            }
+          });
+        });
 
         context("edge cases", () => {});
       });
 
       describe("accruedInterestOfFunding", () => {
-        context("happy path", () => {});
+        context("happy path", () => {
+          it("single deposit, two payouts", async () => {
+            const depositAmount = 10 * Base.STABLECOIN_PRECISION;
+
+            // acc0 deposits stablecoin into the DInterest pool for 1 year
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
+              Base.num2str(depositAmount),
+              { from: acc0 }
+            );
+            const blockNow = await Base.latestBlockTimestamp();
+            await baseContracts.dInterestPool.deposit(
+              Base.num2str(depositAmount),
+              blockNow + Base.YEAR_IN_SEC,
+              { from: acc0 }
+            );
+
+            // Fund deficit using acc2
+            await baseContracts.stablecoin.approve(
+              baseContracts.dInterestPool.address,
+              Base.INF,
+              {
+                from: acc2
+              }
+            );
+            await baseContracts.dInterestPool.fund(1, Base.INF, { from: acc2 });
+
+            // Wait 0.3 year
+            await moneyMarketModule.timePass(0.3);
+
+            // Check accrued interest
+            {
+              const actualAccruedInterest = BigNumber(
+                await baseContracts.dInterestPool.accruedInterestOfFunding.call(
+                  1
+                )
+              );
+              const expectedAccruedInterest = Base.calcInterestAmount(
+                depositAmount,
+                INIT_INTEREST_RATE_PER_SECOND,
+                Base.YEAR_IN_SEC,
+                false
+              )
+                .plus(depositAmount)
+                .times(INIT_INTEREST_RATE)
+                .times(0.3);
+              Base.assertEpsilonEq(
+                actualAccruedInterest,
+                expectedAccruedInterest,
+                "accrued interest incorrect"
+              );
+            }
+
+            // Payout interest
+            await baseContracts.dInterestPool.payInterestToFunders(1, {
+              from: acc2
+            });
+
+            // Check accrued interest
+            {
+              const actualAccruedInterest = BigNumber(
+                await baseContracts.dInterestPool.accruedInterestOfFunding.call(
+                  1
+                )
+              );
+              const expectedAccruedInterest = 0;
+              Base.assertEpsilonEq(
+                actualAccruedInterest,
+                expectedAccruedInterest,
+                "accrued interest incorrect"
+              );
+            }
+
+            // Wait 0.7 year
+            await moneyMarketModule.timePass(0.7);
+
+            // Check accrued interest
+            {
+              const actualAccruedInterest = BigNumber(
+                await baseContracts.dInterestPool.accruedInterestOfFunding.call(
+                  1
+                )
+              );
+              const expectedAccruedInterest = Base.calcInterestAmount(
+                depositAmount,
+                INIT_INTEREST_RATE_PER_SECOND,
+                Base.YEAR_IN_SEC,
+                false
+              )
+                .plus(depositAmount)
+                .times(INIT_INTEREST_RATE)
+                .times(0.7);
+              Base.assertEpsilonEq(
+                actualAccruedInterest,
+                expectedAccruedInterest,
+                "accrued interest incorrect"
+              );
+            }
+
+            // Payout interest
+            await baseContracts.dInterestPool.payInterestToFunders(1, {
+              from: acc2
+            });
+
+            // Check accrued interest
+            {
+              const actualAccruedInterest = BigNumber(
+                await baseContracts.dInterestPool.accruedInterestOfFunding.call(
+                  1
+                )
+              );
+              const expectedAccruedInterest = 0;
+              Base.assertEpsilonEq(
+                actualAccruedInterest,
+                expectedAccruedInterest,
+                "accrued interest incorrect"
+              );
+            }
+          });
+        });
 
         context("edge cases", () => {});
       });

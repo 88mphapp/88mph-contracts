@@ -35,6 +35,7 @@ contract ZeroCouponBond is
     uint8 public _decimals;
 
     event WithdrawDeposit();
+    event EarlyRedeem(address indexed sender, uint256 bondAmount);
     event RedeemStablecoin(address indexed sender, uint256 amount);
 
     function initialize(
@@ -245,6 +246,8 @@ contract ZeroCouponBond is
 
         // transfer funds to sender
         stablecoin.safeTransfer(sender, stablecoinsRedeemed);
+
+        emit EarlyRedeem(sender, bondAmount);
     }
 
     /**

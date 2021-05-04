@@ -8,6 +8,7 @@ require("hardhat-spdx-license-identifier");
 require("hardhat-docgen");
 require("@nomiclabs/hardhat-etherscan");
 require("@openzeppelin/hardhat-upgrades");
+require("hardhat-contract-sizer");
 
 let secret;
 

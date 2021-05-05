@@ -1,3 +1,4 @@
 {
-  "lendingPoolAddressesProvider": "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5"
+  "lendingPoolAddressesProvider": "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5",
+  "aaveMining": "0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5"
 }

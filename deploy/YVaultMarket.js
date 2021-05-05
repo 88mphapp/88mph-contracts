@@ -1,3 +1,6 @@
+const config = require("../deploy-configs/get-network-config");
+const poolConfig = require("../deploy-configs/get-pool-config");
+
 module.exports = async ({
   web3,
   getNamedAccounts,
@@ -7,13 +10,24 @@ module.exports = async ({
 }) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
-  const poolConfig = require("../deploy-configs/get-pool-config");
 
   const deployResult = await deploy("YVaultMarket", {
     from: deployer,
-    args: [poolConfig.moneyMarketParams.vault, poolConfig.stablecoin]
+    proxy: {
+      owner: config.govTimelock,
+      proxyContract: "OptimizedTransparentProxy"
+    }
   });
   if (deployResult.newlyDeployed) {
+    const MoneyMarket = artifacts.require("YVaultMarket");
+    const moneyMarketContract = await MoneyMarket.at(deployResult.address);
+    await moneyMarketContract.initialize(
+      poolConfig.moneyMarketParams.vault,
+      poolConfig.stablecoin,
+      {
+        from: deployer
+      }
+    );
     log(`YVaultMarket deployed at ${deployResult.address}`);
   }
 };

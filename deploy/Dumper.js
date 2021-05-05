@@ -1,3 +1,5 @@
+const config = require("../deploy-configs/get-network-config");
+
 module.exports = async ({
   web3,
   getNamedAccounts,
@@ -7,34 +9,36 @@ module.exports = async ({
 }) => {
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
-  const config = require("../deploy-configs/get-network-config");
 
-  const rewardsDeployment = await get("Rewards");
+  const xMPHDeployment = await get("xMPH");
 
   const deployResult = await deploy("Dumper", {
     from: deployer,
     contract: "Dumper",
-    args: [
-      config.oneSplitAddress,
-      rewardsDeployment.address,
-      config.rewardToken
-    ]
+    args: [config.oneSplitAddress, xMPHDeployment.address]
   });
   if (deployResult.newlyDeployed) {
     log(`Dumper deployed at ${deployResult.address}`);
 
-    // add Dumper as rewardDistribution of MPH rewards
-    const Rewards = artifacts.require("Rewards");
-    const rewardsContract = await Rewards.at(rewardsDeployment.address);
-    await rewardsContract.setRewardDistribution(deployResult.address, true, {
+    // give Dumper DISTRIBUTOR_ROLE in xMPH
+    const DISTRIBUTOR_ROLE = web3.utils.soliditySha3("DISTRIBUTOR_ROLE");
+    const xMPH = artifacts.require("xMPH");
+    const xMPHContract = await xMPH.at(xMPHDeployment.address);
+    await xMPHContract.grantRole(DISTRIBUTOR_ROLE, deployResult.address, {
       from: deployer
     });
 
-    // give signer rights to gov treasury
+    // give admin role to gov treasury and revoke deployer's admin role
+    const DEFAULT_ADMIN_ROLE = "0x00";
     const Dumper = artifacts.require("Dumper");
     const dumperContract = await Dumper.at(deployResult.address);
-    await dumperContract.addSigner(config.govTreasury, { from: deployer });
+    await dumperContract.grantRole(DEFAULT_ADMIN_ROLE, config.govTreasury, {
+      from: deployer
+    });
+    await dumperContract.revokeRole(DEFAULT_ADMIN_ROLE, deployer, {
+      from: deployer
+    });
   }
 };
 module.exports.tags = ["Dumper", "MPHRewards"];
-module.exports.dependencies = ["Rewards"];
+module.exports.dependencies = ["xMPH"];

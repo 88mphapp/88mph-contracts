@@ -1,0 +1,22 @@
+{
+  "name": "88mph Harvest CRV:RENWBTC Pool",
+  "nftNamePrefix": "88mph Harvest CRV:RENWBTC Pool ",
+  "nftSymbolPrefix": "88mph-Harvest-CRV:RENWBTC-",
+  "moneyMarket": "HarvestMarket",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 0.01e18,
+  "stablecoin": "0x49849C98ae39Fff122806C06791Fa73784FB3675",
+  "multiplierIntercept": 0.5e18,
+  "multiplierSlope": 7922184626,
+  "EMAInitial": 3.17e8,
+  "EMAUpdateInverval": 259200,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 10,
+  "moneyMarketParams": {
+    "vault": "0x9aA8F427A17d6B0d91B6262989EdC7D45d6aEdf8",
+    "stakingPool": "0xA3Cf8D1CEe996253FAD1F8e3d68BDCba7B3A3Db5"
+  }
+}

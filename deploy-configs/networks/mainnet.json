@@ -1,11 +1,10 @@
 {
   "govTreasury": "0x56f34826Cc63151f74FA8f701E4f73C5EAae52AD",
   "devWallet": "0xfecBad5D60725EB6fd10f8936e02fa203fd27E4b",
+  "govTimelock": "0x4027d912A19E3Cd540FB580aF6A9088eAC738566",
   "devRewardMultiplier": 0.1e18,
-  "rewardToken": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
   "oneSplitAddress": "0xC586BeF4a0992C495Cf22e1aeEE4E446CECDee0E",
-  "rewardStartTime": 1606161600,
   "mph": "0x8888801af4d980682e47f1a9036e589479e835c5",
-  "mphIssuanceModel": "MPHIssuanceModel01",
-  "mphMinter": "0x03577A2151A10675a9689190fE5D331Ee7ff2517"
+  "mphIssuanceModel": "MPHIssuanceModel02",
+  "xMPHRewardUnlockPeriod": 1209600
 }

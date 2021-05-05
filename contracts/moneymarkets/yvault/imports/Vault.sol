@@ -3,11 +3,11 @@
 pragma solidity 0.8.3;
 
 interface Vault {
-    function deposit(uint256) external;
+    function deposit(uint256 amount) external;
 
-    function withdraw(uint256) external;
+    function withdraw(uint256 shareAmount) external;
 
-    function getPricePerFullShare() external view returns (uint256);
+    function pricePerShare() external view returns (uint256);
 
     function totalSupply() external view returns (uint256);
 
@@ -29,12 +29,4 @@ interface Vault {
         address recipient,
         uint256 amount
     ) external returns (bool);
-
-    event Transfer(address indexed from, address indexed to, uint256 value);
-
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
 }

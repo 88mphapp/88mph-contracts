@@ -35,4 +35,8 @@ contract VaultMock is ERC20 {
         }
         return underlying.balanceOf(address(this)).decdiv(_totalSupply);
     }
+
+    function pricePerShare() external view returns (uint256) {
+        return getPricePerFullShare();
+    }
 }

@@ -67,7 +67,7 @@ contract YVaultMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
         );
 
         // Withdraw `amountInShares` shares from vault
-        uint256 sharePrice = vault.getPricePerFullShare();
+        uint256 sharePrice = vault.pricePerShare();
         uint256 amountInShares = amountInUnderlying.decdiv(sharePrice);
         if (amountInShares > 0) {
             vault.withdraw(amountInShares);
@@ -83,13 +83,13 @@ contract YVaultMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
     function claimRewards() external override {}
 
     function totalValue() external view override returns (uint256) {
-        uint256 sharePrice = vault.getPricePerFullShare();
+        uint256 sharePrice = vault.pricePerShare();
         uint256 shareBalance = vault.balanceOf(address(this));
         return shareBalance.decmul(sharePrice);
     }
 
     function incomeIndex() external view override returns (uint256) {
-        return vault.getPricePerFullShare();
+        return vault.pricePerShare();
     }
 
     function setRewards(address newValue) external override {}

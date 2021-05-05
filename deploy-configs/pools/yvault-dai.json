@@ -1,8 +1,8 @@
 {
-  "name": "88mph aDAI Pool",
-  "nftNamePrefix": "88mph aDAI Pool ",
-  "nftSymbolPrefix": "88mph-aDAI-",
-  "moneyMarket": "AaveMarket",
+  "name": "88mph yDAI Pool",
+  "nftNamePrefix": "88mph yDAI Pool ",
+  "nftSymbolPrefix": "88mph-yDAI-",
+  "moneyMarket": "YVaultMarket",
   "interestModel": "LinearDecayInterestModel",
   "interestOracle": "EMAOracle",
   "feeModel": "PercentageFeeModel",
@@ -11,11 +11,11 @@
   "stablecoin": "0x6b175474e89094c44da98b954eedeac495271d0f",
   "multiplierIntercept": 0.5e18,
   "multiplierSlope": 7922184626,
-  "EMAInitial": 19e8,
-  "EMAUpdateInverval": 86400,
+  "EMAInitial": 25e8,
+  "EMAUpdateInverval": 604800,
   "EMASmoothingFactor": 2e18,
-  "EMAAverageWindowInIntervals": 30,
+  "EMAAverageWindowInIntervals": 4,
   "moneyMarketParams": {
-    "aToken": "0x028171bCA77440897B824Ca71D1c56caC55b68A3"
+    "vault": "0x19D3364A399d251E894aC732651be8B0E4e85001"
   }
 }

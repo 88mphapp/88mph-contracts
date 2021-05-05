@@ -1,4 +1,4 @@
 {
   "network": "mainnet",
-  "pool": "aave-dai"
+  "pool": "yvault-dai"
 }

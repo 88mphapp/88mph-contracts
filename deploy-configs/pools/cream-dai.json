@@ -1,8 +1,8 @@
 {
-  "name": "88mph aDAI Pool",
-  "nftNamePrefix": "88mph aDAI Pool ",
-  "nftSymbolPrefix": "88mph-aDAI-",
-  "moneyMarket": "AaveMarket",
+  "name": "88mph crDAI Pool",
+  "nftNamePrefix": "88mph crDAI Pool ",
+  "nftSymbolPrefix": "88mph-crDAI-",
+  "moneyMarket": "CreamERC20Market",
   "interestModel": "LinearDecayInterestModel",
   "interestOracle": "EMAOracle",
   "feeModel": "PercentageFeeModel",
@@ -11,11 +11,11 @@
   "stablecoin": "0x6b175474e89094c44da98b954eedeac495271d0f",
   "multiplierIntercept": 0.5e18,
   "multiplierSlope": 7922184626,
-  "EMAInitial": 19e8,
+  "EMAInitial": 9.51e8,
   "EMAUpdateInverval": 86400,
   "EMASmoothingFactor": 2e18,
   "EMAAverageWindowInIntervals": 30,
   "moneyMarketParams": {
-    "aToken": "0x028171bCA77440897B824Ca71D1c56caC55b68A3"
+    "cToken": "0x92b767185fb3b04f881e3ac8e5b0662a027a1d9f"
   }
 }

@@ -1,3 +1,7 @@
+const config = require("../deploy-configs/get-network-config");
+const poolConfig = require("../deploy-configs/get-pool-config");
+const aaveConfig = require("../deploy-configs/protocols/aave.json");
+
 module.exports = async ({
   web3,
   getNamedAccounts,
@@ -5,22 +9,33 @@ module.exports = async ({
   getChainId,
   artifacts
 }) => {
-  const { deploy, log } = deployments;
+  const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
-  const poolConfig = require("../deploy-configs/get-pool-config");
-  const aaveConfig = require("../deploy-configs/protocols/aave.json");
 
   const deployResult = await deploy("AaveMarket", {
     from: deployer,
-    args: [
-      aaveConfig.lendingPoolAddressesProvider,
-      poolConfig.moneyMarketParams.aToken,
-      poolConfig.stablecoin
-    ]
+    proxy: {
+      owner: config.govTimelock,
+      proxyContract: "OptimizedTransparentProxy"
+    }
   });
   if (deployResult.newlyDeployed) {
+    const dumperDeployment = await get("Dumper");
+
+    const MoneyMarket = artifacts.require("AaveMarket");
+    const moneyMarketContract = await MoneyMarket.at(deployResult.address);
+    await moneyMarketContract.initialize(
+      aaveConfig.lendingPoolAddressesProvider,
+      poolConfig.moneyMarketParams.aToken,
+      aaveConfig.aaveMining,
+      dumperDeployment.address,
+      poolConfig.stablecoin,
+      {
+        from: deployer
+      }
+    );
     log(`AaveMarket deployed at ${deployResult.address}`);
   }
 };
 module.exports.tags = ["AaveMarket"];
-module.exports.dependencies = [];
+module.exports.dependencies = ["Dumper"];

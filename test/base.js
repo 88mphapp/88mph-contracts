@@ -520,6 +520,7 @@ const setupTest = (module.exports.setupTest = async (
   await mph.initialize();
   vesting = await Vesting.new(mph.address);
   vesting02 = await Vesting02.new();
+  await vesting02.initialize(mph.address, "Vested MPH", "veMPH");
   mphIssuanceModel = await MPHIssuanceModel.new();
   await mphIssuanceModel.initialize(DevRewardMultiplier, GovRewardMultiplier);
   mphMinter = await MPHMinter.new();
@@ -531,12 +532,7 @@ const setupTest = (module.exports.setupTest = async (
     vesting.address,
     vesting02.address
   );
-  await vesting02.initialize(
-    mphMinter.address,
-    mph.address,
-    "Vested MPH",
-    "veMPH"
-  );
+  await vesting02.setMPHMinter(mphMinter.address);
   await mph.transferOwnership(mphMinter.address);
   await mphMinter.grantRole(WHITELISTER_ROLE, acc0, { from: acc0 });
 

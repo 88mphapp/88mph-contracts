@@ -54,9 +54,9 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
         uint256 indexed vestID,
         uint256 withdrawnAmount
     );
+    event ESetMPHMinter(address newValue);
 
     function initialize(
-        address _mphMinter,
         address _token,
         string calldata tokenName,
         string calldata tokenSymbol
@@ -64,8 +64,13 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
         __Ownable_init();
         __ERC721_init(tokenName, tokenSymbol);
 
-        mphMinter = MPHMinter(_mphMinter);
         token = IERC20Upgradeable(_token);
+    }
+
+    function setMPHMinter(address newValue) external onlyOwner {
+        require(newValue != address(0), "Vesting02: 0 address");
+        mphMinter = MPHMinter(newValue);
+        emit ESetMPHMinter(newValue);
     }
 
     /**

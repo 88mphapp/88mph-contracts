@@ -132,6 +132,7 @@ contract Factory {
         address _aToken,
         address _aaveMining,
         address _rewards,
+        address _rescuer,
         address _stablecoin
     ) external returns (AaveMarket) {
         AaveMarket clone = AaveMarket(template.cloneDeterministic(salt));
@@ -142,6 +143,7 @@ contract Factory {
             _aToken,
             _aaveMining,
             _rewards,
+            _rescuer,
             _stablecoin
         );
         clone.transferOwnership(msg.sender);
@@ -156,13 +158,20 @@ contract Factory {
         address _cToken,
         address _comptroller,
         address _rewards,
+        address _rescuer,
         address _stablecoin
     ) external returns (CompoundERC20Market) {
         CompoundERC20Market clone =
             CompoundERC20Market(template.cloneDeterministic(salt));
 
         // initialize
-        clone.initialize(_cToken, _comptroller, _rewards, _stablecoin);
+        clone.initialize(
+            _cToken,
+            _comptroller,
+            _rewards,
+            _rescuer,
+            _stablecoin
+        );
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("CompoundERC20Market", template, salt, address(clone));
@@ -173,13 +182,14 @@ contract Factory {
         address template,
         bytes32 salt,
         address _cToken,
+        address _rescuer,
         address _stablecoin
     ) external returns (CreamERC20Market) {
         CreamERC20Market clone =
             CreamERC20Market(template.cloneDeterministic(salt));
 
         // initialize
-        clone.initialize(_cToken, _stablecoin);
+        clone.initialize(_cToken, _rescuer, _stablecoin);
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("CreamERC20Market", template, salt, address(clone));
@@ -192,12 +202,13 @@ contract Factory {
         address _vault,
         address _rewards,
         address _stakingPool,
+        address _rescuer,
         address _stablecoin
     ) external returns (HarvestMarket) {
         HarvestMarket clone = HarvestMarket(template.cloneDeterministic(salt));
 
         // initialize
-        clone.initialize(_vault, _rewards, _stakingPool, _stablecoin);
+        clone.initialize(_vault, _rewards, _stakingPool, _rescuer, _stablecoin);
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("HarvestMarket", template, salt, address(clone));
@@ -208,12 +219,13 @@ contract Factory {
         address template,
         bytes32 salt,
         address _vault,
+        address _rescuer,
         address _stablecoin
     ) external returns (YVaultMarket) {
         YVaultMarket clone = YVaultMarket(template.cloneDeterministic(salt));
 
         // initialize
-        clone.initialize(_vault, _stablecoin);
+        clone.initialize(_vault, _rescuer, _stablecoin);
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("YVaultMarket", template, salt, address(clone));

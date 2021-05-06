@@ -20,7 +20,7 @@ abstract contract Rescuable {
         @param token The ERC20 token to rescue
         @param target The address to send the tokens to
      */
-    function rescue(address token, address target) external {
+    function rescue(address token, address target) external virtual {
         // make sure we're not stealing funds or something
         _authorizeRescue(token, target);
 

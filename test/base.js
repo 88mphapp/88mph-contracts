@@ -245,6 +245,7 @@ const aaveMoneyMarketModule = () => {
       aToken.address,
       aaveMining.address,
       rewards,
+      accounts[0],
       stablecoin.address
     );
     return await factoryReceiptToContract(marketReceipt, AaveMarket);
@@ -290,6 +291,7 @@ const compoundERC20MoneyMarketModule = () => {
       cToken.address,
       comptroller.address,
       rewards,
+      accounts[0],
       stablecoin.address
     );
     return await factoryReceiptToContract(marketReceipt, CompoundERC20Market);
@@ -332,6 +334,7 @@ const creamERC20MoneyMarketModule = () => {
       marketTemplate.address,
       DEFAULT_SALT,
       cToken.address,
+      accounts[0],
       stablecoin.address
     );
     return await factoryReceiptToContract(marketReceipt, CreamERC20Market);
@@ -389,6 +392,7 @@ const harvestMoneyMarketModule = () => {
       vault.address,
       rewards,
       harvestStaking.address,
+      accounts[0],
       stablecoin.address
     );
     return await factoryReceiptToContract(marketReceipt, HarvestMarket);
@@ -432,6 +436,7 @@ const yvaultMoneyMarketModule = () => {
       marketTemplate.address,
       DEFAULT_SALT,
       vault.address,
+      accounts[0],
       stablecoin.address
     );
     return await factoryReceiptToContract(marketReceipt, YVaultMarket);

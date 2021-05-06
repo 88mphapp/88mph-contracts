@@ -8,20 +8,16 @@ import {
     ERC20Upgradeable
 } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {
-    OwnableUpgradeable
-} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {
     AddressUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import {IMoneyMarket} from "../IMoneyMarket.sol";
-import {Rescuable} from "../../libs/Rescuable.sol";
 import {ILendingPool} from "./imports/ILendingPool.sol";
 import {
     ILendingPoolAddressesProvider
 } from "./imports/ILendingPoolAddressesProvider.sol";
 import {IAaveMining} from "./imports/IAaveMining.sol";
 
-contract AaveMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
+contract AaveMarket is IMoneyMarket {
     using SafeERC20Upgradeable for ERC20Upgradeable;
     using AddressUpgradeable for address;
 
@@ -38,9 +34,10 @@ contract AaveMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
         address _aToken,
         address _aaveMining,
         address _rewards,
+        address _rescuer,
         address _stablecoin
     ) external initializer {
-        __Ownable_init();
+        __IMoneyMarket_init(_rescuer);
 
         // Verify input addresses
         require(
@@ -126,12 +123,13 @@ contract AaveMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
     /**
         @dev See {Rescuable._authorizeRescue}
      */
-    function _authorizeRescue(
-        address token,
-        address /*target*/
-    ) internal view override {
+    function _authorizeRescue(address token, address target)
+        internal
+        view
+        override
+    {
+        super._authorizeRescue(token, target);
         require(token != address(aToken), "AaveMarket: no steal");
-        require(msg.sender == owner(), "AaveMarket: not owner");
     }
 
     uint256[45] private __gap;

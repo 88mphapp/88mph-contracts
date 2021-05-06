@@ -8,18 +8,14 @@ import {
     ERC20Upgradeable
 } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {
-    OwnableUpgradeable
-} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {
     AddressUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import {IMoneyMarket} from "../IMoneyMarket.sol";
 import {DecMath} from "../../libs/DecMath.sol";
-import {Rescuable} from "../../libs/Rescuable.sol";
 import {ICERC20} from "./imports/ICERC20.sol";
 import {IComptroller} from "./imports/IComptroller.sol";
 
-contract CompoundERC20Market is IMoneyMarket, OwnableUpgradeable, Rescuable {
+contract CompoundERC20Market is IMoneyMarket {
     using DecMath for uint256;
     using SafeERC20Upgradeable for ERC20Upgradeable;
     using AddressUpgradeable for address;
@@ -35,9 +31,10 @@ contract CompoundERC20Market is IMoneyMarket, OwnableUpgradeable, Rescuable {
         address _cToken,
         address _comptroller,
         address _rewards,
+        address _rescuer,
         address _stablecoin
     ) external initializer {
-        __Ownable_init();
+        __IMoneyMarket_init(_rescuer);
 
         // Verify input addresses
         require(
@@ -120,12 +117,13 @@ contract CompoundERC20Market is IMoneyMarket, OwnableUpgradeable, Rescuable {
     /**
         @dev See {Rescuable._authorizeRescue}
      */
-    function _authorizeRescue(
-        address token,
-        address /*target*/
-    ) internal view override {
+    function _authorizeRescue(address token, address target)
+        internal
+        view
+        override
+    {
+        super._authorizeRescue(token, target);
         require(token != address(cToken), "CompoundERC20Market: no steal");
-        require(msg.sender == owner(), "CompoundERC20Market: not owner");
     }
 
     uint256[46] private __gap;

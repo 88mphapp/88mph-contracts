@@ -8,17 +8,13 @@ import {
     ERC20Upgradeable
 } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {
-    OwnableUpgradeable
-} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {
     AddressUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-import {Rescuable} from "../../libs/Rescuable.sol";
 import {IMoneyMarket} from "../IMoneyMarket.sol";
 import {DecMath} from "../../libs/DecMath.sol";
 import {Vault} from "./imports/Vault.sol";
 
-contract YVaultMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
+contract YVaultMarket is IMoneyMarket {
     using DecMath for uint256;
     using SafeERC20Upgradeable for ERC20Upgradeable;
     using AddressUpgradeable for address;
@@ -26,11 +22,12 @@ contract YVaultMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
     Vault public vault;
     ERC20Upgradeable public override stablecoin;
 
-    function initialize(address _vault, address _stablecoin)
-        external
-        initializer
-    {
-        __Ownable_init();
+    function initialize(
+        address _vault,
+        address _rescuer,
+        address _stablecoin
+    ) external initializer {
+        __IMoneyMarket_init(_rescuer);
 
         // Verify input addresses
         require(
@@ -97,12 +94,13 @@ contract YVaultMarket is IMoneyMarket, OwnableUpgradeable, Rescuable {
     /**
         @dev See {Rescuable._authorizeRescue}
      */
-    function _authorizeRescue(
-        address token,
-        address /*target*/
-    ) internal view override {
+    function _authorizeRescue(address token, address target)
+        internal
+        view
+        override
+    {
+        super._authorizeRescue(token, target);
         require(token != address(vault), "YVaultMarket: no steal");
-        require(msg.sender == owner(), "YVaultMarket: not owner");
     }
 
     uint256[48] private __gap;

@@ -12,50 +12,49 @@ module.exports = async ({
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const moneyMarketDeployment = await get(poolConfig.moneyMarket);
+  const moneyMarketDeployment = await get(
+    `${poolConfig.name}--${poolConfig.moneyMarket}`
+  );
   const feeModelDeployment = await get(poolConfig.feeModel);
   const interestModelDeployment = await get(poolConfig.interestModel);
-  const interestOracleDeployment = await get(poolConfig.interestOracle);
+  const interestOracleDeployment = await get(
+    `${poolConfig.name}--${poolConfig.interestOracle}`
+  );
   const depositNFTDeployment = await get(`${poolConfig.nftNamePrefix}Deposit`);
-  const fundingNFTDeployment = await get(`${poolConfig.nftNamePrefix}Bond`);
-  const mphMinterAddress = config.mphMinter;
+  const fundingMultitokenDeployment = await get(
+    `${poolConfig.nftNamePrefix}Floating Rate Bond`
+  );
+  const mphMinterDeployment = await get("MPHMinter");
 
   const deployResult = await deploy(poolConfig.name, {
     from: deployer,
     contract: "DInterestWithDepositFee",
-    args: [
-      {
-        MinDepositPeriod: BigNumber(poolConfig.MinDepositPeriod).toFixed(),
-        MaxDepositPeriod: BigNumber(poolConfig.MaxDepositPeriod).toFixed(),
-        MinDepositAmount: BigNumber(poolConfig.MinDepositAmount).toFixed(),
-        MaxDepositAmount: BigNumber(poolConfig.MaxDepositAmount).toFixed(),
-        DepositFee: BigNumber(poolConfig.DepositFee).toFixed()
-      },
+    proxy: {
+      owner: config.govTimelock,
+      proxyContract: "OptimizedTransparentProxy"
+    }
+  });
+  if (deployResult.newlyDeployed) {
+    const DInterest = artifacts.require("DInterestWithDepositFee");
+    const contract = await DInterest.at(deployResult.address);
+    await contract.initialize(
+      BigNumber(poolConfig.MaxDepositPeriod).toFixed(),
+      BigNumber(poolConfig.MinDepositAmount).toFixed(),
+      BigNumber(poolConfig.DepositFee).toFixed(),
       moneyMarketDeployment.address,
       poolConfig.stablecoin,
       feeModelDeployment.address,
       interestModelDeployment.address,
       interestOracleDeployment.address,
       depositNFTDeployment.address,
-      fundingNFTDeployment.address,
-      mphMinterAddress
-    ]
-  });
-  if (deployResult.newlyDeployed) {
+      fundingMultitokenDeployment.address,
+      mphMinterDeployment.address,
+      {
+        from: deployer
+      }
+    );
     log(`${poolConfig.name} deployed at ${deployResult.address}`);
 
-    // Set MPH minting multiplier for DInterest pool
-    /* const MPHMinter = artifacts.require('MPHMinter')
-    const mphMinterContract = await MPHMinter.at(mphMinterDeployment.address)
-    await mphMinterContract.setPoolWhitelist(deployResult.address, true, { from: deployer })
-    const MPHIssuanceModel = artifacts.require(config.mphIssuanceModel)
-    const mphIssuanceModelContract = await MPHIssuanceModel.at(mphIssuanceModelDeployment.address)
-    await mphIssuanceModelContract.setPoolDepositorRewardMintMultiplier(deployResult.address, BigNumber(poolConfig.PoolDepositorRewardMintMultiplier).toFixed(), { from: deployer })
-    await mphIssuanceModelContract.setPoolDepositorRewardTakeBackMultiplier(deployResult.address, BigNumber(poolConfig.PoolDepositorRewardTakeBackMultiplier).toFixed(), { from: deployer })
-    await mphIssuanceModelContract.setPoolFunderRewardMultiplier(deployResult.address, BigNumber(poolConfig.PoolFunderRewardMultiplier).toFixed(), { from: deployer })
-    await mphIssuanceModelContract.setPoolDepositorRewardVestPeriod(deployResult.address, BigNumber(poolConfig.PoolDepositorRewardVestPeriod).toFixed(), { from: deployer })
-    await mphIssuanceModelContract.setPoolFunderRewardVestPeriod(deployResult.address, BigNumber(poolConfig.PoolFunderRewardVestPeriod).toFixed(), { from: deployer })
-    */
     // Transfer the ownership of the money market to the DInterest pool
     const MoneyMarket = artifacts.require(poolConfig.moneyMarket);
     const moneyMarketContract = await MoneyMarket.at(
@@ -64,23 +63,74 @@ module.exports = async ({
     await moneyMarketContract.transferOwnership(deployResult.address, {
       from: deployer
     });
+    log(`Transferred MoneyMarket ownership to ${deployResult.address}`);
 
-    // Transfer NFT ownerships to the DInterest pool
+    // Transfer deposit NFT ownership to the DInterest pool
     const NFT = artifacts.require("NFT");
     const depositNFTContract = await NFT.at(depositNFTDeployment.address);
-    const fundingNFTContract = await NFT.at(fundingNFTDeployment.address);
     await depositNFTContract.transferOwnership(deployResult.address, {
       from: deployer
     });
-    await fundingNFTContract.transferOwnership(deployResult.address, {
+    log(`Transferred DepositNFT ownership to ${deployResult.address}`);
+
+    // Assign funding multitoken roles
+    const DEFAULT_ADMIN_ROLE = "0x00";
+    const MINTER_BURNER_ROLE = web3.utils.soliditySha3("MINTER_BURNER_ROLE");
+    const DIVIDEND_ROLE = web3.utils.soliditySha3("DIVIDEND_ROLE");
+    const METADATA_ROLE = web3.utils.soliditySha3("METADATA_ROLE");
+    const FundingMultitoken = artifacts.require("FundingMultitoken");
+    const fundingMultitokenContract = await FundingMultitoken.at(
+      fundingMultitokenDeployment.address
+    );
+    await fundingMultitokenContract.grantRole(
+      MINTER_BURNER_ROLE,
+      deployResult.address,
+      { from: deployer }
+    );
+    log(
+      `Grant FundingMultitoken MINTER_BURNER_ROLE to ${deployResult.address}`
+    );
+    await fundingMultitokenContract.grantRole(
+      DIVIDEND_ROLE,
+      deployResult.address,
+      { from: deployer }
+    );
+    log(`Grant FundingMultitoken DIVIDEND_ROLE to ${deployResult.address}`);
+    await fundingMultitokenContract.grantRole(
+      DIVIDEND_ROLE,
+      mphMinterDeployment.address,
+      { from: deployer }
+    );
+    log(
+      `Grant FundingMultitoken DIVIDEND_ROLE to ${mphMinterDeployment.address}`
+    );
+    await fundingMultitokenContract.grantRole(
+      DIVIDEND_ROLE,
+      config.govTreasury,
+      { from: deployer }
+    );
+    log(`Grant FundingMultitoken DIVIDEND_ROLE to ${config.govTreasury}`);
+    await fundingMultitokenContract.grantRole(
+      METADATA_ROLE,
+      config.govTreasury,
+      { from: deployer }
+    );
+    log(`Grant FundingMultitoken METADATA_ROLE to ${config.govTreasury}`);
+    await fundingMultitokenContract.renounceRole(MINTER_BURNER_ROLE, deployer, {
       from: deployer
     });
+    log(`Renounce FundingMultitoken MINTER_BURNER_ROLE of ${deployer}`);
+    await fundingMultitokenContract.renounceRole(DIVIDEND_ROLE, deployer, {
+      from: deployer
+    });
+    log(`Renounce FundingMultitoken DIVIDEND_ROLE of ${deployer}`);
+    await fundingMultitokenContract.renounceRole(METADATA_ROLE, deployer, {
+      from: deployer
+    });
+    log(`Renounce FundingMultitoken METADATA_ROLE of ${deployer}`);
 
     // Transfer DInterest ownership to gov
-    const dInterestDeployment = await get(poolConfig.name);
-    const DInterest = artifacts.require("DInterestWithDepositFee");
-    const dInterestContract = await DInterest.at(dInterestDeployment.address);
-    await dInterestContract.transferOwnership(config.govTreasury, {
+    await contract.transferOwnership(config.govTreasury, {
       from: deployer
     });
     log(`Transfer ${poolConfig.name} ownership to ${config.govTreasury}`);
@@ -93,11 +143,11 @@ module.exports = async ({
 };
 module.exports.tags = [poolConfig.name, "DInterestWithDepositFee"];
 module.exports.dependencies = [
-  poolConfig.moneyMarket,
+  `${poolConfig.name}--${poolConfig.moneyMarket}`,
   poolConfig.feeModel,
   poolConfig.interestModel,
-  poolConfig.interestOracle,
+  `${poolConfig.name}--${poolConfig.interestOracle}`,
   `${poolConfig.nftNamePrefix}Deposit`,
-  `${poolConfig.nftNamePrefix}Bond`,
+  `${poolConfig.nftNamePrefix}Floating Rate Bond`,
   "MPHRewards"
 ];

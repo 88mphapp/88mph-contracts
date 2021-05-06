@@ -20,24 +20,28 @@ module.exports = async ({
   if (deployResult.newlyDeployed) {
     log(`Dumper deployed at ${deployResult.address}`);
 
-    // give Dumper DISTRIBUTOR_ROLE in xMPH
     const DISTRIBUTOR_ROLE = web3.utils.soliditySha3("DISTRIBUTOR_ROLE");
-    const xMPH = artifacts.require("xMPH");
-    const xMPHContract = await xMPH.at(xMPHDeployment.address);
-    await xMPHContract.grantRole(DISTRIBUTOR_ROLE, deployResult.address, {
-      from: deployer
-    });
-
-    // give admin role to gov treasury and revoke deployer's admin role
     const DEFAULT_ADMIN_ROLE = "0x00";
+
+    // give dumper admin role to gov treasury and revoke deployer's admin role
     const Dumper = artifacts.require("Dumper");
     const dumperContract = await Dumper.at(deployResult.address);
     await dumperContract.grantRole(DEFAULT_ADMIN_ROLE, config.govTreasury, {
       from: deployer
     });
-    await dumperContract.revokeRole(DEFAULT_ADMIN_ROLE, deployer, {
+    log(`Grant Dumper DEFAULT_ADMIN_ROLE to ${config.govTreasury}`);
+    await dumperContract.renounceRole(DEFAULT_ADMIN_ROLE, deployer, {
       from: deployer
     });
+    log(`Renounce Dumper DEFAULT_ADMIN_ROLE of ${deployer}`);
+
+    // give Dumper DISTRIBUTOR_ROLE in xMPH
+    const xMPH = artifacts.require("xMPH");
+    const xMPHContract = await xMPH.at(xMPHDeployment.address);
+    await xMPHContract.grantRole(DISTRIBUTOR_ROLE, deployResult.address, {
+      from: deployer
+    });
+    log(`Grant xMPH DISTRIBUTOR_ROLE to ${deployResult.address}`);
   }
 };
 module.exports.tags = ["Dumper", "MPHRewards"];

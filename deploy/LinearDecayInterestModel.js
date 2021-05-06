@@ -1,4 +1,5 @@
 const BigNumber = require("bignumber.js");
+const config = require("../deploy-configs/get-network-config");
 
 module.exports = async ({
   web3,
@@ -9,13 +10,12 @@ module.exports = async ({
 }) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
-  const poolConfig = require("../deploy-configs/get-pool-config");
 
   const deployResult = await deploy("LinearDecayInterestModel", {
     from: deployer,
     args: [
-      BigNumber(poolConfig.multiplierIntercept).toFixed(),
-      BigNumber(poolConfig.multiplierSlope).toFixed()
+      BigNumber(config.interestRateMultiplierIntercept).toFixed(),
+      BigNumber(config.interestRateMultiplierSlope).toFixed()
     ]
   });
   if (deployResult.newlyDeployed) {

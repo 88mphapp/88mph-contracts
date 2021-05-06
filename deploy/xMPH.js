@@ -29,6 +29,20 @@ module.exports = async ({
       }
     );
     log(`xMPH deployed at ${deployResult.address}`);
+
+    // transfer xMPH ownership to gov treasury
+    const DEFAULT_ADMIN_ROLE = "0x00";
+    const DISTRIBUTOR_ROLE = web3.utils.soliditySha3("DISTRIBUTOR_ROLE");
+    await contract.grantRole(DEFAULT_ADMIN_ROLE, config.govTreasury, {
+      from: deployer
+    });
+    log(`Give xMPH DEFAULT_ADMIN_ROLE to ${config.govTreasury}`);
+
+    // renounce xMPH admin role
+    await contract.renounceRole(DEFAULT_ADMIN_ROLE, deployer, {
+      from: deployer
+    });
+    log(`Renounce xMPH DEFAULT_ADMIN_ROLE of ${deployer}`);
   }
 };
 module.exports.tags = ["xMPH"];

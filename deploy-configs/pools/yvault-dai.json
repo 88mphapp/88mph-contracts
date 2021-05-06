@@ -1,6 +1,6 @@
 {
   "name": "88mph yDAI Pool",
-  "nftNamePrefix": "88mph yDAI Pool ",
+  "nftNamePrefix": "88mph yDAI Pool--",
   "nftSymbolPrefix": "88mph-yDAI-",
   "moneyMarket": "YVaultMarket",
   "interestModel": "LinearDecayInterestModel",

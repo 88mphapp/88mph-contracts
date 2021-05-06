@@ -8,12 +8,13 @@ module.exports = async ({
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const deployResult = await deploy("ZapCurve", {
-    from: deployer
+  const deployResult = await deploy("EMAOracleTemplate", {
+    from: deployer,
+    contract: "EMAOracle"
   });
   if (deployResult.newlyDeployed) {
-    log(`ZapCurve deployed at ${deployResult.address}`);
+    log(`EMAOracleTemplate deployed at ${deployResult.address}`);
   }
 };
-module.exports.tags = ["ZapCurve"];
+module.exports.tags = ["EMAOracleTemplate"];
 module.exports.dependencies = [];

@@ -8,12 +8,12 @@ module.exports = async ({
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const deployResult = await deploy("ZapCurve", {
+  const deployResult = await deploy("Factory", {
     from: deployer
   });
   if (deployResult.newlyDeployed) {
-    log(`ZapCurve deployed at ${deployResult.address}`);
+    log(`Factory deployed at ${deployResult.address}`);
   }
 };
-module.exports.tags = ["ZapCurve"];
+module.exports.tags = ["Factory"];
 module.exports.dependencies = [];

@@ -8,12 +8,13 @@ module.exports = async ({
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const deployResult = await deploy("ZapCurve", {
-    from: deployer
+  const deployResult = await deploy("FundingMultitokenTemplate", {
+    from: deployer,
+    contract: "FundingMultitoken"
   });
   if (deployResult.newlyDeployed) {
-    log(`ZapCurve deployed at ${deployResult.address}`);
+    log(`FundingMultitokenTemplate deployed at ${deployResult.address}`);
   }
 };
-module.exports.tags = ["ZapCurve"];
+module.exports.tags = ["FundingMultitokenTemplate"];
 module.exports.dependencies = [];

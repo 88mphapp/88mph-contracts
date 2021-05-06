@@ -1,6 +1,6 @@
 {
   "name": "88mph Harvest CRV:RENWBTC Pool",
-  "nftNamePrefix": "88mph Harvest CRV:RENWBTC Pool ",
+  "nftNamePrefix": "88mph Harvest CRV:RENWBTC Pool--",
   "nftSymbolPrefix": "88mph-Harvest-CRV:RENWBTC-",
   "moneyMarket": "HarvestMarket",
   "interestModel": "LinearDecayInterestModel",

@@ -8,12 +8,13 @@ module.exports = async ({
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const deployResult = await deploy("ZapCurve", {
-    from: deployer
+  const deployResult = await deploy("ERC20WrapperTemplate", {
+    from: deployer,
+    contract: "ERC20Wrapper"
   });
   if (deployResult.newlyDeployed) {
-    log(`ZapCurve deployed at ${deployResult.address}`);
+    log(`ERC20WrapperTemplate deployed at ${deployResult.address}`);
   }
 };
-module.exports.tags = ["ZapCurve"];
+module.exports.tags = ["ERC20WrapperTemplate"];
 module.exports.dependencies = [];

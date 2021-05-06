@@ -1,6 +1,6 @@
 {
   "name": "88mph crDAI Pool",
-  "nftNamePrefix": "88mph crDAI Pool ",
+  "nftNamePrefix": "88mph crDAI Pool--",
   "nftSymbolPrefix": "88mph-crDAI-",
   "moneyMarket": "CreamERC20Market",
   "interestModel": "LinearDecayInterestModel",

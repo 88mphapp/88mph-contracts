@@ -2,6 +2,8 @@ const config = require("../deploy-configs/get-network-config");
 const poolConfig = require("../deploy-configs/get-pool-config");
 const compoundConfig = require("../deploy-configs/protocols/compound.json");
 
+const name = `${poolConfig.name}--CompoundERC20Market`;
+
 module.exports = async ({
   web3,
   getNamedAccounts,
@@ -12,8 +14,9 @@ module.exports = async ({
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const deployResult = await deploy("CompoundERC20Market", {
+  const deployResult = await deploy(name, {
     from: deployer,
+    contract: "CompoundERC20Market",
     proxy: {
       owner: config.govTimelock,
       proxyContract: "OptimizedTransparentProxy"
@@ -28,13 +31,14 @@ module.exports = async ({
       poolConfig.moneyMarketParams.cToken,
       compoundConfig.comptroller,
       dumperDeployment.address,
+      config.govTreasury,
       poolConfig.stablecoin,
       {
         from: deployer
       }
     );
-    log(`CompoundERC20Market deployed at ${deployResult.address}`);
+    log(`${name} deployed at ${deployResult.address}`);
   }
 };
-module.exports.tags = ["CompoundERC20Market"];
+module.exports.tags = [name];
 module.exports.dependencies = ["Dumper"];

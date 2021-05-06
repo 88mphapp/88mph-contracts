@@ -1,6 +1,8 @@
 const config = require("../deploy-configs/get-network-config");
 const poolConfig = require("../deploy-configs/get-pool-config");
 
+const name = `${poolConfig.name}--HarvestMarket`;
+
 module.exports = async ({
   web3,
   getNamedAccounts,
@@ -11,8 +13,9 @@ module.exports = async ({
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const deployResult = await deploy("HarvestMarket", {
+  const deployResult = await deploy(name, {
     from: deployer,
+    contract: "HarvestMarket",
     proxy: {
       owner: config.govTimelock,
       proxyContract: "OptimizedTransparentProxy"
@@ -27,13 +30,14 @@ module.exports = async ({
       poolConfig.moneyMarketParams.vault,
       dumperDeployment.address,
       poolConfig.moneyMarketParams.stakingPool,
+      config.govTreasury,
       poolConfig.stablecoin,
       {
         from: deployer
       }
     );
-    log(`HarvestMarket deployed at ${deployResult.address}`);
+    log(`${name} deployed at ${deployResult.address}`);
   }
 };
-module.exports.tags = ["HarvestMarket"];
+module.exports.tags = [name];
 module.exports.dependencies = ["Dumper"];

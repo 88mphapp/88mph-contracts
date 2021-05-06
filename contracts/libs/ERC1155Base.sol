@@ -27,7 +27,13 @@ abstract contract ERC1155Base is ERC1155Upgradeable, AccessControlUpgradeable {
     }
 
     function __ERC1155Base_init_unchained(address admin) internal initializer {
-        _setupRole(DEFAULT_ADMIN_ROLE, admin);
+        // admin is granted metadata role and minter-burner role
+        // metadata role is managed by itself
+        // minter-burner role is managed by itself
+        _setupRole(METADATA_ROLE, admin);
+        _setupRole(MINTER_BURNER_ROLE, admin);
+        _setRoleAdmin(METADATA_ROLE, METADATA_ROLE);
+        _setRoleAdmin(MINTER_BURNER_ROLE, MINTER_BURNER_ROLE);
     }
 
     function mint(

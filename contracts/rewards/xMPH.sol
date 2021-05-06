@@ -51,8 +51,14 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
             "xMPH: invalid _rewardUnlockPeriod"
         );
 
+        // _distributor and msg.sender are given DISTRIBUTOR_ROLE
+        // DISTRIBUTOR_ROLE is managed by itself
+        // msg.sender is given DEFAULT_ADMIN_ROLE which enables
+        // calling setRewardUnlockPeriod()
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(DISTRIBUTOR_ROLE, msg.sender);
         _setupRole(DISTRIBUTOR_ROLE, _distributor);
+        _setRoleAdmin(DISTRIBUTOR_ROLE, DISTRIBUTOR_ROLE);
         mph = _mph;
         rewardUnlockPeriod = _rewardUnlockPeriod;
     }

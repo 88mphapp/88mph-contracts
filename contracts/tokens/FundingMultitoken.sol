@@ -27,10 +27,17 @@ contract FundingMultitoken is ERC1155DividendToken, WrappedERC1155Token {
             _baseSymbol,
             _decimals
         );
-        __FundingMultitoken_init_unchained();
+        __FundingMultitoken_init_unchained(admin);
     }
 
-    function __FundingMultitoken_init_unchained() internal initializer {}
+    function __FundingMultitoken_init_unchained(address admin)
+        internal
+        initializer
+    {
+        // DIVIDEND_ROLE is managed by itself
+        _setupRole(DIVIDEND_ROLE, admin);
+        _setRoleAdmin(DIVIDEND_ROLE, DIVIDEND_ROLE);
+    }
 
     function initialize(
         address admin,

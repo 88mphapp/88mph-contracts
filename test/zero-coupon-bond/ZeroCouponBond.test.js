@@ -4,6 +4,10 @@ const { assert, artifacts } = require("hardhat");
 
 const ZeroCouponBond = artifacts.require("ZeroCouponBond");
 
+const assertRevertMessage = (errMessage, expectedErrMessage) => {
+  return assert(errMessage.startsWith("VM Exception while processing transaction: revert "+ expectedErrMessage), `Expected "${expectedErrMessage} revert reason but got "${errMessage}"`);
+}
+
 contract("ZeroCouponBond", accounts => {
   // Accounts
   const acc0 = accounts[0];
@@ -67,10 +71,10 @@ contract("ZeroCouponBond", accounts => {
                 from: acc1
               }
             );
+
             await zeroCouponBond.mint(Base.num2str(depositAmount), {
               from: acc1
             });
-
             // check mint amount
             const actualZCBMinted = await zeroCouponBond.balanceOf(acc1);
             const expectedZCBMinted = Base.calcInterestAmount(
@@ -87,7 +91,28 @@ contract("ZeroCouponBond", accounts => {
           });
         });
 
-        context("edge cases", () => {});
+        context("edge cases", () => {
+          it("should not mint higher amount than balance", async () => {
+            const depositAmount = 10000 * Base.STABLECOIN_PRECISION;
+
+            // acc1 mint ZCB
+            await baseContracts.stablecoin.approve(
+              zeroCouponBond.address,
+              Base.INF,
+              {
+                from: acc1
+              }
+            );
+            try {
+              await zeroCouponBond.mint(Base.num2str(depositAmount), {
+                from: acc1
+              });
+              assert.fail()
+            } catch (error) {
+              assertRevertMessage(error.message, "ERC20: transfer amount exceeds balance");
+            }
+          });
+        });
       });
 
       describe("earlyRedeem", () => {
@@ -138,13 +163,94 @@ contract("ZeroCouponBond", accounts => {
           });
         });
 
-        context("edge cases", () => {});
+        context("edge cases", () => {
+          it('should return an error if mature', async () => {
+            const depositAmount = 100 * Base.STABLECOIN_PRECISION;
+
+            // acc1 mint ZCB
+            await baseContracts.stablecoin.approve(
+              zeroCouponBond.address,
+              Base.INF,
+              {
+                from: acc1
+              }
+            );
+            await zeroCouponBond.mint(Base.num2str(depositAmount), {
+              from: acc1
+            });
+
+            const bondBalance = await zeroCouponBond.balanceOf(acc1);
+            
+            await moneyMarketModule.timePass(1);
+
+            try {
+              await zeroCouponBond.earlyRedeem(bondBalance, { from: acc1 });
+              assert.fail()
+            } catch (error) {
+              assertRevertMessage(error.message, "DInterest: mature")
+            }
+          })
+        });
       });
 
       describe("withdrawDeposit", () => {
-        context("happy path", () => {});
+        context("happy path", () => {
+          it("should withdraw deposit", async () => {
+            const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
-        context("edge cases", () => {});
+            // acc1 mint ZCB
+            await baseContracts.stablecoin.approve(
+              zeroCouponBond.address,
+              Base.INF,
+              {
+                from: acc1
+              }
+            );
+            await zeroCouponBond.mint(Base.num2str(depositAmount), {
+              from: acc1
+            });
+
+            // Wait 1 year
+            await moneyMarketModule.timePass(1);
+
+            await zeroCouponBond.withdrawDeposit({from: acc1});
+            const dInterestBalanceAfterWithdrawal = await baseContracts.dInterestPool.totalDeposit();
+            Base.assertEpsilonEq(
+              dInterestBalanceAfterWithdrawal,
+              0,
+              "totalDeposit not updated after withdrawDeposit call"
+            );
+          })
+        });
+
+        context("edge cases", () => {
+          it("should return 'ZeroCouponBond: already withdrawn' if balance equals 0", async () => {
+            const depositAmount = 100 * Base.STABLECOIN_PRECISION;
+
+            // acc1 mint ZCB
+            await baseContracts.stablecoin.approve(
+              zeroCouponBond.address,
+              Base.INF,
+              {
+                from: acc1
+              }
+            );
+            await zeroCouponBond.mint(Base.num2str(depositAmount), {
+              from: acc1
+            });
+
+            // Wait 1 year
+            await moneyMarketModule.timePass(1);
+
+            await zeroCouponBond.withdrawDeposit({from: acc1});
+            try {
+              await zeroCouponBond.withdrawDeposit({from: acc1});
+              assert.fail();
+            } catch (error) {
+              assertRevertMessage(error.message, "ZeroCouponBond: already withdrawn");
+            }
+          })
+        });
       });
 
       describe("redeem", () => {
@@ -201,7 +307,141 @@ contract("ZeroCouponBond", accounts => {
           });
         });
 
-        context("edge cases", () => {});
+        context("edge cases", () => {
+          it("use redeem for an earlyRedeem (before maturation): should return an error", async() => {
+            const depositAmount = 100 * Base.STABLECOIN_PRECISION;
+
+            // acc1 mint ZCB
+            await baseContracts.stablecoin.approve(
+              zeroCouponBond.address,
+              Base.INF,
+              {
+                from: acc1
+              }
+            );
+            await zeroCouponBond.mint(Base.num2str(depositAmount), {
+              from: acc1
+            });
+
+            // Wait 2 months
+            await moneyMarketModule.timePass(0.2);
+
+            // acc1 redeems
+            const bondBalance = await zeroCouponBond.balanceOf(acc1);
+            try {
+              await zeroCouponBond.redeem(bondBalance, true, { from: acc1 });
+              assert.fail()
+            } catch (error) {
+              assertRevertMessage(error.message, "ZeroCouponBond: not mature")
+            }
+          });
+          it("redeem with amount higher than balance: should return an error", async() => {
+            const depositAmount = 100 * Base.STABLECOIN_PRECISION;
+
+            // acc1 mint ZCB
+            await baseContracts.stablecoin.approve(
+              zeroCouponBond.address,
+              Base.INF,
+              {
+                from: acc1
+              }
+            );
+            await zeroCouponBond.mint(Base.num2str(depositAmount), {
+              from: acc1
+            });
+
+            // Wait 1 year
+            await moneyMarketModule.timePass(1);
+
+            // acc1 redeems
+            const bondBalance = await zeroCouponBond.balanceOf(acc1);
+            try {
+              await zeroCouponBond.redeem(bondBalance + 2, true, { from: acc1 });
+              assert.fail()
+            } catch (error) {
+              assertRevertMessage(error.message, "ERC20: burn amount exceeds balance")
+            }
+          });
+          it("redeem with withdrawDepositIfNeeded set to false but true needed: should return an error", async() => {
+            const depositAmount = 100 * Base.STABLECOIN_PRECISION;
+
+            // acc1 mint ZCB
+            await baseContracts.stablecoin.approve(
+              zeroCouponBond.address,
+              Base.INF,
+              {
+                from: acc1
+              }
+            );
+            await zeroCouponBond.mint(Base.num2str(depositAmount), {
+              from: acc1
+            });
+
+            // Wait 1 year
+            await moneyMarketModule.timePass(1);
+
+            // acc1 redeems
+            const bondBalance = await zeroCouponBond.balanceOf(acc1);
+            try {
+              await zeroCouponBond.redeem(bondBalance, false, { from: acc1 });
+              assert.fail();
+            } catch (error) {
+              assertRevertMessage(error.message, "ERC20: transfer amount exceeds balance")
+            }
+          });
+          it("redeem with withdrawDepositIfNeeded set to true but not needed: should not return an error", async() => {
+            const depositAmount = 100 * Base.STABLECOIN_PRECISION;
+
+            // acc1 mint ZCB
+            await baseContracts.stablecoin.approve(
+              zeroCouponBond.address,
+              Base.INF,
+              {
+                from: acc1
+              }
+            );
+            await zeroCouponBond.mint(Base.num2str(depositAmount), {
+              from: acc1
+            });
+
+            // Wait 1 year
+            await moneyMarketModule.timePass(1);
+            
+            await zeroCouponBond.withdrawDeposit(); 
+
+            // acc1 redeems
+            const bondBalance = await zeroCouponBond.balanceOf(acc1);
+            const beforeStablecoinBalance = await baseContracts.stablecoin.balanceOf(
+              acc1
+            );
+
+            await zeroCouponBond.redeem(bondBalance, true, { from: acc1 });
+              // check zcb balance
+              const actualZCBBalance = await zeroCouponBond.balanceOf(acc1);
+              const expectedZCBBalance = 0;
+              Base.assertEpsilonEq(
+                actualZCBBalance,
+                expectedZCBBalance,
+                "ZCB balance not 0 after redeem"
+              );
+  
+              // check stablecoin balance
+              const actualRedeemedStablecoinAmount = BigNumber(
+                await baseContracts.stablecoin.balanceOf(acc1)
+              ).minus(beforeStablecoinBalance);
+              const expectedRedeemedStablecoinAmount = Base.calcInterestAmount(
+                depositAmount,
+                INIT_INTEREST_RATE_PER_SECOND,
+                Base.YEAR_IN_SEC,
+                true
+              ).plus(depositAmount);
+              Base.assertEpsilonEq(
+                actualRedeemedStablecoinAmount,
+                expectedRedeemedStablecoinAmount,
+                "stablecoin not equal to deposit amount plus interest amount after redeem"
+              );
+          })
+        });
       });
     });
   }

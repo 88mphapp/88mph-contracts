@@ -305,7 +305,7 @@ abstract contract ERC1155DividendToken is ERC1155Base {
                     DividendTokenData storage dividendTokenData =
                         dividendTokenDataList[j];
                     dividendTokenData.magnifiedDividendCorrections[tokenID][
-                        to
+                        from
                     ] += (dividendTokenData.magnifiedDividendPerShare[tokenID] *
                         amount)
                         .toInt256();

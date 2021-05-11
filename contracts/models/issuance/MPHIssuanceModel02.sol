@@ -250,5 +250,19 @@ contract MPHIssuanceModel02 is OwnableUpgradeable, IMPHIssuanceModel {
         );
     }
 
+    function setGovRewardMultiplier(uint256 newMultiplier) external onlyOwner {
+        require(
+            newMultiplier <= PRECISION,
+            "MPHIssuanceModel: invalid multiplier"
+        );
+        govRewardMultiplier = newMultiplier;
+        emit ESetParamUint(
+            msg.sender,
+            "govRewardMultiplier",
+            address(0),
+            newMultiplier
+        );
+    }
+
     uint256[45] private __gap;
 }

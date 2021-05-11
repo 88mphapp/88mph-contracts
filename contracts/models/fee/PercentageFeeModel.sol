@@ -7,7 +7,7 @@ import {IFeeModel} from "./IFeeModel.sol";
 contract PercentageFeeModel is IFeeModel, Ownable {
     uint256 internal constant PRECISION = 10**18;
     uint256 internal constant MAX_INTEREST_FEE = 50 * 10**16; // 50%
-    uint256 internal constant MAX_EARLY_WITHDRAW_FEE = 5 * 10**16; // 2%
+    uint256 internal constant MAX_EARLY_WITHDRAW_FEE = 5 * 10**16; // 5%
 
     struct FeeOverride {
         bool isOverridden;

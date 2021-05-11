@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import {
-    ERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {
     OwnableUpgradeable
 } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -40,7 +38,7 @@ abstract contract IMoneyMarket is
 
     function incomeIndex() external virtual returns (uint256); // Used for calculating the interest generated (e.g. cDai's price for the Compound market)
 
-    function stablecoin() external view virtual returns (ERC20Upgradeable);
+    function stablecoin() external view virtual returns (ERC20);
 
     function claimRewards() external virtual; // Claims farmed tokens (e.g. COMP, CRV) and sends it to the rewards pool
 

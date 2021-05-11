@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import {
-    SafeERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import {
-    ERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {SafeERC20} from "../../libs/SafeERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {
     AddressUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
@@ -18,14 +14,14 @@ import {
 import {IAaveMining} from "./imports/IAaveMining.sol";
 
 contract AaveMarket is IMoneyMarket {
-    using SafeERC20Upgradeable for ERC20Upgradeable;
+    using SafeERC20 for ERC20;
     using AddressUpgradeable for address;
 
     uint16 internal constant REFERRALCODE = 20; // Aave referral program code
 
     ILendingPoolAddressesProvider public provider; // Used for fetching the current address of LendingPool
-    ERC20Upgradeable public override stablecoin;
-    ERC20Upgradeable public aToken;
+    ERC20 public override stablecoin;
+    ERC20 public aToken;
     IAaveMining public aaveMining;
     address public rewards;
 
@@ -49,9 +45,9 @@ contract AaveMarket is IMoneyMarket {
         );
 
         provider = ILendingPoolAddressesProvider(_provider);
-        stablecoin = ERC20Upgradeable(_stablecoin);
+        stablecoin = ERC20(_stablecoin);
         aaveMining = IAaveMining(_aaveMining);
-        aToken = ERC20Upgradeable(_aToken);
+        aToken = ERC20(_aToken);
         rewards = _rewards;
     }
 
@@ -64,7 +60,7 @@ contract AaveMarket is IMoneyMarket {
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
         // Approve `amount` stablecoin to lendingPool
-        stablecoin.safeIncreaseAllowance(address(lendingPool), amount);
+        stablecoin.safeApprove(address(lendingPool), amount);
 
         // Deposit `amount` stablecoin to lendingPool
         lendingPool.deposit(

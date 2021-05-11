@@ -1,18 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import {
-    IERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {
-    SafeERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "./SafeERC20.sol";
 
 /**
     @notice Add support for meta-txs that use ERC20 tokens to pay for gas
  */
 abstract contract Sponsorable {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     /**
         @param sender The user who made the meta-tx
@@ -129,7 +125,7 @@ abstract contract Sponsorable {
             return;
         }
 
-        IERC20Upgradeable token = IERC20Upgradeable(sponsorFeeToken);
+        IERC20 token = IERC20(sponsorFeeToken);
 
         // transfer tokens from sender
         token.safeTransferFrom(sender, address(this), sponsorFeeAmount);

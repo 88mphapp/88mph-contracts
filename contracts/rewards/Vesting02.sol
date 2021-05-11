@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import {
-    IERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {
-    SafeERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "../libs/SafeERC20.sol";
 import {
     ERC721URIStorageUpgradeable
 } from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
@@ -21,7 +17,7 @@ import {DInterest} from "../DInterest.sol";
 import {DecMath} from "../libs/DecMath.sol";
 
 contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
     using DecMath for uint256;
 
     uint256 internal constant PRECISION = 10**18;
@@ -38,7 +34,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
     mapping(uint256 => uint256) public depositIDToVestID;
 
     MPHMinter public mphMinter;
-    IERC20Upgradeable public token;
+    IERC20 public token;
     string internal _contractURI;
     string internal __baseURI;
 
@@ -64,7 +60,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
         __Ownable_init();
         __ERC721_init(tokenName, tokenSymbol);
 
-        token = IERC20Upgradeable(_token);
+        token = IERC20(_token);
     }
 
     function setMPHMinter(address newValue) external onlyOwner {

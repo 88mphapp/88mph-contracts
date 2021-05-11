@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import {
-    ERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {
-    SafeERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeERC20} from "./libs/SafeERC20.sol";
 import {
     ReentrancyGuardUpgradeable
 } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -44,7 +40,7 @@ contract DInterest is
     MulticallUpgradeable,
     Sponsorable
 {
-    using SafeERC20Upgradeable for ERC20Upgradeable;
+    using SafeERC20 for ERC20;
     using AddressUpgradeable for address;
     using DecMath for uint256;
 
@@ -101,7 +97,7 @@ contract DInterest is
 
     // External smart contracts
     IMoneyMarket public moneyMarket;
-    ERC20Upgradeable public stablecoin;
+    ERC20 public stablecoin;
     IFeeModel public feeModel;
     IInterestModel public interestModel;
     IInterestOracle public interestOracle;
@@ -207,7 +203,7 @@ contract DInterest is
         );
 
         moneyMarket = IMoneyMarket(_moneyMarket);
-        stablecoin = ERC20Upgradeable(_stablecoin);
+        stablecoin = ERC20(_stablecoin);
         feeModel = IFeeModel(_feeModel);
         interestModel = IInterestModel(_interestModel);
         interestOracle = IInterestOracle(_interestOracle);
@@ -874,10 +870,7 @@ contract DInterest is
             stablecoin.safeTransferFrom(sender, address(this), depositAmount);
 
             // Lend `depositAmount` stablecoin to money market
-            stablecoin.safeIncreaseAllowance(
-                address(moneyMarket),
-                depositAmount
-            );
+            stablecoin.safeApprove(address(moneyMarket), depositAmount);
             moneyMarket.deposit(depositAmount);
         }
     }
@@ -987,7 +980,7 @@ contract DInterest is
         stablecoin.safeTransferFrom(sender, address(this), depositAmount);
 
         // Lend `depositAmount` stablecoin to money market
-        stablecoin.safeIncreaseAllowance(address(moneyMarket), depositAmount);
+        stablecoin.safeApprove(address(moneyMarket), depositAmount);
         moneyMarket.deposit(depositAmount);
     }
 
@@ -1246,7 +1239,7 @@ contract DInterest is
 
         // Distribute `fundingInterestAmount` stablecoins to funders
         if (fundingInterestAmount > 0) {
-            stablecoin.safeIncreaseAllowance(
+            stablecoin.safeApprove(
                 address(fundingMultitoken),
                 fundingInterestAmount
             );
@@ -1373,7 +1366,7 @@ contract DInterest is
         stablecoin.safeTransferFrom(sender, address(this), fundAmount);
 
         // Deposit `fundAmount` stablecoins into moneyMarket
-        stablecoin.safeIncreaseAllowance(address(moneyMarket), fundAmount);
+        stablecoin.safeApprove(address(moneyMarket), fundAmount);
         moneyMarket.deposit(fundAmount);
     }
 
@@ -1413,7 +1406,7 @@ contract DInterest is
         if (interestAmount > 0) {
             interestAmount = moneyMarket.withdraw(interestAmount);
             if (interestAmount > 0) {
-                stablecoin.safeIncreaseAllowance(
+                stablecoin.safeApprove(
                     address(fundingMultitoken),
                     interestAmount
                 );

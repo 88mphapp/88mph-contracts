@@ -5,9 +5,6 @@ import {
     ClonesUpgradeable
 } from "@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol";
 import {
-    IERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {
     StringsUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import {ERC1155Upgradeable} from "./ERC1155Upgradeable.sol";

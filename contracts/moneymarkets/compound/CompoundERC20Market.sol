@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import {
-    SafeERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import {
-    ERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {SafeERC20} from "../../libs/SafeERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {
     AddressUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
@@ -17,7 +13,7 @@ import {IComptroller} from "./imports/IComptroller.sol";
 
 contract CompoundERC20Market is IMoneyMarket {
     using DecMath for uint256;
-    using SafeERC20Upgradeable for ERC20Upgradeable;
+    using SafeERC20 for ERC20;
     using AddressUpgradeable for address;
 
     uint256 internal constant ERRCODE_OK = 0;
@@ -25,7 +21,7 @@ contract CompoundERC20Market is IMoneyMarket {
     ICERC20 public cToken;
     IComptroller public comptroller;
     address public rewards;
-    ERC20Upgradeable public override stablecoin;
+    ERC20 public override stablecoin;
 
     function initialize(
         address _cToken,
@@ -48,7 +44,7 @@ contract CompoundERC20Market is IMoneyMarket {
         cToken = ICERC20(_cToken);
         comptroller = IComptroller(_comptroller);
         rewards = _rewards;
-        stablecoin = ERC20Upgradeable(_stablecoin);
+        stablecoin = ERC20(_stablecoin);
     }
 
     function deposit(uint256 amount) external override onlyOwner {
@@ -58,7 +54,7 @@ contract CompoundERC20Market is IMoneyMarket {
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
         // Deposit `amount` stablecoin into cToken
-        stablecoin.safeIncreaseAllowance(address(cToken), amount);
+        stablecoin.safeApprove(address(cToken), amount);
         require(
             cToken.mint(amount) == ERRCODE_OK,
             "CompoundERC20Market: Failed to mint cTokens"
@@ -90,7 +86,7 @@ contract CompoundERC20Market is IMoneyMarket {
 
     function claimRewards() external override {
         comptroller.claimComp(address(this));
-        ERC20Upgradeable comp = ERC20Upgradeable(comptroller.getCompAddress());
+        ERC20 comp = ERC20(comptroller.getCompAddress());
         comp.safeTransfer(rewards, comp.balanceOf(address(this)));
     }
 

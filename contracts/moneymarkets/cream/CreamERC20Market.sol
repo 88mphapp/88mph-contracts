@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import {
-    SafeERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import {
-    ERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {SafeERC20} from "../../libs/SafeERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {
     AddressUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
@@ -16,13 +12,13 @@ import {ICrERC20} from "./imports/ICrERC20.sol";
 
 contract CreamERC20Market is IMoneyMarket {
     using DecMath for uint256;
-    using SafeERC20Upgradeable for ERC20Upgradeable;
+    using SafeERC20 for ERC20;
     using AddressUpgradeable for address;
 
     uint256 internal constant ERRCODE_OK = 0;
 
     ICrERC20 public cToken;
-    ERC20Upgradeable public override stablecoin;
+    ERC20 public override stablecoin;
 
     function initialize(
         address _cToken,
@@ -37,7 +33,7 @@ contract CreamERC20Market is IMoneyMarket {
         );
 
         cToken = ICrERC20(_cToken);
-        stablecoin = ERC20Upgradeable(_stablecoin);
+        stablecoin = ERC20(_stablecoin);
     }
 
     function deposit(uint256 amount) external override onlyOwner {
@@ -47,7 +43,7 @@ contract CreamERC20Market is IMoneyMarket {
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
         // Deposit `amount` stablecoin into cToken
-        stablecoin.safeIncreaseAllowance(address(cToken), amount);
+        stablecoin.safeApprove(address(cToken), amount);
         require(
             cToken.mint(amount) == ERRCODE_OK,
             "CreamERC20Market: Failed to mint cTokens"

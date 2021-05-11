@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import {
-    ERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {
-    SafeERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeERC20} from "../libs/SafeERC20.sol";
 import {
     ERC1155Receiver
 } from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
@@ -20,7 +16,7 @@ import {FundingMultitoken} from "../tokens/FundingMultitoken.sol";
 import {Vesting02} from "../rewards/Vesting02.sol";
 
 contract ZapCurve is ERC1155Receiver, IERC721Receiver {
-    using SafeERC20Upgradeable for ERC20Upgradeable;
+    using SafeERC20 for ERC20;
 
     modifier active {
         isActive = true;
@@ -43,7 +39,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
         uint256 maturationTimestamp
     ) external active {
         DInterest poolContract = DInterest(pool);
-        ERC20Upgradeable stablecoin = poolContract.stablecoin();
+        ERC20 stablecoin = poolContract.stablecoin();
         NFT depositNFT = poolContract.depositNFT();
         Vesting02 vestingContract = Vesting02(vesting);
 
@@ -57,7 +53,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
             );
 
         // create deposit
-        stablecoin.safeIncreaseAllowance(pool, outputTokenAmount);
+        stablecoin.safeApprove(pool, outputTokenAmount);
         (uint256 depositID, ) =
             poolContract.deposit(outputTokenAmount, maturationTimestamp);
 
@@ -81,7 +77,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
         uint256 depositID
     ) external active {
         DInterest poolContract = DInterest(pool);
-        ERC20Upgradeable stablecoin = poolContract.stablecoin();
+        ERC20 stablecoin = poolContract.stablecoin();
         FundingMultitoken fundingMultitoken = poolContract.fundingMultitoken();
 
         // zap into curve
@@ -94,7 +90,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
             );
 
         // create funding
-        stablecoin.safeIncreaseAllowance(pool, outputTokenAmount);
+        stablecoin.safeApprove(pool, outputTokenAmount);
         uint256 fundingID = poolContract.fund(depositID, outputTokenAmount);
 
         // transfer funding multitoken to msg.sender
@@ -150,7 +146,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
         uint256 inputTokenAmount,
         uint256 minOutputTokenAmount
     ) internal returns (uint256 outputTokenAmount) {
-        ERC20Upgradeable inputTokenContract = ERC20Upgradeable(inputToken);
+        ERC20 inputTokenContract = ERC20(inputToken);
 
         // transfer inputToken from msg.sender
         inputTokenContract.safeTransferFrom(
@@ -160,10 +156,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
         );
 
         // zap inputToken into curve
-        inputTokenContract.safeIncreaseAllowance(
-            address(zapper),
-            inputTokenAmount
-        );
+        inputTokenContract.safeApprove(address(zapper), inputTokenAmount);
         outputTokenAmount = zapper.ZapIn(
             address(this),
             inputToken,

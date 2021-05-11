@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import {
-    SafeERC20
-} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeERC20} from "../../libs/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {OneSplitAudit} from "./imports/OneSplitAudit.sol";
 import {xMPH} from "../xMPH.sol";
@@ -46,7 +44,7 @@ contract OneSplitDumper is AdminControlled {
         // dump token for rewardToken
         IERC20 token = IERC20(tokenAddress);
         uint256 tokenBalance = token.balanceOf(address(this));
-        token.safeIncreaseAllowance(address(oneSplit), tokenBalance);
+        token.safeApprove(address(oneSplit), tokenBalance);
 
         uint256 rewardTokenBalanceBefore = rewardToken.balanceOf(address(this));
         oneSplit.swap(
@@ -66,7 +64,7 @@ contract OneSplitDumper is AdminControlled {
 
     function notify() external onlyAdmin {
         uint256 balance = rewardToken.balanceOf(address(this));
-        rewardToken.safeIncreaseAllowance(address(xMPHToken), balance);
+        rewardToken.safeApprove(address(xMPHToken), balance);
         xMPHToken.distributeReward(balance);
     }
 }

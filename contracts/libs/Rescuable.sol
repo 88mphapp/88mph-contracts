@@ -1,18 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import {
-    SafeERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import {
-    ERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {SafeERC20} from "./SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
     @notice Inherit this to allow for rescuing ERC20 tokens sent to the contract in error.
  */
 abstract contract Rescuable {
-    using SafeERC20Upgradeable for ERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     /**
         @notice Rescues ERC20 tokens sent to the contract in error.
@@ -25,7 +21,7 @@ abstract contract Rescuable {
         _authorizeRescue(token, target);
 
         // transfer token to target
-        ERC20Upgradeable tokenContract = ERC20Upgradeable(token);
+        IERC20 tokenContract = IERC20(token);
         tokenContract.safeTransfer(
             target,
             tokenContract.balanceOf(address(this))

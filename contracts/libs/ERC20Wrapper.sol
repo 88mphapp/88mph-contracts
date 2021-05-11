@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import {
-    IERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
     Initializable
 } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -12,7 +10,7 @@ import {WrappedERC1155Token} from "./WrappedERC1155Token.sol";
 /**
     @notice An ERC-20 wrapper for a particular tokenID of an ERC-1155 token
  */
-contract ERC20Wrapper is Initializable, IERC20Upgradeable {
+contract ERC20Wrapper is Initializable, IERC20 {
     mapping(address => mapping(address => uint256)) private _allowances;
 
     WrappedERC1155Token public parentMultitoken;
@@ -36,14 +34,14 @@ contract ERC20Wrapper is Initializable, IERC20Upgradeable {
     }
 
     /**
-     * @dev See {IERC20Upgradeable-totalSupply}.
+     * @dev See {IERC20-totalSupply}.
      */
     function totalSupply() public view virtual override returns (uint256) {
         return parentMultitoken.totalSupply(tokenID);
     }
 
     /**
-     * @dev See {IERC20Upgradeable-balanceOf}.
+     * @dev See {IERC20-balanceOf}.
      */
     function balanceOf(address account)
         public
@@ -56,7 +54,7 @@ contract ERC20Wrapper is Initializable, IERC20Upgradeable {
     }
 
     /**
-     * @dev See {IERC20Upgradeable-transfer}.
+     * @dev See {IERC20-transfer}.
      *
      * Requirements:
      *
@@ -74,7 +72,7 @@ contract ERC20Wrapper is Initializable, IERC20Upgradeable {
     }
 
     /**
-     * @dev See {IERC20Upgradeable-allowance}.
+     * @dev See {IERC20-allowance}.
      */
     function allowance(address owner, address spender)
         public
@@ -87,7 +85,7 @@ contract ERC20Wrapper is Initializable, IERC20Upgradeable {
     }
 
     /**
-     * @dev See {IERC20Upgradeable-approve}.
+     * @dev See {IERC20-approve}.
      *
      * Requirements:
      *
@@ -104,7 +102,7 @@ contract ERC20Wrapper is Initializable, IERC20Upgradeable {
     }
 
     /**
-     * @dev See {IERC20Upgradeable-transferFrom}.
+     * @dev See {IERC20-transferFrom}.
      *
      * Emits an {Approval} event indicating the updated allowance. This is not
      * required by the EIP. See the note at the beginning of {ERC20}.
@@ -137,7 +135,7 @@ contract ERC20Wrapper is Initializable, IERC20Upgradeable {
      * @dev Atomically increases the allowance granted to `spender` by the caller.
      *
      * This is an alternative to {approve} that can be used as a mitigation for
-     * problems described in {IERC20Upgradeable-approve}.
+     * problems described in {IERC20-approve}.
      *
      * Emits an {Approval} event indicating the updated allowance.
      *
@@ -162,7 +160,7 @@ contract ERC20Wrapper is Initializable, IERC20Upgradeable {
      * @dev Atomically decreases the allowance granted to `spender` by the caller.
      *
      * This is an alternative to {approve} that can be used as a mitigation for
-     * problems described in {IERC20Upgradeable-approve}.
+     * problems described in {IERC20-approve}.
      *
      * Emits an {Approval} event indicating the updated allowance.
      *

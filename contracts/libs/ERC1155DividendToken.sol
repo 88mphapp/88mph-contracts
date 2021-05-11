@@ -4,12 +4,8 @@ pragma solidity 0.8.3;
 import {
     SafeCastUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
-import {
-    IERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {
-    SafeERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "./SafeERC20.sol";
 import {ERC1155Base} from "./ERC1155Base.sol";
 
 /**
@@ -17,7 +13,7 @@ import {ERC1155Base} from "./ERC1155Base.sol";
             of an token ID. Also supports multiple dividend tokens.
  */
 abstract contract ERC1155DividendToken is ERC1155Base {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
     using SafeCastUpgradeable for uint256;
     using SafeCastUpgradeable for int256;
 
@@ -214,7 +210,7 @@ abstract contract ERC1155DividendToken is ERC1155Base {
             (amount * magnitude) /
             tokenTotalSupply;
 
-        IERC20Upgradeable(dividendToken).safeTransferFrom(
+        IERC20(dividendToken).safeTransferFrom(
             msg.sender,
             address(this),
             amount
@@ -247,10 +243,7 @@ abstract contract ERC1155DividendToken is ERC1155Base {
                 dividendToken,
                 _withdrawableDividend
             );
-            IERC20Upgradeable(dividendToken).safeTransfer(
-                user,
-                _withdrawableDividend
-            );
+            IERC20(dividendToken).safeTransfer(user, _withdrawableDividend);
         }
     }
 

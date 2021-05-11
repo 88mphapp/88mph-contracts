@@ -62,11 +62,7 @@ module.exports = {
     runOnCompile: true
   },
   docgen: {
-    except: [
-      "^contracts/libs/",
-      "^contracts/mocks/",
-      "^contracts/rewards/Rewards.sol"
-    ],
+    except: ["^contracts/mocks/", "^contracts/*.?/imports/"],
     clear: true,
     runOnCompile: false
   },

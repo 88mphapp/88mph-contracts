@@ -78,7 +78,7 @@ contract Factory {
         bytes32 salt,
         address _pool,
         address _vesting,
-        uint256 _maturationTimetstamp,
+        uint64 _maturationTimetstamp,
         uint256 _initialDepositAmount,
         string calldata _tokenName,
         string calldata _tokenSymbol

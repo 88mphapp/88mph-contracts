@@ -111,7 +111,7 @@ contract AaveMarket is IMoneyMarket {
         Param setters
      */
     function setRewards(address newValue) external override onlyOwner {
-        require(newValue.isContract(), "HarvestMarket: not contract");
+        require(newValue.isContract(), "AaveMarket: not contract");
         rewards = newValue;
         emit ESetParamAddress(msg.sender, "rewards", newValue);
     }

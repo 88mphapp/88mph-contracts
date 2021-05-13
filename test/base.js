@@ -262,6 +262,59 @@ const aaveMoneyMarketModule = () => {
   };
 };
 
+const bProtocolMoneyMarketModule = () => {
+  let bComptroller;
+  let cToken;
+  let comp;
+  let registry;
+  const INIT_INTEREST_RATE = 0.1; // 10% APY
+
+  const deployMoneyMarket = async (accounts, factory, stablecoin, rewards) => {
+    // Contract artifacts
+    const BProtocolMarket = artifacts.require("BProtocolMarket");
+    const CERC20Mock = artifacts.require("CERC20Mock");
+    const RegistryMock = artifacts.require("RegistryMock");
+    const BComptrollerMock = artifacts.require("BComptrollerMock");
+
+    // Deploy B.Protocol mock contracts
+    cToken = await CERC20Mock.new(stablecoin.address);
+    comp = await ERC20Mock.new();
+    registry = await RegistryMock.new(comp.address);
+    bComptroller = await BComptrollerMock.new(registry.address);
+
+    // Mint stablecoins
+    const mintAmount = 1000 * STABLECOIN_PRECISION;
+    await stablecoin.mint(cToken.address, num2str(mintAmount));
+
+    // Initialize the money market
+    const marketTemplate = await BProtocolMarket.new();
+    const marketReceipt = await factory.createBProtocolMarket(
+      marketTemplate.address,
+      DEFAULT_SALT,
+      cToken.address,
+      bComptroller.address,
+      rewards,
+      accounts[0],
+      stablecoin.address
+    );
+    return await factoryReceiptToContract(marketReceipt, BProtocolMarket);
+  };
+
+  const timePass = async timeInYears => {
+    await timeTravel(timeInYears * YEAR_IN_SEC);
+    const currentExRate = BigNumber(await cToken.exchangeRateStored());
+    const rateAfterTimePasses = BigNumber(currentExRate).times(
+      1 + timeInYears * INIT_INTEREST_RATE
+    );
+    await cToken._setExchangeRateStored(num2str(rateAfterTimePasses));
+  };
+
+  return {
+    deployMoneyMarket,
+    timePass
+  };
+};
+
 const compoundERC20MoneyMarketModule = () => {
   let cToken;
   let comptroller;
@@ -464,6 +517,10 @@ const moneyMarketModuleList = (module.exports.moneyMarketModuleList = [
   {
     name: "Aave",
     moduleGenerator: aaveMoneyMarketModule
+  },
+  {
+    name: "B.Protocol",
+    moduleGenerator: bProtocolMoneyMarketModule
   },
   {
     name: "CompoundERC20",

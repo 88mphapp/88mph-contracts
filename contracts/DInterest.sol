@@ -45,19 +45,19 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         uint256 virtualTokenTotalSupply; // depositAmount + interestAmount, behaves like a zero coupon bond
         uint256 interestRate; // interestAmount = interestRate * depositAmount
         uint256 feeRate; // feeAmount = feeRate * interestAmount
-        uint256 maturationTimestamp; // Unix timestamp after which the deposit may be withdrawn, in seconds
-        uint256 depositTimestamp; // Unix timestamp at time of deposit, in seconds
         uint256 averageRecordedIncomeIndex; // Average income index at time of deposit, used for computing deposit surplus
-        uint256 fundingID; // The ID of the associated Funding struct. 0 if not funded.
+        uint64 maturationTimestamp; // Unix timestamp after which the deposit may be withdrawn, in seconds
+        uint64 depositTimestamp; // Unix timestamp at time of deposit, in seconds
+        uint64 fundingID; // The ID of the associated Funding struct. 0 if not funded.
     }
     Deposit[] internal deposits;
 
     // Funding data
     // Each funding has an ID used in the fundingMultitoken, which is equal to its index in `fundingList` plus 1
     struct Funding {
-        uint256 depositID; // The ID of the associated Deposit struct.
         uint256 recordedMoneyMarketIncomeIndex; // the income index at the last update (creation or withdrawal)
         uint256 principalPerToken; // The amount of stablecoins that's earning interest for you per funding token you own. Scaled to 18 decimals regardless of stablecoin decimals.
+        uint64 depositID; // The ID of the associated Deposit struct.
     }
     Funding[] internal fundingList;
     // the sum of (recordedFundedPrincipalAmount / recordedMoneyMarketIncomeIndex) of all fundings
@@ -92,33 +92,33 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     // Events
     event EDeposit(
         address indexed sender,
-        uint256 indexed depositID,
+        uint64 indexed depositID,
         uint256 depositAmount,
         uint256 interestAmount,
         uint256 feeAmount,
-        uint256 maturationTimestamp
+        uint64 maturationTimestamp
     );
     event ETopupDeposit(
         address indexed sender,
-        uint256 indexed depositID,
+        uint64 indexed depositID,
         uint256 depositAmount,
         uint256 interestAmount,
         uint256 feeAmount
     );
     event ERolloverDeposit(
         address indexed sender,
-        uint256 indexed depositID,
-        uint256 indexed newDepositID
+        uint64 indexed depositID,
+        uint64 indexed newDepositID
     );
     event EWithdraw(
         address indexed sender,
-        uint256 indexed depositID,
+        uint64 indexed depositID,
         uint256 tokenAmount,
         uint256 feeAmount
     );
     event EFund(
         address indexed sender,
-        uint256 indexed fundingID,
+        uint64 indexed fundingID,
         uint256 fundAmount,
         uint256 tokenAmount
     );
@@ -261,10 +261,10 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @return depositID The ID of the created deposit
         @return interestAmount The amount of fixed-rate interest
      */
-    function deposit(uint256 depositAmount, uint256 maturationTimestamp)
+    function deposit(uint256 depositAmount, uint64 maturationTimestamp)
         external
         nonReentrant
-        returns (uint256 depositID, uint256 interestAmount)
+        returns (uint64 depositID, uint256 interestAmount)
     {
         return _deposit(depositAmount, maturationTimestamp, false);
     }
@@ -276,7 +276,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @param depositAmount The amount to top up, in stablecoin
         @return interestAmount The amount of interest that will be earned by the topped up funds at maturation
      */
-    function topupDeposit(uint256 depositID, uint256 depositAmount)
+    function topupDeposit(uint64 depositID, uint256 depositAmount)
         external
         nonReentrant
         returns (uint256 interestAmount)
@@ -291,10 +291,10 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @param maturationTimestamp The Unix timestamp of the new deposit, in seconds
         @return newDepositID The ID of the new deposit
      */
-    function rolloverDeposit(uint256 depositID, uint256 maturationTimestamp)
+    function rolloverDeposit(uint64 depositID, uint64 maturationTimestamp)
         external
         nonReentrant
-        returns (uint256 newDepositID, uint256 interestAmount)
+        returns (uint64 newDepositID, uint256 interestAmount)
     {
         return _rolloverDeposit(depositID, maturationTimestamp);
     }
@@ -309,7 +309,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @return withdrawnStablecoinAmount the amount of stablecoins withdrawn
      */
     function withdraw(
-        uint256 depositID,
+        uint64 depositID,
         uint256 virtualTokenAmount,
         bool early
     ) external nonReentrant returns (uint256 withdrawnStablecoinAmount) {
@@ -328,10 +328,10 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                           the surplus value instead.
         @param fundingID The ID of the fundingMultitoken the sender received
      */
-    function fund(uint256 depositID, uint256 fundAmount)
+    function fund(uint64 depositID, uint256 fundAmount)
         external
         nonReentrant
-        returns (uint256 fundingID)
+        returns (uint64 fundingID)
     {
         return _fund(depositID, fundAmount);
     }
@@ -342,7 +342,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @param fundingID The ID of the floating-rate bond
         @return interestAmount The amount of interest distributed, in stablecoins
      */
-    function payInterestToFunders(uint256 fundingID)
+    function payInterestToFunders(uint64 fundingID)
         external
         returns (uint256 interestAmount)
     {
@@ -354,12 +354,12 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
      */
     function multiDeposit(
         uint256[] calldata depositAmountList,
-        uint256[] calldata maturationTimestampList
+        uint64[] calldata maturationTimestampList
     )
         external
         nonReentrant
         returns (
-            uint256[] memory depositIDList,
+            uint64[] memory depositIDList,
             uint256[] memory interestAmountList
         )
     {
@@ -367,7 +367,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
             depositAmountList.length == maturationTimestampList.length,
             "DInterest: List lengths unequal"
         );
-        depositIDList = new uint256[](depositAmountList.length);
+        depositIDList = new uint64[](depositAmountList.length);
         interestAmountList = new uint256[](depositAmountList.length);
         for (uint256 i = 0; i < depositAmountList.length; i++) {
             (depositIDList[i], interestAmountList[i]) = _deposit(
@@ -382,7 +382,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @notice Tops up multiple deposits. See {topupDeposit} for details.
      */
     function multiTopupDeposit(
-        uint256[] calldata depositIDList,
+        uint64[] calldata depositIDList,
         uint256[] calldata depositAmountList
     ) external nonReentrant returns (uint256[] memory interestAmountList) {
         require(
@@ -402,13 +402,13 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @notice Rolls over multiple deposits. See {rollover} for details.
      */
     function multiRolloverDeposit(
-        uint256[] calldata depositIDList,
-        uint256[] calldata maturationTimestampList
+        uint64[] calldata depositIDList,
+        uint64[] calldata maturationTimestampList
     )
         external
         nonReentrant
         returns (
-            uint256[] memory newDepositIDList,
+            uint64[] memory newDepositIDList,
             uint256[] memory interestAmountList
         )
     {
@@ -416,7 +416,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
             depositIDList.length == maturationTimestampList.length,
             "DInterest: List lengths unequal"
         );
-        newDepositIDList = new uint256[](depositIDList.length);
+        newDepositIDList = new uint64[](depositIDList.length);
         interestAmountList = new uint256[](depositIDList.length);
         for (uint256 i = 0; i < depositIDList.length; i++) {
             (newDepositIDList[i], interestAmountList[i]) = _rolloverDeposit(
@@ -430,7 +430,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @notice Withdraws multiple deposits. See {withdraw} for details.
      */
     function multiWithdraw(
-        uint256[] calldata depositIDList,
+        uint64[] calldata depositIDList,
         uint256[] calldata virtualTokenAmountList,
         bool[] calldata earlyList
     )
@@ -458,7 +458,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @notice Mints floating-rate bonds for multiple deposits. See {fund} for details.
      */
     function multiFund(
-        uint256[] calldata depositIDList,
+        uint64[] calldata depositIDList,
         uint256[] calldata fundAmountList
     ) external nonReentrant returns (uint256[] memory fundingIDList) {
         require(
@@ -475,7 +475,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @notice Triggers interest payout for multiple floating-rate bonds.
                 See {payInterestToFunders} for details.
      */
-    function multiPayInterestToFunders(uint256[] calldata fundingIDList)
+    function multiPayInterestToFunders(uint64[] calldata fundingIDList)
         external
         nonReentrant
         returns (uint256[] memory interestAmountList)
@@ -500,7 +500,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
      */
     function calculateInterestAmount(
         uint256 depositAmount,
-        uint256 depositPeriodInSeconds
+        uint64 depositPeriodInSeconds
     ) public virtual returns (uint256 interestAmount) {
         (, uint256 moneyMarketInterestRatePerSecond) =
             interestOracle.updateAndQuery();
@@ -579,7 +579,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @return isNegative True if the surplus is negative, false otherwise
         @return surplusAmount The absolute value of the surplus, in stablecoins
      */
-    function rawSurplusOfDeposit(uint256 depositID)
+    function rawSurplusOfDeposit(uint64 depositID)
         public
         virtual
         returns (bool isNegative, uint256 surplusAmount)
@@ -616,14 +616,14 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @return isNegative True if the surplus is negative, false otherwise
         @return surplusAmount The absolute value of the surplus, in stablecoins
      */
-    function surplusOfDeposit(uint256 depositID)
+    function surplusOfDeposit(uint64 depositID)
         public
         virtual
         returns (bool isNegative, uint256 surplusAmount)
     {
         (isNegative, surplusAmount) = rawSurplusOfDeposit(depositID);
 
-        uint256 fundingID = _getDeposit(depositID).fundingID;
+        uint64 fundingID = _getDeposit(depositID).fundingID;
         if (fundingID != 0) {
             uint256 totalPrincipal =
                 _depositVirtualTokenToPrincipal(
@@ -656,7 +656,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @return feeAmount The amount of fees that will be given to the beneficiary
      */
     function withdrawableAmountOfDeposit(
-        uint256 depositID,
+        uint64 depositID,
         uint256 virtualTokenAmount,
         uint256 timestamp
     ) external view returns (uint256 withdrawableAmount, uint256 feeAmount) {
@@ -686,7 +686,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @param fundingID The ID of the floating-rate bond
         @return The interest accrued, in stablecoins
      */
-    function accruedInterestOfFunding(uint256 fundingID)
+    function accruedInterestOfFunding(uint64 fundingID)
         external
         returns (uint256)
     {
@@ -715,7 +715,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @param depositID The ID of the deposit
         @return The deposit struct
      */
-    function getDeposit(uint256 depositID)
+    function getDeposit(uint64 depositID)
         external
         view
         returns (Deposit memory)
@@ -729,7 +729,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @param fundingID The ID of the floating-rate bond
         @return The Funding struct
      */
-    function getFunding(uint256 fundingID)
+    function getFunding(uint64 fundingID)
         external
         view
         returns (Funding memory)
@@ -745,7 +745,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @param fundingID The ID of the floating-rate bond
         @return True if the funding is active, false otherwise
      */
-    function fundingIsActive(uint256 fundingID) external view returns (bool) {
+    function fundingIsActive(uint64 fundingID) external view returns (bool) {
         return _fundingIsActive(fundingID);
     }
 
@@ -768,9 +768,9 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
      */
     function _deposit(
         uint256 depositAmount,
-        uint256 maturationTimestamp,
+        uint64 maturationTimestamp,
         bool rollover
-    ) internal virtual returns (uint256 depositID, uint256 interestAmount) {
+    ) internal virtual returns (uint64 depositID, uint256 interestAmount) {
         (depositID, interestAmount) = _depositRecordData(
             depositAmount,
             maturationTimestamp
@@ -780,14 +780,14 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
 
     function _depositRecordData(
         uint256 depositAmount,
-        uint256 maturationTimestamp
-    ) internal virtual returns (uint256 depositID, uint256 interestAmount) {
+        uint64 maturationTimestamp
+    ) internal virtual returns (uint64 depositID, uint256 interestAmount) {
         // Ensure input is valid
         require(
             depositAmount >= MinDepositAmount,
             "DInterest: Deposit amount too small"
         );
-        uint256 depositPeriod = maturationTimestamp - block.timestamp;
+        uint64 depositPeriod = maturationTimestamp - uint64(block.timestamp);
         require(
             depositPeriod <= MaxDepositPeriod,
             "DInterest: Deposit period too long"
@@ -798,7 +798,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         require(interestAmount > 0, "DInterest: interestAmount == 0");
 
         // Calculate fee
-        depositID = deposits.length + 1;
+        depositID = uint64(deposits.length) + 1;
         uint256 feeAmount =
             feeModel.getInterestFeeAmount(
                 address(this),
@@ -814,7 +814,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                 interestRate: interestAmount.decdiv(depositAmount),
                 feeRate: feeAmount.decdiv(interestAmount),
                 maturationTimestamp: maturationTimestamp,
-                depositTimestamp: block.timestamp,
+                depositTimestamp: uint64(block.timestamp),
                 fundingID: 0,
                 averageRecordedIncomeIndex: moneyMarket.incomeIndex()
             })
@@ -868,7 +868,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     /**
         @dev See {topupDeposit}
      */
-    function _topupDeposit(uint256 depositID, uint256 depositAmount)
+    function _topupDeposit(uint64 depositID, uint256 depositAmount)
         internal
         virtual
         returns (uint256 interestAmount)
@@ -877,7 +877,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         _topupDepositTransferFunds(depositAmount);
     }
 
-    function _topupDepositRecordData(uint256 depositID, uint256 depositAmount)
+    function _topupDepositRecordData(uint64 depositID, uint256 depositAmount)
         internal
         virtual
         returns (uint256 interestAmount)
@@ -889,8 +889,8 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         );
 
         // underflow check prevents topups after maturation
-        uint256 depositPeriod =
-            depositEntry.maturationTimestamp - block.timestamp;
+        uint64 depositPeriod =
+            depositEntry.maturationTimestamp - uint64(block.timestamp);
 
         // Calculate interest
         interestAmount = calculateInterestAmount(depositAmount, depositPeriod);
@@ -973,10 +973,10 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     /**
         @dev See {rolloverDeposit}
      */
-    function _rolloverDeposit(uint256 depositID, uint256 maturationTimestamp)
+    function _rolloverDeposit(uint64 depositID, uint64 maturationTimestamp)
         internal
         virtual
-        returns (uint256 newDepositID, uint256 interestAmount)
+        returns (uint64 newDepositID, uint256 interestAmount)
     {
         // withdraw from existing deposit
         uint256 withdrawnStablecoinAmount =
@@ -997,7 +997,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @param rollover True if being called from {_rolloverDeposit}, false otherwise
      */
     function _withdraw(
-        uint256 depositID,
+        uint64 depositID,
         uint256 virtualTokenAmount,
         bool early,
         bool rollover
@@ -1020,7 +1020,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     }
 
     function _withdrawRecordData(
-        uint256 depositID,
+        uint64 depositID,
         uint256 virtualTokenAmount,
         bool early
     )
@@ -1139,7 +1139,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     }
 
     function _withdrawTransferFunds(
-        uint256 fundingID,
+        uint64 fundingID,
         uint256 withdrawAmount,
         uint256 feeAmount,
         uint256 fundingInterestAmount,
@@ -1238,20 +1238,20 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     /**
         @dev See {fund}
      */
-    function _fund(uint256 depositID, uint256 fundAmount)
+    function _fund(uint64 depositID, uint256 fundAmount)
         internal
         virtual
-        returns (uint256 fundingID)
+        returns (uint64 fundingID)
     {
         uint256 actualFundAmount;
         (fundingID, actualFundAmount) = _fundRecordData(depositID, fundAmount);
         _fundTransferFunds(actualFundAmount);
     }
 
-    function _fundRecordData(uint256 depositID, uint256 fundAmount)
+    function _fundRecordData(uint64 depositID, uint256 fundAmount)
         internal
         virtual
-        returns (uint256 fundingID, uint256 actualFundAmount)
+        returns (uint64 fundingID, uint256 actualFundAmount)
     {
         Deposit storage depositEntry = _getDeposit(depositID);
 
@@ -1284,7 +1284,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
                     principalPerToken: ULTRA_PRECISION
                 })
             );
-            fundingID = fundingList.length;
+            fundingID = uint64(fundingList.length);
             depositEntry.fundingID = fundingID;
             totalPrincipalToFund =
                 (totalPrincipal * fundAmount) /
@@ -1343,7 +1343,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     /**
         @dev See {payInterestToFunders}
      */
-    function _payInterestToFunders(uint256 fundingID)
+    function _payInterestToFunders(uint64 fundingID)
         internal
         virtual
         returns (uint256 interestAmount)
@@ -1403,7 +1403,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @return refundAmount The amount of refund caused by an early withdraw
      */
     function _computeAndUpdateFundingInterestAfterWithdraw(
-        uint256 fundingID,
+        uint64 fundingID,
         uint256 recordedFundedPrincipalAmount,
         bool early
     )
@@ -1490,7 +1490,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     /**
         @dev See {getDeposit}
      */
-    function _getDeposit(uint256 depositID)
+    function _getDeposit(uint64 depositID)
         internal
         view
         returns (Deposit storage)
@@ -1501,7 +1501,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     /**
         @dev See {getFunding}
      */
-    function _getFunding(uint256 fundingID)
+    function _getFunding(uint64 fundingID)
         internal
         view
         returns (Funding storage)
@@ -1512,7 +1512,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     /**
         @dev See {fundingIsActive}
      */
-    function _fundingIsActive(uint256 fundingID) internal view returns (bool) {
+    function _fundingIsActive(uint64 fundingID) internal view returns (bool) {
         return _getFunding(fundingID).principalPerToken > 0;
     }
 
@@ -1524,7 +1524,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
         @return The corresponding principal value
      */
     function _depositVirtualTokenToPrincipal(
-        uint256 depositID,
+        uint64 depositID,
         uint256 virtualTokenAmount
     ) internal view virtual returns (uint256) {
         Deposit storage depositEntry = _getDeposit(depositID);
@@ -1540,7 +1540,7 @@ contract DInterest is ReentrancyGuardUpgradeable, OwnableUpgradeable {
     /**
         @dev See {accruedInterestOfFunding}
      */
-    function _accruedInterestOfFunding(uint256 fundingID)
+    function _accruedInterestOfFunding(uint64 fundingID)
         internal
         virtual
         returns (uint256 fundingInterestAmount)

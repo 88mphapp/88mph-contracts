@@ -30,7 +30,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
         address inputToken,
         uint256 inputTokenAmount,
         uint256 minOutputTokenAmount,
-        uint256 maturationTimestamp
+        uint64 maturationTimestamp
     ) external active {
         DInterest poolContract = DInterest(pool);
         ERC20Upgradeable stablecoin = poolContract.stablecoin();
@@ -47,7 +47,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
 
         // create deposit
         stablecoin.safeIncreaseAllowance(pool, outputTokenAmount);
-        (uint256 depositID, ) =
+        (uint64 depositID, ) =
             poolContract.deposit(outputTokenAmount, maturationTimestamp);
 
         // transfer deposit multitokens to msg.sender
@@ -60,7 +60,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
         address inputToken,
         uint256 inputTokenAmount,
         uint256 minOutputTokenAmount,
-        uint256 depositID
+        uint64 depositID
     ) external active {
         DInterest poolContract = DInterest(pool);
         ERC20Upgradeable stablecoin = poolContract.stablecoin();
@@ -77,7 +77,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
 
         // create funding
         stablecoin.safeIncreaseAllowance(pool, outputTokenAmount);
-        uint256 fundingID = poolContract.fund(depositID, outputTokenAmount);
+        uint64 fundingID = poolContract.fund(depositID, outputTokenAmount);
 
         // transfer funding multitoken to msg.sender
         fundingMultitoken.safeTransferFrom(

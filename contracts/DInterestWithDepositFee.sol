@@ -97,13 +97,13 @@ contract DInterestWithDepositFee is DInterest {
      */
     function _deposit(
         uint256 depositAmount,
-        uint256 maturationTimestamp,
+        uint64 maturationTimestamp,
         bool rollover
     )
         internal
         virtual
         override
-        returns (uint256 depositID, uint256 interestAmount)
+        returns (uint64 depositID, uint256 interestAmount)
     {
         (depositID, interestAmount) = _depositRecordData(
             _applyDepositFee(depositAmount),
@@ -115,7 +115,7 @@ contract DInterestWithDepositFee is DInterest {
     /**
         @dev See {topupDeposit}
      */
-    function _topupDeposit(uint256 depositID, uint256 depositAmount)
+    function _topupDeposit(uint64 depositID, uint256 depositAmount)
         internal
         virtual
         override
@@ -131,11 +131,11 @@ contract DInterestWithDepositFee is DInterest {
     /**
         @dev See {fund}
      */
-    function _fund(uint256 depositID, uint256 fundAmount)
+    function _fund(uint64 depositID, uint256 fundAmount)
         internal
         virtual
         override
-        returns (uint256 fundingID)
+        returns (uint64 fundingID)
     {
         uint256 actualFundAmount;
         (fundingID, actualFundAmount) = _fundRecordData(

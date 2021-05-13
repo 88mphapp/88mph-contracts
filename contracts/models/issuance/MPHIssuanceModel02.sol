@@ -16,7 +16,7 @@ contract MPHIssuanceModel02 is OwnableUpgradeable, IMPHIssuanceModel {
         @notice The multiplier applied when minting MPH for a pool's depositor reward.
                 Unit is MPH-wei per depositToken-wei per second. (wei here is the smallest decimal place)
                 Scaled by 10^18.
-                NOTE: The depositToken's decimals matter! 
+                NOTE: The depositToken's decimals matter!
      */
     mapping(address => uint256)
         public
@@ -163,7 +163,7 @@ contract MPHIssuanceModel02 is OwnableUpgradeable, IMPHIssuanceModel {
         address pool,
         uint256 depositAmount,
         uint256 fundingCreationTimestamp,
-        uint256 maturationTimestamp,
+        uint64 maturationTimestamp,
         bool early
     )
         external

@@ -18,7 +18,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
 
     struct Vest {
         address pool;
-        uint256 depositID;
+        uint64 depositID;
         uint256 lastUpdateTimestamp;
         uint256 accumulatedAmount;
         uint256 withdrawnAmount;
@@ -35,7 +35,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
     event ECreateVest(
         address indexed to,
         address indexed pool,
-        uint256 depositID,
+        uint64 depositID,
         uint256 vestAmountPerStablecoinPerSecond
     );
     event EUpdateVest(uint256 indexed vestID);
@@ -65,7 +65,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
     function createVestForDeposit(
         address to,
         address pool,
-        uint256 depositID,
+        uint64 depositID,
         uint256 vestAmountPerStablecoinPerSecond
     ) external returns (uint256 vestID) {
         require(
@@ -94,7 +94,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
     }
 
     function updateVestForDeposit(
-        uint256 depositID,
+        uint64 depositID,
         uint256 currentDepositAmount,
         uint256 depositAmount,
         uint256 vestAmountPerStablecoinPerSecond

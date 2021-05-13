@@ -197,7 +197,7 @@ contract MPHMinterLegacy is AccessControlUpgradeable {
         address to,
         uint256 depositAmount,
         uint256 fundingCreationTimestamp,
-        uint256 maturationTimestamp,
+        uint64 maturationTimestamp,
         uint256 interestPayoutAmount,
         bool early
     ) external onlyRole(WHITELISTED_POOL_ROLE) returns (uint256) {

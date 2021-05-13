@@ -53,11 +53,11 @@ contract BProtocolMarket is IMoneyMarket {
         // Transfer `amount` stablecoin from `msg.sender`
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
-        // Deposit `amount` stablecoin into cToken
+        // Deposit `amount` stablecoin into bToken
         stablecoin.safeApprove(address(bToken), amount);
         require(
             bToken.mint(amount) == ERRCODE_OK,
-            "BProtocolMarket: Failed to mint cTokens"
+            "BProtocolMarket: Failed to mint bTokens"
         );
     }
 
@@ -72,7 +72,7 @@ contract BProtocolMarket is IMoneyMarket {
             "BProtocolMarket: amountInUnderlying is 0"
         );
 
-        // Withdraw `amountInUnderlying` stablecoin from cToken
+        // Withdraw `amountInUnderlying` stablecoin from bToken
         require(
             bToken.redeemUnderlying(amountInUnderlying) == ERRCODE_OK,
             "BProtocolMarket: Failed to redeem"
@@ -92,7 +92,7 @@ contract BProtocolMarket is IMoneyMarket {
 
     function totalValue() external override returns (uint256) {
         uint256 bTokenBalance = bToken.balanceOf(address(this));
-        // Amount of stablecoin units that 1 unit of cToken can be exchanged for, scaled by 10^18
+        // Amount of stablecoin units that 1 unit of bToken can be exchanged for, scaled by 10^18
         uint256 bTokenPrice = bToken.exchangeRateCurrent();
         return bTokenBalance.decmul(bTokenPrice);
     }

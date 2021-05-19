@@ -2,6 +2,7 @@
 pragma solidity 0.8.3;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {SafeERC20} from "./SafeERC20.sol";
 
 /**
@@ -97,7 +98,7 @@ abstract contract Sponsorable {
             );
 
         address recoveredAddress =
-            ecrecover(digest, sponsorship.v, sponsorship.r, sponsorship.s);
+            ECDSA.recover(digest, sponsorship.v, sponsorship.r, sponsorship.s);
         require(
             recoveredAddress != address(0) &&
                 recoveredAddress == sponsorship.sender,

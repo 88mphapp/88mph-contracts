@@ -1363,7 +1363,7 @@ contract DInterest is
         internal
         virtual
     {
-        // Transfer `fundAmount` stablecoins from msg.sender
+        // Transfer `fundAmount` stablecoins from sender
         stablecoin.safeTransferFrom(sender, address(this), fundAmount);
 
         // Deposit `fundAmount` stablecoins into moneyMarket

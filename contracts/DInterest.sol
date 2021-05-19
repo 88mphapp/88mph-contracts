@@ -83,7 +83,7 @@ contract DInterest is
     /**
         @dev Maximum deposit period, in seconds
      */
-    uint256 public MaxDepositPeriod;
+    uint64 public MaxDepositPeriod;
     /**
         @dev Minimum deposit amount, in stablecoins
      */
@@ -150,7 +150,7 @@ contract DInterest is
     );
 
     function __DInterest_init(
-        uint256 _MaxDepositPeriod,
+        uint64 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
         address _moneyMarket,
         address _stablecoin,
@@ -178,7 +178,7 @@ contract DInterest is
     }
 
     function __DInterest_init_unchained(
-        uint256 _MaxDepositPeriod,
+        uint64 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
         address _moneyMarket,
         address _stablecoin,
@@ -240,7 +240,7 @@ contract DInterest is
         @param _mphMinter Address of the contract for handling minting MPH to users
      */
     function initialize(
-        uint256 _MaxDepositPeriod,
+        uint64 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
         address _moneyMarket,
         address _stablecoin,
@@ -1644,10 +1644,10 @@ contract DInterest is
         emit ESetParamAddress(msg.sender, "mphMinter", newValue);
     }
 
-    function setMaxDepositPeriod(uint256 newValue) external onlyOwner {
+    function setMaxDepositPeriod(uint64 newValue) external onlyOwner {
         require(newValue > 0, "DInterest: invalid value");
         MaxDepositPeriod = newValue;
-        emit ESetParamUint(msg.sender, "MaxDepositPeriod", newValue);
+        emit ESetParamUint(msg.sender, "MaxDepositPeriod", uint256(newValue));
     }
 
     function setMinDepositAmount(uint256 newValue) external onlyOwner {

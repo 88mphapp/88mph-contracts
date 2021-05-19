@@ -26,7 +26,7 @@ contract DInterestWithDepositFee is DInterest {
         @param _mphMinter Address of the contract for handling minting MPH to users
      */
     function initialize(
-        uint256 _MaxDepositPeriod,
+        uint64 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
         uint256 _DepositFee,
         address _moneyMarket,

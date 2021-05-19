@@ -127,8 +127,9 @@ contract DInterest is
     );
     event EWithdraw(
         address indexed sender,
-        uint64 indexed depositID,
-        uint256 tokenAmount,
+        uint256 indexed depositID,
+        bool indexed early,
+        uint256 virtualTokenAmount,
         uint256 feeAmount
     );
     event EFund(
@@ -136,6 +137,11 @@ contract DInterest is
         uint64 indexed fundingID,
         uint256 fundAmount,
         uint256 tokenAmount
+    );
+    event EPayFundingInterest(
+        uint256 indexed fundingID,
+        uint256 interestAmount,
+        uint256 refundAmount
     );
     event ESetParamAddress(
         address indexed sender,
@@ -1151,7 +1157,7 @@ contract DInterest is
         _getDeposit(depositID).virtualTokenTotalSupply -= virtualTokenAmount;
 
         // Emit event
-        emit EWithdraw(sender, depositID, virtualTokenAmount, feeAmount);
+        emit EWithdraw(sender, depositID, early, virtualTokenAmount, feeAmount);
     }
 
     function _withdrawTransferFunds(
@@ -1414,6 +1420,8 @@ contract DInterest is
                 mphMinter.distributeFundingRewards(fundingID, interestAmount);
             }
         }
+
+        emit EPayFundingInterest(fundingID, interestAmount, 0);
     }
 
     /**
@@ -1507,6 +1515,12 @@ contract DInterest is
                 : maxRefundAmount;
             fundingInterestAmount += refundAmount;
         }
+
+        emit EPayFundingInterest(
+            fundingID,
+            fundingInterestAmount,
+            refundAmount
+        );
     }
 
     /**

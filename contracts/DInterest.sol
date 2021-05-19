@@ -366,6 +366,7 @@ contract DInterest is
      */
     function payInterestToFunders(uint64 fundingID)
         external
+        nonReentrant
         returns (uint256 interestAmount)
     {
         return _payInterestToFunders(fundingID);

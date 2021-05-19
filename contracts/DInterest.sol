@@ -63,7 +63,6 @@ contract DInterest is
         uint256 feeRate; // feeAmount = feeRate * interestAmount
         uint256 averageRecordedIncomeIndex; // Average income index at time of deposit, used for computing deposit surplus
         uint64 maturationTimestamp; // Unix timestamp after which the deposit may be withdrawn, in seconds
-        uint64 depositTimestamp; // Unix timestamp at time of deposit, in seconds
         uint64 fundingID; // The ID of the associated Funding struct. 0 if not funded.
     }
     Deposit[] internal deposits;
@@ -830,7 +829,6 @@ contract DInterest is
                 interestRate: interestAmount.decdiv(depositAmount),
                 feeRate: feeAmount.decdiv(interestAmount),
                 maturationTimestamp: maturationTimestamp,
-                depositTimestamp: uint64(block.timestamp),
                 fundingID: 0,
                 averageRecordedIncomeIndex: moneyMarket.incomeIndex()
             })
@@ -1054,10 +1052,6 @@ contract DInterest is
         // Verify input
         require(virtualTokenAmount > 0, "DInterest: 0 amount");
         Deposit memory depositEntry = _getDeposit(depositID);
-        require(
-            block.timestamp > depositEntry.depositTimestamp,
-            "DInterest: Deposited in same block"
-        );
         if (early) {
             require(
                 block.timestamp < depositEntry.maturationTimestamp,

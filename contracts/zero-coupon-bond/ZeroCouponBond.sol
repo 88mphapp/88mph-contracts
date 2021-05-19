@@ -29,8 +29,8 @@ contract ZeroCouponBond is
     ERC20 public stablecoin;
     NFT public depositNFT;
     Vesting02 public vesting;
-    uint256 public maturationTimestamp;
-    uint256 public depositID;
+    uint64 public maturationTimestamp;
+    uint64 public depositID;
     uint8 public _decimals;
 
     event WithdrawDeposit();
@@ -41,7 +41,7 @@ contract ZeroCouponBond is
         address _creator,
         address _pool,
         address _vesting,
-        uint256 _maturationTimestamp,
+        uint64 _maturationTimestamp,
         uint256 _initialDepositAmount,
         string calldata _tokenName,
         string calldata _tokenSymbol

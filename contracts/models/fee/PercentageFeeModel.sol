@@ -59,7 +59,7 @@ contract PercentageFeeModel is IFeeModel, Ownable {
 
     function getInterestFeeAmount(
         address pool,
-        uint256 depositID,
+        uint64 depositID,
         uint256 interestAmount
     ) external view override returns (uint256 feeAmount) {
         uint256 feeRate;
@@ -84,7 +84,7 @@ contract PercentageFeeModel is IFeeModel, Ownable {
 
     function getEarlyWithdrawFeeAmount(
         address pool,
-        uint256 depositID,
+        uint64 depositID,
         uint256 withdrawnDepositAmount
     ) external view override returns (uint256 feeAmount) {
         uint256 feeRate;
@@ -154,7 +154,7 @@ contract PercentageFeeModel is IFeeModel, Ownable {
 
     function overrideInterestFeeForDeposit(
         address pool,
-        uint256 depositID,
+        uint64 depositID,
         uint256 newFee
     ) external onlyOwner {
         require(newFee <= interestFee, "PercentageFeeModel: too big");
@@ -167,7 +167,7 @@ contract PercentageFeeModel is IFeeModel, Ownable {
 
     function overrideEarlyWithdrawFeeForDeposit(
         address pool,
-        uint256 depositID,
+        uint64 depositID,
         uint256 newFee
     ) external onlyOwner {
         require(newFee <= earlyWithdrawFee, "PercentageFeeModel: too big");

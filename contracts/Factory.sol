@@ -78,7 +78,7 @@ contract Factory {
         bytes32 salt,
         address _pool,
         address _vesting,
-        uint256 _maturationTimetstamp,
+        uint64 _maturationTimetstamp,
         uint256 _initialDepositAmount,
         string calldata _tokenName,
         string calldata _tokenSymbol
@@ -235,7 +235,7 @@ contract Factory {
     function createDInterest(
         address template,
         bytes32 salt,
-        uint256 _MaxDepositPeriod,
+        uint64 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
         address _moneyMarket,
         address _stablecoin,
@@ -268,7 +268,7 @@ contract Factory {
     }
 
     struct DInterestWithDepositFeeParams {
-        uint256 _MaxDepositPeriod;
+        uint64 _MaxDepositPeriod;
         uint256 _MinDepositAmount;
         uint256 _DepositFee;
         address _moneyMarket;

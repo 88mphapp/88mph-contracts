@@ -106,7 +106,7 @@ contract MPHMinter is MPHMinterLegacy {
         external
         onlyRole(WHITELISTED_POOL_ROLE)
     {
-        if (interestAmount == 0) {
+        if (interestAmount == 0 || mph.owner() != address(this)) {
             return;
         }
         uint256 mintMPHAmount =

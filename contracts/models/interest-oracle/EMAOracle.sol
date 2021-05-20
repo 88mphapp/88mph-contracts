@@ -53,7 +53,7 @@ contract EMAOracle is IInterestOracle, Initializable {
     }
 
     function updateAndQuery()
-        public
+        external
         override
         returns (bool updated, uint256 value)
     {
@@ -67,6 +67,13 @@ contract EMAOracle is IInterestOracle, Initializable {
         uint256 _emaStored = emaStored;
 
         uint256 newIncomeIndex = moneyMarket.incomeIndex();
+        if (newIncomeIndex < _lastIncomeIndex) {
+            // Shouldn't revert (which would block execution)
+            // Assume no interest was accrued and use the last index as the new one
+            // which would push the EMA towards zero if there's e.g. an exploit
+            // in the underlying yield protocol
+            newIncomeIndex = _lastIncomeIndex;
+        }
         uint256 incomingValue =
             (newIncomeIndex - _lastIncomeIndex).decdiv(_lastIncomeIndex) /
                 timeElapsed;
@@ -83,7 +90,7 @@ contract EMAOracle is IInterestOracle, Initializable {
         lastUpdateTimestamp = block.timestamp;
     }
 
-    function query() public view override returns (uint256 value) {
+    function query() external view override returns (uint256 value) {
         return emaStored;
     }
 

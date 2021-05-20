@@ -51,7 +51,7 @@ contract DInterest is
      */
     uint256 internal constant EXTRA_PRECISION = 10**27;
     /**
-        @dev used for funding.principalPerToken and deposit.interestRateMultiplierIntercept
+        @dev used for funding.principalPerToken
      */
     uint256 internal constant ULTRA_PRECISION = 2**128;
 

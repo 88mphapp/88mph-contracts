@@ -25,13 +25,13 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
     struct Vest {
         address pool;
         uint64 depositID;
-        uint256 lastUpdateTimestamp;
+        uint64 lastUpdateTimestamp;
         uint256 accumulatedAmount;
         uint256 withdrawnAmount;
         uint256 vestAmountPerStablecoinPerSecond;
     }
     Vest[] public vestList;
-    mapping(uint256 => uint256) public depositIDToVestID;
+    mapping(uint64 => uint64) public depositIDToVestID;
 
     MPHMinter public mphMinter;
     IERC20 public token;
@@ -42,12 +42,13 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
         address indexed to,
         address indexed pool,
         uint64 depositID,
+        uint64 vestID,
         uint256 vestAmountPerStablecoinPerSecond
     );
-    event EUpdateVest(uint256 indexed vestID);
+    event EUpdateVest(uint64 indexed vestID);
     event EWithdraw(
         address indexed sender,
-        uint256 indexed vestID,
+        uint64 indexed vestID,
         uint256 withdrawnAmount
     );
     event ESetMPHMinter(address newValue);
@@ -78,7 +79,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
         address pool,
         uint64 depositID,
         uint256 vestAmountPerStablecoinPerSecond
-    ) external returns (uint256 vestID) {
+    ) external returns (uint64 vestID) {
         require(
             address(msg.sender) == address(mphMinter),
             "Vesting02: not minter"
@@ -89,19 +90,25 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
             Vest({
                 pool: pool,
                 depositID: depositID,
-                lastUpdateTimestamp: block.timestamp,
+                lastUpdateTimestamp: uint64(block.timestamp),
                 accumulatedAmount: 0,
                 withdrawnAmount: 0,
                 vestAmountPerStablecoinPerSecond: vestAmountPerStablecoinPerSecond
             })
         );
-        vestID = vestList.length; // 1-indexed
+        vestID = uint64(vestList.length); // 1-indexed
         depositIDToVestID[depositID] = vestID;
 
         // mint NFT
         _safeMint(to, vestID);
 
-        emit ECreateVest(to, pool, depositID, vestAmountPerStablecoinPerSecond);
+        emit ECreateVest(
+            to,
+            pool,
+            depositID,
+            vestID,
+            vestAmountPerStablecoinPerSecond
+        );
     }
 
     function updateVestForDeposit(
@@ -115,10 +122,10 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
             "Vesting02: not minter"
         );
 
-        uint256 vestID = depositIDToVestID[depositID];
+        uint64 vestID = depositIDToVestID[depositID];
         Vest storage vestEntry = _getVest(vestID);
         vestEntry.accumulatedAmount += _getVestWithdrawableAmount(vestID);
-        vestEntry.lastUpdateTimestamp = block.timestamp;
+        vestEntry.lastUpdateTimestamp = uint64(block.timestamp);
         vestEntry.vestAmountPerStablecoinPerSecond =
             (vestEntry.vestAmountPerStablecoinPerSecond *
                 currentDepositAmount +
@@ -133,7 +140,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
         Public action functions
      */
 
-    function withdraw(uint256 vestID)
+    function withdraw(uint64 vestID)
         external
         returns (uint256 withdrawnAmount)
     {
@@ -159,7 +166,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
         Public getter functions
      */
 
-    function getVestWithdrawableAmount(uint256 vestID)
+    function getVestWithdrawableAmount(uint64 vestID)
         external
         view
         returns (uint256)
@@ -167,7 +174,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
         return _getVestWithdrawableAmount(vestID);
     }
 
-    function _getVestWithdrawableAmount(uint256 vestID)
+    function _getVestWithdrawableAmount(uint64 vestID)
         internal
         view
         returns (uint256 withdrawableAmount)
@@ -195,11 +202,11 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
             vestEntry.withdrawnAmount;
     }
 
-    function getVest(uint256 vestID) external view returns (Vest memory) {
+    function getVest(uint64 vestID) external view returns (Vest memory) {
         return _getVest(vestID);
     }
 
-    function _getVest(uint256 vestID) internal view returns (Vest storage) {
+    function _getVest(uint64 vestID) internal view returns (Vest storage) {
         return vestList[vestID - 1];
     }
 

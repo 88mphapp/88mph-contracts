@@ -80,6 +80,7 @@ contract MPHMinter is MPHMinterLegacy {
         uint256 depositAmount
     ) external onlyRole(WHITELISTED_POOL_ROLE) {
         vesting02.updateVestForDeposit(
+            msg.sender,
             depositID,
             currentDepositAmount,
             depositAmount,

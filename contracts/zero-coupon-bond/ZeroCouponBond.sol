@@ -74,7 +74,7 @@ contract ZeroCouponBond is
         vesting.safeTransferFrom(
             address(this),
             _creator,
-            vesting.depositIDToVestID(depositID)
+            vesting.depositIDToVestID(_pool, depositID)
         );
     }
 

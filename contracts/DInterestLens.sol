@@ -49,7 +49,6 @@ contract DInterestLens {
         uint256 depositAmount =
             virtualTokenAmount.decdiv(depositEntry.interestRate + PRECISION);
         uint256 interestAmount = early ? 0 : virtualTokenAmount - depositAmount;
-        feeAmount = interestAmount.decmul(depositEntry.feeRate);
         withdrawableAmount = depositAmount + interestAmount;
 
         if (early) {
@@ -60,8 +59,10 @@ contract DInterestLens {
                     depositID,
                     withdrawableAmount
                 );
-            feeAmount += earlyWithdrawFee;
+            feeAmount = earlyWithdrawFee;
             withdrawableAmount -= earlyWithdrawFee;
+        } else {
+            feeAmount = depositAmount.decmul(depositEntry.feeRate);
         }
     }
 
@@ -188,9 +189,7 @@ contract DInterestLens {
         uint256 depositInterestRate = depositEntry.interestRate;
         return
             virtualTokenAmount.decdiv(depositInterestRate + PRECISION).decmul(
-                depositInterestRate +
-                    depositInterestRate.decmul(depositEntry.feeRate) +
-                    PRECISION
+                depositInterestRate + depositEntry.feeRate + PRECISION
             );
     }
 }

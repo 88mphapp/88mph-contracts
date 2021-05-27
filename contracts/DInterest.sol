@@ -60,7 +60,7 @@ contract DInterest is
     struct Deposit {
         uint256 virtualTokenTotalSupply; // depositAmount + interestAmount, behaves like a zero coupon bond
         uint256 interestRate; // interestAmount = interestRate * depositAmount
-        uint256 feeRate; // feeAmount = feeRate * interestAmount
+        uint256 feeRate; // feeAmount = feeRate * depositAmount
         uint256 averageRecordedIncomeIndex; // Average income index at time of deposit, used for computing deposit surplus
         uint64 maturationTimestamp; // Unix timestamp after which the deposit may be withdrawn, in seconds
         uint64 fundingID; // The ID of the associated Funding struct. 0 if not funded.
@@ -530,7 +530,7 @@ contract DInterest is
         virtual
         returns (bool isNegative, uint256 surplusAmount)
     {
-        Deposit storage depositEntry = _getDeposit(depositID);
+        Deposit memory depositEntry = _getDeposit(depositID);
         uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
         uint256 depositTokenTotalSupply = depositEntry.virtualTokenTotalSupply;
         uint256 depositAmount =
@@ -538,7 +538,7 @@ contract DInterest is
                 depositEntry.interestRate + PRECISION
             );
         uint256 interestAmount = depositTokenTotalSupply - depositAmount;
-        uint256 feeAmount = interestAmount.decmul(depositEntry.feeRate);
+        uint256 feeAmount = depositAmount.decmul(depositEntry.feeRate);
         uint256 currentDepositValue =
             (depositAmount * currentMoneyMarketIncomeIndex) /
                 depositEntry.averageRecordedIncomeIndex;
@@ -636,11 +636,7 @@ contract DInterest is
         // Calculate fee
         depositID = uint64(deposits.length) + 1;
         uint256 feeAmount =
-            feeModel.getInterestFeeAmount(
-                address(this),
-                depositID,
-                interestAmount
-            );
+            feeModel.getInterestFeeAmount(address(this), interestAmount);
         interestAmount -= feeAmount;
 
         // Record deposit data
@@ -648,7 +644,7 @@ contract DInterest is
             Deposit({
                 virtualTokenTotalSupply: depositAmount + interestAmount,
                 interestRate: interestAmount.decdiv(depositAmount),
-                feeRate: feeAmount.decdiv(interestAmount),
+                feeRate: feeAmount.decdiv(depositAmount),
                 maturationTimestamp: maturationTimestamp,
                 fundingID: 0,
                 averageRecordedIncomeIndex: moneyMarket.incomeIndex()
@@ -731,11 +727,7 @@ contract DInterest is
 
         // Calculate fee
         uint256 feeAmount =
-            feeModel.getInterestFeeAmount(
-                address(this),
-                depositID,
-                interestAmount
-            );
+            feeModel.getInterestFeeAmount(address(this), interestAmount);
         interestAmount -= feeAmount;
 
         // Update deposit struct
@@ -743,8 +735,6 @@ contract DInterest is
             depositEntry.virtualTokenTotalSupply.decdiv(
                 depositEntry.interestRate + PRECISION
             );
-        uint256 currentInterestAmount =
-            depositEntry.virtualTokenTotalSupply - currentDepositAmount;
         depositEntry.virtualTokenTotalSupply += depositAmount + interestAmount;
         depositEntry.interestRate =
             (PRECISION *
@@ -755,9 +745,9 @@ contract DInterest is
         depositEntry.feeRate =
             (PRECISION *
                 feeAmount +
-                currentInterestAmount *
+                currentDepositAmount *
                 depositEntry.feeRate) /
-            (interestAmount + currentInterestAmount);
+            (depositAmount + currentDepositAmount);
         uint256 sumOfRecordedDepositAmountDivRecordedIncomeIndex =
             (currentDepositAmount * EXTRA_PRECISION) /
                 depositEntry.averageRecordedIncomeIndex +
@@ -901,9 +891,7 @@ contract DInterest is
             uint256 interestAmount =
                 early ? 0 : virtualTokenAmount - depositAmount;
             withdrawAmount = depositAmount + interestAmount;
-            feeAmount = interestAmount.decmul(depositEntry.feeRate);
         }
-
         if (early) {
             // apply fee to withdrawAmount
             uint256 earlyWithdrawFee =
@@ -912,16 +900,16 @@ contract DInterest is
                     depositID,
                     withdrawAmount
                 );
-            feeAmount += earlyWithdrawFee;
+            feeAmount = earlyWithdrawFee;
             withdrawAmount -= earlyWithdrawFee;
+        } else {
+            feeAmount = depositAmount.decmul(depositEntry.feeRate);
         }
 
         // Update global values
         totalDeposit -= depositAmount;
         totalInterestOwed -= virtualTokenAmount - depositAmount;
-        totalFeeOwed -= (virtualTokenAmount - depositAmount).decmul(
-            depositEntry.feeRate
-        );
+        totalFeeOwed -= depositAmount.decmul(depositEntry.feeRate);
 
         // If deposit was funded, compute funding interest payout
         if (depositEntry.fundingID > 0) {
@@ -941,10 +929,7 @@ contract DInterest is
 
             // Shrink funding principal per token value
             uint256 totalPrincipalDecrease =
-                virtualTokenAmount +
-                    (virtualTokenAmount - depositAmount).decmul(
-                        depositEntry.feeRate
-                    );
+                virtualTokenAmount + depositAmount.decmul(depositEntry.feeRate);
             if (
                 totalPrincipal <=
                 totalPrincipalDecrease + recordedFundedPrincipalAmount
@@ -1314,14 +1299,9 @@ contract DInterest is
             uint256 maxRefundAmount =
                 (recordedFundedPrincipalAmount - currentFundedPrincipalAmount)
                     .decdiv(
-                    PRECISION +
-                        depositEntry.interestRate +
-                        depositEntry.interestRate.decmul(depositEntry.feeRate)
+                    PRECISION + depositEntry.interestRate + depositEntry.feeRate
                 )
-                    .decmul(
-                    depositEntry.interestRate +
-                        depositEntry.interestRate.decmul(depositEntry.feeRate)
-                );
+                    .decmul(depositEntry.interestRate + depositEntry.feeRate);
             refundAmount = refundAmount <= maxRefundAmount
                 ? refundAmount
                 : maxRefundAmount;
@@ -1376,9 +1356,7 @@ contract DInterest is
         uint256 depositInterestRate = depositEntry.interestRate;
         return
             virtualTokenAmount.decdiv(depositInterestRate + PRECISION).decmul(
-                depositInterestRate +
-                    depositInterestRate.decmul(depositEntry.feeRate) +
-                    PRECISION
+                depositInterestRate + depositEntry.feeRate + PRECISION
             );
     }
 
@@ -1458,6 +1436,34 @@ contract DInterest is
             surplusMagnitude = moneyMarket.withdraw(surplusMagnitude);
             stablecoin.safeTransfer(recipient, surplusMagnitude);
         }
+    }
+
+    function decreaseFeeForDeposit(uint64 depositID, uint256 newFeeRate)
+        external
+        onlyOwner
+    {
+        Deposit memory depositMemory = _getDeposit(depositID);
+        Deposit storage depositStorage = _getDeposit(depositID);
+        require(newFeeRate < depositMemory.feeRate, "DInterest: BAD_VAL");
+        uint256 depositAmount =
+            depositMemory.virtualTokenTotalSupply.decdiv(
+                depositMemory.interestRate + PRECISION
+            );
+
+        // update fee rate
+        depositStorage.feeRate = newFeeRate;
+
+        // update interest rate
+        // fee reduction is allocated to interest
+        uint256 reducedFeeAmount =
+            depositAmount.decmul(depositMemory.feeRate - newFeeRate);
+        depositStorage.interestRate =
+            depositMemory.interestRate +
+            reducedFeeAmount.decdiv(depositAmount);
+
+        // update global amounts
+        totalInterestOwed += reducedFeeAmount;
+        totalFeeOwed -= reducedFeeAmount;
     }
 
     uint256[33] private __gap;

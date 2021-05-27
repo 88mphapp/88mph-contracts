@@ -1167,8 +1167,12 @@ contract("DInterest", accounts => {
               }
             );
             const deficitAmount = BigNumber(
-              (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
-                .surplusAmount
+              (
+                await baseContracts.lens.surplusOfDeposit.call(
+                  baseContracts.dInterestPool.address,
+                  1
+                )
+              ).surplusAmount
             );
             await baseContracts.dInterestPool.fund(
               1,
@@ -1278,8 +1282,12 @@ contract("DInterest", accounts => {
               }
             );
             const deficitAmount = BigNumber(
-              (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
-                .surplusAmount
+              (
+                await baseContracts.lens.surplusOfDeposit.call(
+                  baseContracts.dInterestPool.address,
+                  1
+                )
+              ).surplusAmount
             );
             await baseContracts.dInterestPool.fund(
               1,
@@ -1364,8 +1372,12 @@ contract("DInterest", accounts => {
               }
             );
             const deficitAmount = BigNumber(
-              (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
-                .surplusAmount
+              (
+                await baseContracts.lens.surplusOfDeposit.call(
+                  baseContracts.dInterestPool.address,
+                  1
+                )
+              ).surplusAmount
             );
             await baseContracts.dInterestPool.fund(
               1,
@@ -1483,8 +1495,12 @@ contract("DInterest", accounts => {
                 }
               );
               const deficitAmount = BigNumber(
-                (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
-                  .surplusAmount
+                (
+                  await baseContracts.lens.surplusOfDeposit.call(
+                    baseContracts.dInterestPool.address,
+                    1
+                  )
+                ).surplusAmount
               );
               await baseContracts.dInterestPool.fund(
                 1,
@@ -1506,8 +1522,12 @@ contract("DInterest", accounts => {
                 }
               );
               const deficitAmount = BigNumber(
-                (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
-                  .surplusAmount
+                (
+                  await baseContracts.lens.surplusOfDeposit.call(
+                    baseContracts.dInterestPool.address,
+                    1
+                  )
+                ).surplusAmount
               );
               await baseContracts.dInterestPool.fund(
                 1,
@@ -1609,8 +1629,12 @@ contract("DInterest", accounts => {
               }
             );
             const deficitAmount = BigNumber(
-              (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
-                .surplusAmount
+              (
+                await baseContracts.lens.surplusOfDeposit.call(
+                  baseContracts.dInterestPool.address,
+                  1
+                )
+              ).surplusAmount
             );
             await baseContracts.dInterestPool.fund(
               1,
@@ -1700,8 +1724,12 @@ contract("DInterest", accounts => {
                 }
               );
               const deficitAmount = BigNumber(
-                (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
-                  .surplusAmount
+                (
+                  await baseContracts.lens.surplusOfDeposit.call(
+                    baseContracts.dInterestPool.address,
+                    1
+                  )
+                ).surplusAmount
               );
               await baseContracts.dInterestPool.fund(
                 1,
@@ -1775,8 +1803,12 @@ contract("DInterest", accounts => {
               }
             );
             const deficitAmount = BigNumber(
-              (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
-                .surplusAmount
+              (
+                await baseContracts.lens.surplusOfDeposit.call(
+                  baseContracts.dInterestPool.address,
+                  1
+                )
+              ).surplusAmount
             );
             await baseContracts.dInterestPool.fund(
               1,
@@ -1837,8 +1869,12 @@ contract("DInterest", accounts => {
             // verify deficit
             {
               const deficitAmount = BigNumber(
-                (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
-                  .surplusAmount
+                (
+                  await baseContracts.lens.surplusOfDeposit.call(
+                    baseContracts.dInterestPool.address,
+                    1
+                  )
+                ).surplusAmount
               );
               Base.assertEpsilonEq(
                 deficitAmount,
@@ -1864,8 +1900,12 @@ contract("DInterest", accounts => {
             // verify deficit
             {
               const deficitAmount = BigNumber(
-                (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
-                  .surplusAmount
+                (
+                  await baseContracts.lens.surplusOfDeposit.call(
+                    baseContracts.dInterestPool.address,
+                    1
+                  )
+                ).surplusAmount
               );
               const expectedDeficitAmount = Base.calcInterestAmount(
                 depositAmount,
@@ -1890,8 +1930,12 @@ contract("DInterest", accounts => {
                 }
               );
               const deficitAmount = BigNumber(
-                (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
-                  .surplusAmount
+                (
+                  await baseContracts.lens.surplusOfDeposit.call(
+                    baseContracts.dInterestPool.address,
+                    1
+                  )
+                ).surplusAmount
               );
               await baseContracts.dInterestPool.fund(
                 1,
@@ -2135,7 +2179,9 @@ contract("DInterest", accounts => {
             Base.assertEpsilonEq(0, surplusObj.surplusAmount, "surplus not 0");
 
             // totalInterestOwedToFunders() should return the interest generated by the deposit
-            const totalInterestOwedToFunders = await baseContracts.dInterestPool.totalInterestOwedToFunders.call();
+            const totalInterestOwedToFunders = await baseContracts.lens.totalInterestOwedToFunders.call(
+              baseContracts.dInterestPool.address
+            );
             const totalPrincipal = Base.calcInterestAmount(
               depositAmount,
               INIT_INTEREST_RATE_PER_SECOND,
@@ -2615,7 +2661,8 @@ contract("DInterest", accounts => {
           );
 
           // check surplus
-          const surplusObj = await baseContracts.dInterestPool.surplusOfDeposit.call(
+          const surplusObj = await baseContracts.lens.surplusOfDeposit.call(
+            baseContracts.dInterestPool.address,
             1
           );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
@@ -2638,7 +2685,8 @@ contract("DInterest", accounts => {
 
           // check surplus
           {
-            const surplusObj = await baseContracts.dInterestPool.surplusOfDeposit.call(
+            const surplusObj = await baseContracts.lens.surplusOfDeposit.call(
+              baseContracts.dInterestPool.address,
               1
             );
             const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
@@ -2680,7 +2728,8 @@ contract("DInterest", accounts => {
           });
 
           // check surplus
-          const surplusObj = await baseContracts.dInterestPool.surplusOfDeposit.call(
+          const surplusObj = await baseContracts.lens.surplusOfDeposit.call(
+            baseContracts.dInterestPool.address,
             1
           );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
@@ -2723,7 +2772,8 @@ contract("DInterest", accounts => {
           );
 
           // check surplus
-          const surplusObj = await baseContracts.dInterestPool.surplusOfDeposit.call(
+          const surplusObj = await baseContracts.lens.surplusOfDeposit.call(
+            baseContracts.dInterestPool.address,
             1
           );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
@@ -2767,7 +2817,8 @@ contract("DInterest", accounts => {
           await baseContracts.dInterestPool.fund(1, Base.INF, { from: acc2 });
 
           // check surplus
-          const surplusObj = await baseContracts.dInterestPool.surplusOfDeposit.call(
+          const surplusObj = await baseContracts.lens.surplusOfDeposit.call(
+            baseContracts.dInterestPool.address,
             1
           );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
@@ -2792,8 +2843,12 @@ contract("DInterest", accounts => {
 
           // Fund 30% deficit using acc2
           const deficitAmount = BigNumber(
-            (await baseContracts.dInterestPool.surplusOfDeposit.call(1))
-              .surplusAmount
+            (
+              await baseContracts.lens.surplusOfDeposit.call(
+                baseContracts.dInterestPool.address,
+                1
+              )
+            ).surplusAmount
           );
           await baseContracts.stablecoin.approve(
             baseContracts.dInterestPool.address,
@@ -2811,7 +2866,8 @@ contract("DInterest", accounts => {
           );
 
           // check surplus
-          const surplusObj = await baseContracts.dInterestPool.surplusOfDeposit.call(
+          const surplusObj = await baseContracts.lens.surplusOfDeposit.call(
+            baseContracts.dInterestPool.address,
             1
           );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
@@ -2855,7 +2911,8 @@ contract("DInterest", accounts => {
             {
               const withdrawableAmountOfDeposit = BigNumber(
                 (
-                  await baseContracts.dInterestPool.withdrawableAmountOfDeposit(
+                  await baseContracts.lens.withdrawableAmountOfDeposit(
+                    baseContracts.dInterestPool.address,
                     1,
                     Base.INF
                   )
@@ -2876,7 +2933,8 @@ contract("DInterest", accounts => {
             {
               const withdrawableAmountOfDeposit = BigNumber(
                 (
-                  await baseContracts.dInterestPool.withdrawableAmountOfDeposit(
+                  await baseContracts.lens.withdrawableAmountOfDeposit(
+                    baseContracts.dInterestPool.address,
                     1,
                     Base.INF
                   )
@@ -2904,7 +2962,8 @@ contract("DInterest", accounts => {
             {
               const withdrawableAmountOfDeposit = BigNumber(
                 (
-                  await baseContracts.dInterestPool.withdrawableAmountOfDeposit(
+                  await baseContracts.lens.withdrawableAmountOfDeposit(
+                    baseContracts.dInterestPool.address,
                     1,
                     Base.INF
                   )
@@ -2956,7 +3015,8 @@ contract("DInterest", accounts => {
             // Check accrued interest
             {
               const actualAccruedInterest = BigNumber(
-                await baseContracts.dInterestPool.accruedInterestOfFunding.call(
+                await baseContracts.lens.accruedInterestOfFunding.call(
+                  baseContracts.dInterestPool.address,
                   1
                 )
               );
@@ -2984,7 +3044,8 @@ contract("DInterest", accounts => {
             // Check accrued interest
             {
               const actualAccruedInterest = BigNumber(
-                await baseContracts.dInterestPool.accruedInterestOfFunding.call(
+                await baseContracts.lens.accruedInterestOfFunding.call(
+                  baseContracts.dInterestPool.address,
                   1
                 )
               );
@@ -3002,7 +3063,8 @@ contract("DInterest", accounts => {
             // Check accrued interest
             {
               const actualAccruedInterest = BigNumber(
-                await baseContracts.dInterestPool.accruedInterestOfFunding.call(
+                await baseContracts.lens.accruedInterestOfFunding.call(
+                  baseContracts.dInterestPool.address,
                   1
                 )
               );
@@ -3030,7 +3092,8 @@ contract("DInterest", accounts => {
             // Check accrued interest
             {
               const actualAccruedInterest = BigNumber(
-                await baseContracts.dInterestPool.accruedInterestOfFunding.call(
+                await baseContracts.lens.accruedInterestOfFunding.call(
+                  baseContracts.dInterestPool.address,
                   1
                 )
               );

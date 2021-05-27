@@ -4,6 +4,9 @@ const { assert, artifacts } = require("hardhat");
 
 // Contract artifacts
 const DInterest = (module.exports.DInterest = artifacts.require("DInterest"));
+const DInterestLens = (module.exports.DInterest = artifacts.require(
+  "DInterestLens"
+));
 const PercentageFeeModel = (module.exports.PercentageFeeModel = artifacts.require(
   "PercentageFeeModel"
 ));
@@ -501,6 +504,7 @@ const setupTest = (module.exports.setupTest = async (
   let vesting;
   let vesting02;
   let factory;
+  let lens;
 
   // Accounts
   const acc0 = accounts[0];
@@ -653,6 +657,8 @@ const setupTest = (module.exports.setupTest = async (
   await fundingMultitoken.grantRole(DIVIDEND_ROLE, dInterestPool.address);
   await fundingMultitoken.grantRole(DIVIDEND_ROLE, mphMinter.address);
 
+  lens = await DInterestLens.new();
+
   return {
     stablecoin,
     dInterestPool,
@@ -667,6 +673,7 @@ const setupTest = (module.exports.setupTest = async (
     mphIssuanceModel,
     vesting,
     vesting02,
-    factory
+    factory,
+    lens
   };
 });

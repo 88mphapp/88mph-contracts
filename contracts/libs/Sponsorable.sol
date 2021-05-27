@@ -68,7 +68,7 @@ abstract contract Sponsorable {
     ) internal virtual {
         require(
             sponsorship.nonce == accountNonce[sponsorship.sender],
-            "Sponsorable: invalid nonce"
+            "Sponsorable: BAD_NONCE"
         );
 
         uint256 chainId;
@@ -102,7 +102,7 @@ abstract contract Sponsorable {
         require(
             recoveredAddress != address(0) &&
                 recoveredAddress == sponsorship.sender,
-            "Sponsorable: invalid sig"
+            "Sponsorable: BAD_SIG"
         );
 
         // update nonce

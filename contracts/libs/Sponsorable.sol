@@ -12,11 +12,13 @@ abstract contract Sponsorable {
     using SafeERC20 for IERC20;
 
     /**
+        @dev Using uint256 for all numbers since this struct won't ever be in storage. This saves gas.
         @param sender The user who made the meta-tx
         @param sponsor The account that should receive the sponsor fee
         @param sponsorFeeToken The ERC20 token address the sponsor fee is paid in
         @param sponsorFeeAmount The amount of sponsor fee to transfer from `sender` to `sponsor`
         @param nonce The signature nonce used for preventing replay attacks. Should equal accountNonce[sender].
+        @param deadline The timestamp after which the signature is invalid
         @param v ECDSA signature component: Parity of the `y` coordinate of point `R`
         @param r ECDSA signature component: x-coordinate of `R`
         @param s ECDSA signature component: `s` value of the signature
@@ -27,7 +29,8 @@ abstract contract Sponsorable {
         address sponsorFeeToken;
         uint256 sponsorFeeAmount;
         uint256 nonce;
-        uint8 v;
+        uint256 deadline;
+        uint256 v;
         bytes32 r;
         bytes32 s;
     }
@@ -70,6 +73,10 @@ abstract contract Sponsorable {
             sponsorship.nonce == accountNonce[sponsorship.sender],
             "Sponsorable: BAD_NONCE"
         );
+        require(
+            block.timestamp <= sponsorship.deadline,
+            "Sponsorable: SIG_DEAD"
+        );
 
         uint256 chainId;
         assembly {
@@ -89,6 +96,7 @@ abstract contract Sponsorable {
                                 sponsorship.sponsorFeeToken,
                                 sponsorship.sponsorFeeAmount,
                                 sponsorship.nonce,
+                                sponsorship.deadline,
                                 funcSignature
                             ),
                             encodedParams
@@ -98,7 +106,12 @@ abstract contract Sponsorable {
             );
 
         address recoveredAddress =
-            ECDSA.recover(digest, sponsorship.v, sponsorship.r, sponsorship.s);
+            ECDSA.recover(
+                digest,
+                uint8(sponsorship.v),
+                sponsorship.r,
+                sponsorship.s
+            );
         require(
             recoveredAddress != address(0) &&
                 recoveredAddress == sponsorship.sender,

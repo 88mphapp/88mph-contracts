@@ -31,7 +31,7 @@ contract ZeroCouponBond is
     Vesting02 public vesting;
     uint64 public maturationTimestamp;
     uint64 public depositID;
-    uint8 public _decimals;
+    uint8 private _decimals;
 
     event WithdrawDeposit();
     event RedeemStablecoin(address indexed sender, uint256 amount);

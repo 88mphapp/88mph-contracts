@@ -52,6 +52,10 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
         uint256 withdrawnAmount
     );
     event ESetMPHMinter(address newValue);
+    event EBoost(
+        uint64 indexed vestID,
+        uint256 vestAmountPerStablecoinPerSecond
+    );
 
     function initialize(
         address _token,
@@ -236,8 +240,21 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
         _setTokenURI(tokenId, newURI);
     }
 
+    /**
+        Owner functions
+     */
+
     function setBaseURI(string calldata newURI) external onlyOwner {
         __baseURI = newURI;
+    }
+
+    function boost(uint64 vestID, uint256 vestAmountPerStablecoinPerSecond)
+        external
+        onlyOwner
+    {
+        _getVest(vestID)
+            .vestAmountPerStablecoinPerSecond = vestAmountPerStablecoinPerSecond;
+        emit EBoost(vestID, vestAmountPerStablecoinPerSecond);
     }
 
     uint256[44] private __gap;

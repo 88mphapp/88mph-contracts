@@ -129,7 +129,17 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
 
         uint64 vestID = depositIDToVestID[pool][depositID];
         Vest storage vestEntry = _getVest(vestID);
-        vestEntry.accumulatedAmount += _getVestWithdrawableAmount(vestID);
+        DInterest pool = DInterest(vestEntry.pool);
+        DInterest.Deposit memory depositEntry =
+            pool.getDeposit(vestEntry.depositID);
+        uint256 currentTimestamp =
+            MathUpgradeable.min(
+                block.timestamp,
+                depositEntry.maturationTimestamp
+            );
+        vestEntry.accumulatedAmount += (currentDepositAmount *
+            (currentTimestamp - vestEntry.lastUpdateTimestamp))
+            .decmul(vestEntry.vestAmountPerStablecoinPerSecond);
         vestEntry.lastUpdateTimestamp = uint64(block.timestamp);
         vestEntry.vestAmountPerStablecoinPerSecond =
             (vestEntry.vestAmountPerStablecoinPerSecond *
@@ -196,11 +206,14 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
                 block.timestamp,
                 depositEntry.maturationTimestamp
             );
+        if (currentTimestamp < vestEntry.lastUpdateTimestamp) {
+            return vestEntry.accumulatedAmount - vestEntry.withdrawnAmount;
+        }
         uint256 depositAmount =
             depositEntry.virtualTokenTotalSupply.decdiv(
                 PRECISION + depositEntry.interestRate
             );
-        withdrawableAmount =
+        return
             vestEntry.accumulatedAmount +
             (depositAmount * (currentTimestamp - vestEntry.lastUpdateTimestamp))
                 .decmul(vestEntry.vestAmountPerStablecoinPerSecond) -

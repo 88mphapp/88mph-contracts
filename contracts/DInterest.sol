@@ -953,6 +953,19 @@ contract DInterest is
             );
         }
 
+        // Update vest
+        {
+            uint256 depositAmountBeforeWithdrawal =
+                _getDeposit(depositID).virtualTokenTotalSupply.decdiv(
+                    depositEntry.interestRate + PRECISION
+                );
+            mphMinter.updateVestForDeposit(
+                depositID,
+                depositAmountBeforeWithdrawal,
+                0
+            );
+        }
+
         // Burn `virtualTokenAmount` deposit virtual tokens
         _getDeposit(depositID).virtualTokenTotalSupply -= virtualTokenAmount;
 

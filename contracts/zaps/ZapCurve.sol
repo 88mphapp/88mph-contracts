@@ -36,36 +36,45 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
         address inputToken,
         uint256 inputTokenAmount,
         uint256 minOutputTokenAmount,
-        uint256 maturationTimestamp
+        uint64 maturationTimestamp
     ) external active {
         DInterest poolContract = DInterest(pool);
-        ERC20 stablecoin = poolContract.stablecoin();
-        NFT depositNFT = poolContract.depositNFT();
-        Vesting02 vestingContract = Vesting02(vesting);
 
         // zap into curve
-        uint256 outputTokenAmount =
-            _zapTokenInCurve(
-                swapAddress,
-                inputToken,
-                inputTokenAmount,
-                minOutputTokenAmount
-            );
+        uint64 depositID;
+        {
+            uint256 outputTokenAmount =
+                _zapTokenInCurve(
+                    swapAddress,
+                    inputToken,
+                    inputTokenAmount,
+                    minOutputTokenAmount
+                );
 
-        // create deposit
-        stablecoin.safeApprove(pool, outputTokenAmount);
-        (uint256 depositID, ) =
-            poolContract.deposit(outputTokenAmount, maturationTimestamp);
+            // create deposit
+            poolContract.stablecoin().safeApprove(pool, outputTokenAmount);
+            (depositID, ) = poolContract.deposit(
+                outputTokenAmount,
+                maturationTimestamp
+            );
+        }
 
         // transfer deposit multitokens to msg.sender
-        depositNFT.safeTransferFrom(address(this), msg.sender, depositID);
-
-        // transfer vest token out
-        vestingContract.safeTransferFrom(
+        poolContract.depositNFT().safeTransferFrom(
             address(this),
             msg.sender,
-            vestingContract.depositIDToVestID(depositID)
+            depositID
         );
+
+        // transfer vest token out
+        {
+            Vesting02 vestingContract = Vesting02(vesting);
+            vestingContract.safeTransferFrom(
+                address(this),
+                msg.sender,
+                vestingContract.depositIDToVestID(pool, depositID)
+            );
+        }
     }
 
     function zapCurveFund(
@@ -74,7 +83,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
         address inputToken,
         uint256 inputTokenAmount,
         uint256 minOutputTokenAmount,
-        uint256 depositID
+        uint64 depositID
     ) external active {
         DInterest poolContract = DInterest(pool);
         ERC20 stablecoin = poolContract.stablecoin();
@@ -91,7 +100,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
 
         // create funding
         stablecoin.safeApprove(pool, outputTokenAmount);
-        uint256 fundingID = poolContract.fund(depositID, outputTokenAmount);
+        uint64 fundingID = poolContract.fund(depositID, outputTokenAmount);
 
         // transfer funding multitoken to msg.sender
         fundingMultitoken.safeTransferFrom(

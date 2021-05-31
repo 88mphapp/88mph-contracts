@@ -4,6 +4,9 @@ const { assert, artifacts } = require("hardhat");
 
 // Contract artifacts
 const DInterest = (module.exports.DInterest = artifacts.require("DInterest"));
+const DInterestLens = (module.exports.DInterest = artifacts.require(
+  "DInterestLens"
+));
 const PercentageFeeModel = (module.exports.PercentageFeeModel = artifacts.require(
   "PercentageFeeModel"
 ));
@@ -206,25 +209,29 @@ const factoryReceiptToContract = (module.exports.factoryReceiptToContract = asyn
 });
 
 const aaveMoneyMarketModule = () => {
+  // Contract artifacts
+  const AaveMarket = artifacts.require("AaveMarket");
+  const ATokenMock = artifacts.require("ATokenMock");
+  const LendingPoolMock = artifacts.require("LendingPoolMock");
+  const LendingPoolAddressesProviderMock = artifacts.require(
+    "LendingPoolAddressesProviderMock"
+  );
+  const AaveMiningMock = artifacts.require("AaveMiningMock");
+  const ERC20Mock = artifacts.require("ERC20Mock");
+
   let aToken;
   let lendingPool;
   let lendingPoolAddressesProvider;
   let aaveMining;
   let aave;
+  const aTokenAddresssList = [];
 
   const deployMoneyMarket = async (accounts, factory, stablecoin, rewards) => {
-    // Contract artifacts
-    const AaveMarket = artifacts.require("AaveMarket");
-    const ATokenMock = artifacts.require("ATokenMock");
-    const LendingPoolMock = artifacts.require("LendingPoolMock");
-    const LendingPoolAddressesProviderMock = artifacts.require(
-      "LendingPoolAddressesProviderMock"
-    );
-    const AaveMiningMock = artifacts.require("AaveMiningMock");
-    const ERC20Mock = artifacts.require("ERC20Mock");
-
     // Initialize mock Aave contracts
     aToken = await ATokenMock.new(stablecoin.address);
+    if (!aTokenAddresssList.includes(aToken.address)) {
+      aTokenAddresssList.push(aToken.address);
+    }
     lendingPool = await LendingPoolMock.new();
     await lendingPool.setReserveAToken(stablecoin.address, aToken.address);
     lendingPoolAddressesProvider = await LendingPoolAddressesProviderMock.new();
@@ -253,7 +260,10 @@ const aaveMoneyMarketModule = () => {
 
   const timePass = async timeInYears => {
     await timeTravel(timeInYears * YEAR_IN_SEC);
-    await aToken.mintInterest(num2str(timeInYears * YEAR_IN_SEC));
+    for (const aTokenAddress of aTokenAddresssList) {
+      const aToken = await ATokenMock.at(aTokenAddress);
+      await aToken.mintInterest(num2str(timeInYears * YEAR_IN_SEC));
+    }
   };
 
   return {
@@ -316,19 +326,24 @@ const bProtocolMoneyMarketModule = () => {
 };
 
 const compoundERC20MoneyMarketModule = () => {
+  // Contract artifacts
+  const CompoundERC20Market = artifacts.require("CompoundERC20Market");
+  const CERC20Mock = artifacts.require("CERC20Mock");
+  const ComptrollerMock = artifacts.require("ComptrollerMock");
+
   let cToken;
   let comptroller;
   let comp;
+  const cTokenAddressList = [];
+
   const INIT_INTEREST_RATE = 0.1; // 10% APY
 
   const deployMoneyMarket = async (accounts, factory, stablecoin, rewards) => {
-    // Contract artifacts
-    const CompoundERC20Market = artifacts.require("CompoundERC20Market");
-    const CERC20Mock = artifacts.require("CERC20Mock");
-    const ComptrollerMock = artifacts.require("ComptrollerMock");
-
     // Deploy Compound mock contracts
     cToken = await CERC20Mock.new(stablecoin.address);
+    if (!cTokenAddressList.includes(cToken.address)) {
+      cTokenAddressList.push(cToken.address);
+    }
     comp = await ERC20Mock.new();
     comptroller = await ComptrollerMock.new(comp.address);
 
@@ -352,11 +367,14 @@ const compoundERC20MoneyMarketModule = () => {
 
   const timePass = async timeInYears => {
     await timeTravel(timeInYears * YEAR_IN_SEC);
-    const currentExRate = BigNumber(await cToken.exchangeRateStored());
-    const rateAfterTimePasses = BigNumber(currentExRate).times(
-      1 + timeInYears * INIT_INTEREST_RATE
-    );
-    await cToken._setExchangeRateStored(num2str(rateAfterTimePasses));
+    for (const cTokenAddress of cTokenAddressList) {
+      const cToken = await CERC20Mock.at(cTokenAddress);
+      const currentExRate = BigNumber(await cToken.exchangeRateStored());
+      const rateAfterTimePasses = BigNumber(currentExRate).times(
+        1 + timeInYears * INIT_INTEREST_RATE
+      );
+      await cToken._setExchangeRateStored(num2str(rateAfterTimePasses));
+    }
   };
 
   return {
@@ -366,16 +384,20 @@ const compoundERC20MoneyMarketModule = () => {
 };
 
 const creamERC20MoneyMarketModule = () => {
+  // Contract artifacts
+  const CreamERC20Market = artifacts.require("CreamERC20Market");
+  const CERC20Mock = artifacts.require("CERC20Mock");
+
   let cToken;
+  const cTokenAddressList = [];
   const INIT_INTEREST_RATE = 0.1; // 10% APY
 
   const deployMoneyMarket = async (accounts, factory, stablecoin, rewards) => {
-    // Contract artifacts
-    const CreamERC20Market = artifacts.require("CreamERC20Market");
-    const CERC20Mock = artifacts.require("CERC20Mock");
-
     // Deploy Compound mock contracts
     cToken = await CERC20Mock.new(stablecoin.address);
+    if (!cTokenAddressList.includes(cToken.address)) {
+      cTokenAddressList.push(cToken.address);
+    }
 
     // Mint stablecoins
     const mintAmount = 1000 * STABLECOIN_PRECISION;
@@ -395,11 +417,14 @@ const creamERC20MoneyMarketModule = () => {
 
   const timePass = async timeInYears => {
     await timeTravel(timeInYears * YEAR_IN_SEC);
-    const currentExRate = BigNumber(await cToken.exchangeRateStored());
-    const rateAfterTimePasses = BigNumber(currentExRate).times(
-      1 + timeInYears * INIT_INTEREST_RATE
-    );
-    await cToken._setExchangeRateStored(num2str(rateAfterTimePasses));
+    for (const cTokenAddress of cTokenAddressList) {
+      const cToken = await CERC20Mock.at(cTokenAddress);
+      const currentExRate = BigNumber(await cToken.exchangeRateStored());
+      const rateAfterTimePasses = BigNumber(currentExRate).times(
+        1 + timeInYears * INIT_INTEREST_RATE
+      );
+      await cToken._setExchangeRateStored(num2str(rateAfterTimePasses));
+    }
   };
 
   return {
@@ -409,19 +434,23 @@ const creamERC20MoneyMarketModule = () => {
 };
 
 const harvestMoneyMarketModule = () => {
+  // Contract artifacts
+  const VaultMock = artifacts.require("VaultMock");
+  const HarvestStakingMock = artifacts.require("HarvestStakingMock");
+  const HarvestMarket = artifacts.require("HarvestMarket");
+
   let vault;
   let stablecoin;
+  const vaultAddressList = [];
   const INIT_INTEREST_RATE = 0.1; // 10% APY
 
   const deployMoneyMarket = async (accounts, factory, _stablecoin, rewards) => {
-    // Contract artifacts
-    const VaultMock = artifacts.require("VaultMock");
-    const HarvestStakingMock = artifacts.require("HarvestStakingMock");
-    const HarvestMarket = artifacts.require("HarvestMarket");
-
     // Deploy mock contracts
     stablecoin = _stablecoin;
     vault = await VaultMock.new(stablecoin.address);
+    if (!vaultAddressList.includes(vault.address)) {
+      vaultAddressList.push(vault.address);
+    }
 
     // Initialize FARM rewards
     const farmToken = await ERC20Mock.new();
@@ -453,14 +482,17 @@ const harvestMoneyMarketModule = () => {
 
   const timePass = async timeInYears => {
     await timeTravel(timeInYears * YEAR_IN_SEC);
-    await stablecoin.mint(
-      vault.address,
-      num2str(
-        BigNumber(await stablecoin.balanceOf(vault.address))
-          .times(INIT_INTEREST_RATE)
-          .times(timeInYears)
-      )
-    );
+    for (const vaultAddress of vaultAddressList) {
+      const vault = await VaultMock.at(vaultAddress);
+      await stablecoin.mint(
+        vault.address,
+        num2str(
+          BigNumber(await stablecoin.balanceOf(vault.address))
+            .times(INIT_INTEREST_RATE)
+            .times(timeInYears)
+        )
+      );
+    }
   };
 
   return {
@@ -470,18 +502,22 @@ const harvestMoneyMarketModule = () => {
 };
 
 const yvaultMoneyMarketModule = () => {
+  // Contract artifacts
+  const VaultMock = artifacts.require("VaultMock");
+  const YVaultMarket = artifacts.require("YVaultMarket");
+
   let vault;
   let stablecoin;
+  const vaultAddressList = [];
   const INIT_INTEREST_RATE = 0.1; // 10% APY
 
   const deployMoneyMarket = async (accounts, factory, _stablecoin, rewards) => {
-    // Contract artifacts
-    const VaultMock = artifacts.require("VaultMock");
-    const YVaultMarket = artifacts.require("YVaultMarket");
-
     // Deploy mock contracts
     stablecoin = _stablecoin;
     vault = await VaultMock.new(stablecoin.address);
+    if (!vaultAddressList.includes(vault.address)) {
+      vaultAddressList.push(vault.address);
+    }
 
     // Initialize the money market
     const marketTemplate = await YVaultMarket.new();
@@ -497,14 +533,17 @@ const yvaultMoneyMarketModule = () => {
 
   const timePass = async timeInYears => {
     await timeTravel(timeInYears * YEAR_IN_SEC);
-    await stablecoin.mint(
-      vault.address,
-      num2str(
-        BigNumber(await stablecoin.balanceOf(vault.address))
-          .times(INIT_INTEREST_RATE)
-          .times(timeInYears)
-      )
-    );
+    for (const vaultAddress of vaultAddressList) {
+      const vault = await VaultMock.at(vaultAddress);
+      await stablecoin.mint(
+        vault.address,
+        num2str(
+          BigNumber(await stablecoin.balanceOf(vault.address))
+            .times(INIT_INTEREST_RATE)
+            .times(timeInYears)
+        )
+      );
+    }
   };
 
   return {
@@ -558,6 +597,7 @@ const setupTest = (module.exports.setupTest = async (
   let vesting;
   let vesting02;
   let factory;
+  let lens;
 
   // Accounts
   const acc0 = accounts[0];
@@ -606,58 +646,6 @@ const setupTest = (module.exports.setupTest = async (
   // Deploy factory
   factory = await Factory.new();
 
-  // Deploy moneyMarket
-  market = await moneyMarketModule.deployMoneyMarket(
-    accounts,
-    factory,
-    stablecoin,
-    govTreasury
-  );
-
-  // Initialize the NFTs
-  const nftTemplate = await NFT.new();
-  const depositNFTReceipt = await factory.createNFT(
-    nftTemplate.address,
-    DEFAULT_SALT,
-    "88mph Deposit",
-    "88mph-Deposit"
-  );
-  depositNFT = await factoryReceiptToContract(depositNFTReceipt, NFT);
-  const fundingMultitokenTemplate = await FundingMultitoken.new();
-  const erc20WrapperTemplate = await ERC20Wrapper.new();
-  const fundingNFTReceipt = await factory.createFundingMultitoken(
-    fundingMultitokenTemplate.address,
-    DEFAULT_SALT,
-    "https://api.88mph.app/funding-metadata/",
-    [stablecoin.address, mph.address],
-    erc20WrapperTemplate.address,
-    true,
-    "88mph Floating-rate Bond: ",
-    "88MPH-FRB-",
-    STABLECOIN_DECIMALS
-  );
-  fundingMultitoken = await factoryReceiptToContract(
-    fundingNFTReceipt,
-    FundingMultitoken
-  );
-
-  // Initialize the interest oracle
-  const interestOracleTemplate = await EMAOracle.new();
-  const interestOracleReceipt = await factory.createEMAOracle(
-    interestOracleTemplate.address,
-    DEFAULT_SALT,
-    num2str((INIT_INTEREST_RATE * PRECISION) / YEAR_IN_SEC),
-    EMAUpdateInterval,
-    EMASmoothingFactor,
-    EMAAverageWindowInIntervals,
-    market.address
-  );
-  interestOracle = await factoryReceiptToContract(
-    interestOracleReceipt,
-    EMAOracle
-  );
-
-  // Initialize the DInterest pool
   feeModel = await PercentageFeeModel.new(
     govTreasury,
     interestFee,
@@ -667,48 +655,127 @@ const setupTest = (module.exports.setupTest = async (
     num2str(multiplierIntercept),
     num2str(multiplierSlope)
   );
-  const dInterestTemplate = await DInterest.new();
-  const dInterestReceipt = await factory.createDInterest(
-    dInterestTemplate.address,
-    DEFAULT_SALT,
-    MaxDepositPeriod,
-    MinDepositAmount,
-    market.address,
-    stablecoin.address,
-    feeModel.address,
-    interestModel.address,
-    interestOracle.address,
-    depositNFT.address,
-    fundingMultitoken.address,
-    mphMinter.address
-  );
-  dInterestPool = await factoryReceiptToContract(dInterestReceipt, DInterest);
+  lens = await DInterestLens.new();
 
-  // Set MPH minting multiplier for DInterest pool
-  await mphMinter.grantRole(WHITELISTED_POOL_ROLE, dInterestPool.address, {
-    from: acc0
-  });
-  await mphIssuanceModel.setPoolDepositorRewardMintMultiplier(
-    dInterestPool.address,
-    PoolDepositorRewardMintMultiplier
-  );
-  await mphIssuanceModel.setPoolFunderRewardMultiplier(
-    dInterestPool.address,
-    PoolFunderRewardMultiplier
-  );
-  await mphIssuanceModel.setPoolFunderRewardVestPeriod(
-    dInterestPool.address,
-    PoolFunderRewardVestPeriod
-  );
+  const deployDInterest = async () => {
+    let market, depositNFT, fundingMultitoken, interestOracle, dInterestPool;
 
-  // Transfer the ownership of the money market to the DInterest pool
-  await market.transferOwnership(dInterestPool.address);
+    // Deploy moneyMarket
+    market = await moneyMarketModule.deployMoneyMarket(
+      accounts,
+      factory,
+      stablecoin,
+      govTreasury
+    );
 
-  // Transfer NFT ownerships to the DInterest pool
-  await depositNFT.transferOwnership(dInterestPool.address);
-  await fundingMultitoken.grantRole(MINTER_BURNER_ROLE, dInterestPool.address);
-  await fundingMultitoken.grantRole(DIVIDEND_ROLE, dInterestPool.address);
-  await fundingMultitoken.grantRole(DIVIDEND_ROLE, mphMinter.address);
+    // Initialize the NFTs
+    const nftTemplate = await NFT.new();
+    const depositNFTReceipt = await factory.createNFT(
+      nftTemplate.address,
+      DEFAULT_SALT,
+      "88mph Deposit",
+      "88mph-Deposit"
+    );
+    depositNFT = await factoryReceiptToContract(depositNFTReceipt, NFT);
+    const fundingMultitokenTemplate = await FundingMultitoken.new();
+    const erc20WrapperTemplate = await ERC20Wrapper.new();
+    const fundingNFTReceipt = await factory.createFundingMultitoken(
+      fundingMultitokenTemplate.address,
+      DEFAULT_SALT,
+      "https://api.88mph.app/funding-metadata/",
+      [stablecoin.address, mph.address],
+      erc20WrapperTemplate.address,
+      true,
+      "88mph Floating-rate Bond: ",
+      "88MPH-FRB-",
+      STABLECOIN_DECIMALS
+    );
+    fundingMultitoken = await factoryReceiptToContract(
+      fundingNFTReceipt,
+      FundingMultitoken
+    );
+
+    // Initialize the interest oracle
+    const interestOracleTemplate = await EMAOracle.new();
+    const interestOracleReceipt = await factory.createEMAOracle(
+      interestOracleTemplate.address,
+      DEFAULT_SALT,
+      num2str((INIT_INTEREST_RATE * PRECISION) / YEAR_IN_SEC),
+      EMAUpdateInterval,
+      EMASmoothingFactor,
+      EMAAverageWindowInIntervals,
+      market.address
+    );
+    interestOracle = await factoryReceiptToContract(
+      interestOracleReceipt,
+      EMAOracle
+    );
+
+    const dInterestTemplate = await DInterest.new();
+    const dInterestReceipt = await factory.createDInterest(
+      dInterestTemplate.address,
+      DEFAULT_SALT,
+      MaxDepositPeriod,
+      MinDepositAmount,
+      market.address,
+      stablecoin.address,
+      feeModel.address,
+      interestModel.address,
+      interestOracle.address,
+      depositNFT.address,
+      fundingMultitoken.address,
+      mphMinter.address
+    );
+    dInterestPool = await factoryReceiptToContract(dInterestReceipt, DInterest);
+
+    // Set MPH minting multiplier for DInterest pool
+    await mphMinter.grantRole(WHITELISTED_POOL_ROLE, dInterestPool.address, {
+      from: acc0
+    });
+    await mphIssuanceModel.setPoolDepositorRewardMintMultiplier(
+      dInterestPool.address,
+      PoolDepositorRewardMintMultiplier
+    );
+    await mphIssuanceModel.setPoolFunderRewardMultiplier(
+      dInterestPool.address,
+      PoolFunderRewardMultiplier
+    );
+    await mphIssuanceModel.setPoolFunderRewardVestPeriod(
+      dInterestPool.address,
+      PoolFunderRewardVestPeriod
+    );
+
+    // Transfer the ownership of the money market to the DInterest pool
+    await market.transferOwnership(dInterestPool.address);
+
+    // Transfer NFT ownerships to the DInterest pool
+    await depositNFT.transferOwnership(dInterestPool.address);
+    await fundingMultitoken.grantRole(
+      MINTER_BURNER_ROLE,
+      dInterestPool.address
+    );
+    await fundingMultitoken.grantRole(DIVIDEND_ROLE, dInterestPool.address);
+    await fundingMultitoken.grantRole(DIVIDEND_ROLE, mphMinter.address);
+
+    // set infinite approval to pool
+    await stablecoin.approve(dInterestPool.address, INF, { from: acc0 });
+    await stablecoin.approve(dInterestPool.address, INF, { from: acc1 });
+    await stablecoin.approve(dInterestPool.address, INF, { from: acc2 });
+
+    return {
+      market,
+      depositNFT,
+      fundingMultitoken,
+      interestOracle,
+      dInterestPool
+    };
+  };
+  const dInterestPoolDeployResult = await deployDInterest();
+  market = dInterestPoolDeployResult.market;
+  depositNFT = dInterestPoolDeployResult.depositNFT;
+  fundingMultitoken = dInterestPoolDeployResult.fundingMultitoken;
+  interestOracle = dInterestPoolDeployResult.interestOracle;
+  dInterestPool = dInterestPoolDeployResult.dInterestPool;
 
   return {
     stablecoin,
@@ -724,6 +791,8 @@ const setupTest = (module.exports.setupTest = async (
     mphIssuanceModel,
     vesting,
     vesting02,
-    factory
+    factory,
+    lens,
+    deployDInterest
   };
 });

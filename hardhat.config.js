@@ -29,6 +29,9 @@ module.exports = {
         enabled: true,
         runs: 200
       }
+      /*, debug: {
+        revertStrings: "strip"
+      }*/
     }
   },
   namedAccounts: {
@@ -55,7 +58,8 @@ module.exports = {
       forking: {
         url:
           "https://eth-mainnet.alchemyapi.io/v2/pvGDp1uf8J7QZ7MXpLhYs_SnMnsE0TY5"
-      }
+      },
+      allowUnlimitedContractSize: true
     }
   },
   spdxLicenseIdentifier: {

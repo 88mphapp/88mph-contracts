@@ -4,15 +4,14 @@ pragma solidity 0.8.3;
 interface IFeeModel {
     function beneficiary() external view returns (address payable);
 
-    function getInterestFeeAmount(
-        address pool,
-        uint256 depositID,
-        uint256 interestAmount
-    ) external view returns (uint256 feeAmount);
+    function getInterestFeeAmount(address pool, uint256 interestAmount)
+        external
+        view
+        returns (uint256 feeAmount);
 
     function getEarlyWithdrawFeeAmount(
         address pool,
-        uint256 depositID,
+        uint64 depositID,
         uint256 withdrawnDepositAmount
     ) external view returns (uint256 feeAmount);
 }

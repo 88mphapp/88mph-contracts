@@ -29,19 +29,18 @@ contract ZeroCouponBond is
     ERC20 public stablecoin;
     NFT public depositNFT;
     Vesting02 public vesting;
-    uint256 public maturationTimestamp;
-    uint256 public depositID;
-    uint8 public _decimals;
+    uint64 public maturationTimestamp;
+    uint64 public depositID;
+    uint8 private _decimals;
 
     event WithdrawDeposit();
-    event EarlyRedeem(address indexed sender, uint256 bondAmount);
     event RedeemStablecoin(address indexed sender, uint256 amount);
 
     function initialize(
         address _creator,
         address _pool,
         address _vesting,
-        uint256 _maturationTimestamp,
+        uint64 _maturationTimestamp,
         uint256 _initialDepositAmount,
         string calldata _tokenName,
         string calldata _tokenSymbol
@@ -74,7 +73,7 @@ contract ZeroCouponBond is
         vesting.safeTransferFrom(
             address(this),
             _creator,
-            vesting.depositIDToVestID(depositID)
+            vesting.depositIDToVestID(_pool, depositID)
         );
     }
 
@@ -96,20 +95,6 @@ contract ZeroCouponBond is
         returns (uint256 mintedAmount)
     {
         return _mintInternal(msg.sender, depositAmount);
-    }
-
-    /**
-        @notice Redeems zero coupon bonds for the underlying stablecoins before the
-                zero coupon bond is mature.
-        @param bondAmount The amount of zero coupon bonds to burn
-        @return stablecoinsRedeemed The amount of stablecoins redeemed
-     */
-    function earlyRedeem(uint256 bondAmount)
-        external
-        nonReentrant
-        returns (uint256 stablecoinsRedeemed)
-    {
-        return _earlyRedeem(msg.sender, bondAmount);
     }
 
     /**
@@ -155,25 +140,6 @@ contract ZeroCouponBond is
         returns (uint256 mintedAmount)
     {
         return _mintInternal(sponsorship.sender, depositAmount);
-    }
-
-    /**
-        @dev See {earlyRedeem}
-     */
-    function sponsoredEarlyRedeem(
-        uint256 bondAmount,
-        Sponsorship calldata sponsorship
-    )
-        external
-        nonReentrant
-        sponsored(
-            sponsorship,
-            this.sponsoredEarlyRedeem.selector,
-            abi.encode(bondAmount)
-        )
-        returns (uint256 stablecoinsRedeemed)
-    {
-        return _earlyRedeem(sponsorship.sender, bondAmount);
     }
 
     /**
@@ -228,25 +194,6 @@ contract ZeroCouponBond is
 
         // mint zero coupon bonds to `msg.sender`
         _mint(sender, mintedAmount);
-    }
-
-    /**
-        @dev See {earlyRedeem}
-     */
-    function _earlyRedeem(address sender, uint256 bondAmount)
-        internal
-        returns (uint256 stablecoinsRedeemed)
-    {
-        // burn bonds
-        _burn(sender, bondAmount);
-
-        // withdraw funds from the pool
-        stablecoinsRedeemed = pool.withdraw(depositID, bondAmount, true);
-
-        // transfer funds to sender
-        stablecoin.safeTransfer(sender, stablecoinsRedeemed);
-
-        emit EarlyRedeem(sender, bondAmount);
     }
 
     /**

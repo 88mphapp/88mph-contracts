@@ -62,7 +62,7 @@ contract MPHMinter is MPHMinterLegacy {
     /**
         v3 functions
      */
-    function createVestForDeposit(address account, uint256 depositID)
+    function createVestForDeposit(address account, uint64 depositID)
         external
         onlyRole(WHITELISTED_POOL_ROLE)
     {
@@ -75,11 +75,12 @@ contract MPHMinter is MPHMinterLegacy {
     }
 
     function updateVestForDeposit(
-        uint256 depositID,
+        uint64 depositID,
         uint256 currentDepositAmount,
         uint256 depositAmount
     ) external onlyRole(WHITELISTED_POOL_ROLE) {
         vesting02.updateVestForDeposit(
+            msg.sender,
             depositID,
             currentDepositAmount,
             depositAmount,
@@ -102,11 +103,11 @@ contract MPHMinter is MPHMinterLegacy {
         return amount;
     }
 
-    function distributeFundingRewards(uint256 fundingID, uint256 interestAmount)
+    function distributeFundingRewards(uint64 fundingID, uint256 interestAmount)
         external
         onlyRole(WHITELISTED_POOL_ROLE)
     {
-        if (interestAmount == 0) {
+        if (interestAmount == 0 || mph.owner() != address(this)) {
             return;
         }
         uint256 mintMPHAmount =

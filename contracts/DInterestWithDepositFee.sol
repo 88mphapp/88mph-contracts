@@ -26,7 +26,7 @@ contract DInterestWithDepositFee is DInterest {
         @param _mphMinter Address of the contract for handling minting MPH to users
      */
     function initialize(
-        uint256 _MaxDepositPeriod,
+        uint64 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
         uint256 _DepositFee,
         address _moneyMarket,
@@ -63,13 +63,13 @@ contract DInterestWithDepositFee is DInterest {
     function _deposit(
         address sender,
         uint256 depositAmount,
-        uint256 maturationTimestamp,
+        uint64 maturationTimestamp,
         bool rollover
     )
         internal
         virtual
         override
-        returns (uint256 depositID, uint256 interestAmount)
+        returns (uint64 depositID, uint256 interestAmount)
     {
         (depositID, interestAmount) = _depositRecordData(
             sender,
@@ -84,7 +84,7 @@ contract DInterestWithDepositFee is DInterest {
      */
     function _topupDeposit(
         address sender,
-        uint256 depositID,
+        uint64 depositID,
         uint256 depositAmount
     ) internal virtual override returns (uint256 interestAmount) {
         interestAmount = _topupDepositRecordData(
@@ -100,9 +100,9 @@ contract DInterestWithDepositFee is DInterest {
      */
     function _fund(
         address sender,
-        uint256 depositID,
+        uint64 depositID,
         uint256 fundAmount
-    ) internal virtual override returns (uint256 fundingID) {
+    ) internal virtual override returns (uint64 fundingID) {
         uint256 actualFundAmount;
         (fundingID, actualFundAmount) = _fundRecordData(
             sender,
@@ -149,7 +149,7 @@ contract DInterestWithDepositFee is DInterest {
      */
 
     function setDepositFee(uint256 newValue) external onlyOwner {
-        require(newValue < PRECISION, "DInterestWithDepositFee: invalid value");
+        require(newValue < PRECISION, "DInterestWithDepositFee: BAD_VALUE");
         DepositFee = newValue;
         emit ESetParamUint(msg.sender, "DepositFee", newValue);
     }

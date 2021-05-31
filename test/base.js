@@ -700,6 +700,11 @@ const setupTest = (module.exports.setupTest = async (
     await fundingMultitoken.grantRole(DIVIDEND_ROLE, dInterestPool.address);
     await fundingMultitoken.grantRole(DIVIDEND_ROLE, mphMinter.address);
 
+    // set infinite approval to pool
+    await stablecoin.approve(dInterestPool.address, INF, { from: acc0 });
+    await stablecoin.approve(dInterestPool.address, INF, { from: acc1 });
+    await stablecoin.approve(dInterestPool.address, INF, { from: acc2 });
+
     return {
       market,
       depositNFT,

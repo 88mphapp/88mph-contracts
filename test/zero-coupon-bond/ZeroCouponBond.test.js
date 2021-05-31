@@ -44,7 +44,24 @@ contract("ZeroCouponBond", accounts => {
         );
         await baseContracts.stablecoin.approve(
           zeroCouponBondAddress,
-          Base.num2str(Base.MinDepositAmount)
+          Base.INF,
+          {
+            from: acc0
+          }
+        );
+        await baseContracts.stablecoin.approve(
+          zeroCouponBondAddress,
+          Base.INF,
+          {
+            from: acc1
+          }
+        );
+        await baseContracts.stablecoin.approve(
+          zeroCouponBondAddress,
+          Base.INF,
+          {
+            from: acc2
+          }
         );
         const zcbReceipt = await baseContracts.factory.createZeroCouponBond(
           zeroCouponBondTemplate.address,
@@ -69,14 +86,6 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await baseContracts.stablecoin.approve(
-              zeroCouponBond.address,
-              Base.INF,
-              {
-                from: acc1
-              }
-            );
-
             await zeroCouponBond.mint(Base.num2str(depositAmount), {
               from: acc1
             });
@@ -101,13 +110,6 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 10000 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await baseContracts.stablecoin.approve(
-              zeroCouponBond.address,
-              Base.INF,
-              {
-                from: acc1
-              }
-            );
             try {
               await zeroCouponBond.mint(Base.num2str(depositAmount), {
                 from: acc1
@@ -129,13 +131,6 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await baseContracts.stablecoin.approve(
-              zeroCouponBond.address,
-              Base.INF,
-              {
-                from: acc1
-              }
-            );
             await zeroCouponBond.mint(Base.num2str(depositAmount), {
               from: acc1
             });
@@ -158,13 +153,6 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await baseContracts.stablecoin.approve(
-              zeroCouponBond.address,
-              Base.INF,
-              {
-                from: acc1
-              }
-            );
             await zeroCouponBond.mint(Base.num2str(depositAmount), {
               from: acc1
             });
@@ -192,13 +180,6 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await baseContracts.stablecoin.approve(
-              zeroCouponBond.address,
-              Base.INF,
-              {
-                from: acc1
-              }
-            );
             await zeroCouponBond.mint(Base.num2str(depositAmount), {
               from: acc1
             });
@@ -245,13 +226,6 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await baseContracts.stablecoin.approve(
-              zeroCouponBond.address,
-              Base.INF,
-              {
-                from: acc1
-              }
-            );
             await zeroCouponBond.mint(Base.num2str(depositAmount), {
               from: acc1
             });
@@ -272,13 +246,6 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await baseContracts.stablecoin.approve(
-              zeroCouponBond.address,
-              Base.INF,
-              {
-                from: acc1
-              }
-            );
             await zeroCouponBond.mint(Base.num2str(depositAmount), {
               from: acc1
             });
@@ -304,13 +271,6 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await baseContracts.stablecoin.approve(
-              zeroCouponBond.address,
-              Base.INF,
-              {
-                from: acc1
-              }
-            );
             await zeroCouponBond.mint(Base.num2str(depositAmount), {
               from: acc1
             });
@@ -334,13 +294,6 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await baseContracts.stablecoin.approve(
-              zeroCouponBond.address,
-              Base.INF,
-              {
-                from: acc1
-              }
-            );
             await zeroCouponBond.mint(Base.num2str(depositAmount), {
               from: acc1
             });

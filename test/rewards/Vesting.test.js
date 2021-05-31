@@ -42,6 +42,12 @@ contract("Vesting", accounts => {
   // Constants
   const TOKEN_PRECISION = 1e6;
   const DAY = 24 * 60 * 60;
+  const INF = BigNumber(2)
+    .pow(256)
+    .minus(1)
+    .toFixed();
+  const vestAmount = 10 * TOKEN_PRECISION;
+  const vestPeriod = 7 * DAY;
 
   // Contracts
   let token, vesting;
@@ -57,13 +63,12 @@ contract("Vesting", accounts => {
 
     const Vesting = artifacts.require("Vesting");
     vesting = await Vesting.new(token.address);
+
+    await token.approve(vesting.address, INF, { from: acc0 });
   });
 
   it("should vest full amount after vesting period", async () => {
     // acc0 vest 10 tokens to acc1 for 7 days
-    const vestAmount = 10 * TOKEN_PRECISION;
-    const vestPeriod = 7 * DAY;
-    await token.approve(vesting.address, num2str(vestAmount), { from: acc0 });
     await vesting.vest(acc1, num2str(vestAmount), num2str(vestPeriod), {
       from: acc0
     });
@@ -88,9 +93,6 @@ contract("Vesting", accounts => {
 
   it("should vest linear partial amount during vesting period", async () => {
     // acc0 vest 10 tokens to acc1 for 7 days
-    const vestAmount = 10 * TOKEN_PRECISION;
-    const vestPeriod = 7 * DAY;
-    await token.approve(vesting.address, num2str(vestAmount), { from: acc0 });
     await vesting.vest(acc1, num2str(vestAmount), num2str(vestPeriod), {
       from: acc0
     });
@@ -118,9 +120,6 @@ contract("Vesting", accounts => {
 
   it("should vest full amount after vesting period only once", async () => {
     // acc0 vest 10 tokens to acc1 for 7 days
-    const vestAmount = 10 * TOKEN_PRECISION;
-    const vestPeriod = 7 * DAY;
-    await token.approve(vesting.address, num2str(vestAmount), { from: acc0 });
     await vesting.vest(acc1, num2str(vestAmount), num2str(vestPeriod), {
       from: acc0
     });
@@ -152,9 +151,6 @@ contract("Vesting", accounts => {
 
   it("should vest linear partial amount during vesting period only once", async () => {
     // acc0 vest 10 tokens to acc1 for 7 days
-    const vestAmount = 10 * TOKEN_PRECISION;
-    const vestPeriod = 7 * DAY;
-    await token.approve(vesting.address, num2str(vestAmount), { from: acc0 });
     const vestTimestamp = await latestBlockTimestamp();
     await vesting.vest(acc1, num2str(vestAmount), num2str(vestPeriod), {
       from: acc0
@@ -192,9 +188,6 @@ contract("Vesting", accounts => {
 
   it("should fail tx when withdrawing from non-existent vest object", async () => {
     // acc0 vest 10 tokens to acc1 for 7 days
-    const vestAmount = 10 * TOKEN_PRECISION;
-    const vestPeriod = 7 * DAY;
-    await token.approve(vesting.address, num2str(vestAmount), { from: acc0 });
     await vesting.vest(acc1, num2str(vestAmount), num2str(vestPeriod), {
       from: acc0
     });

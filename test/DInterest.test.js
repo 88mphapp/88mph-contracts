@@ -30,11 +30,6 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -88,11 +83,7 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             const acc0BeforeBalance = BigNumber(
               await baseContracts.stablecoin.balanceOf(acc0)
@@ -134,11 +125,7 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 second
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             try {
               await baseContracts.dInterestPool.deposit(
@@ -154,11 +141,7 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 10 years
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             try {
               await baseContracts.dInterestPool.deposit(
@@ -174,11 +157,7 @@ contract("DInterest", accounts => {
             const depositAmount = 0.001 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             try {
               await baseContracts.dInterestPool.deposit(
@@ -198,11 +177,7 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -211,11 +186,7 @@ contract("DInterest", accounts => {
             );
 
             // topup
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             await baseContracts.dInterestPool.topupDeposit(
               1,
               Base.num2str(depositAmount),
@@ -270,11 +241,7 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -289,11 +256,7 @@ contract("DInterest", accounts => {
             const dInterestPoolBeforeBalance = BigNumber(
               await baseContracts.market.totalValue.call()
             );
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             await baseContracts.dInterestPool.topupDeposit(
               1,
               Base.num2str(depositAmount),
@@ -328,11 +291,7 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -341,11 +300,7 @@ contract("DInterest", accounts => {
             );
 
             // topup
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             await baseContracts.dInterestPool.topupDeposit(
               1,
               Base.num2str(depositAmount),
@@ -447,11 +402,7 @@ contract("DInterest", accounts => {
 
           beforeEach(async () => {
             // acc0 deposits
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -517,11 +468,7 @@ contract("DInterest", accounts => {
 
           beforeEach(async () => {
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -750,11 +697,7 @@ contract("DInterest", accounts => {
 
           beforeEach(async () => {
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -960,11 +903,7 @@ contract("DInterest", accounts => {
             const depositAmount = 10 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             let blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -976,11 +915,6 @@ contract("DInterest", accounts => {
             await moneyMarketModule.timePass(0.5);
 
             // acc1 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc1 }
-            );
             blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -1079,11 +1013,7 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -1092,13 +1022,6 @@ contract("DInterest", accounts => {
             );
 
             // acc1 funds deposit
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.INF,
-              {
-                from: acc1
-              }
-            );
             await baseContracts.dInterestPool.fund(1, Base.INF, { from: acc1 });
 
             // wait 1 year
@@ -1143,11 +1066,7 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -1159,13 +1078,6 @@ contract("DInterest", accounts => {
             await moneyMarketModule.timePass(0.2);
 
             // acc1 funds 50%
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.INF,
-              {
-                from: acc1
-              }
-            );
             const deficitAmount = BigNumber(
               (
                 await baseContracts.lens.surplusOfDeposit.call(
@@ -1181,13 +1093,6 @@ contract("DInterest", accounts => {
             );
 
             // acc1 funds 20%
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.INF,
-              {
-                from: acc2
-              }
-            );
             await baseContracts.dInterestPool.fund(
               1,
               Base.num2str(deficitAmount.times(0.2)),
@@ -1261,11 +1166,7 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -1274,13 +1175,6 @@ contract("DInterest", accounts => {
             );
 
             // acc1 funds 10%
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.INF,
-              {
-                from: acc1
-              }
-            );
             const deficitAmount = BigNumber(
               (
                 await baseContracts.lens.surplusOfDeposit.call(
@@ -1351,11 +1245,7 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -1364,13 +1254,6 @@ contract("DInterest", accounts => {
             );
 
             // acc1 funds 90%
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.INF,
-              {
-                from: acc1
-              }
-            );
             const deficitAmount = BigNumber(
               (
                 await baseContracts.lens.surplusOfDeposit.call(
@@ -1473,11 +1356,7 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -1487,13 +1366,6 @@ contract("DInterest", accounts => {
 
             // acc1 funds 10%
             {
-              await baseContracts.stablecoin.approve(
-                baseContracts.dInterestPool.address,
-                Base.INF,
-                {
-                  from: acc1
-                }
-              );
               const deficitAmount = BigNumber(
                 (
                   await baseContracts.lens.surplusOfDeposit.call(
@@ -1514,13 +1386,6 @@ contract("DInterest", accounts => {
 
             // acc2 funds 70%
             {
-              await baseContracts.stablecoin.approve(
-                baseContracts.dInterestPool.address,
-                Base.INF,
-                {
-                  from: acc2
-                }
-              );
               const deficitAmount = BigNumber(
                 (
                   await baseContracts.lens.surplusOfDeposit.call(
@@ -1608,11 +1473,7 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -1621,13 +1482,6 @@ contract("DInterest", accounts => {
             );
 
             // acc1 funds 90%
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.INF,
-              {
-                from: acc1
-              }
-            );
             const deficitAmount = BigNumber(
               (
                 await baseContracts.lens.surplusOfDeposit.call(
@@ -1701,11 +1555,7 @@ contract("DInterest", accounts => {
             }
 
             // topup
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             await baseContracts.dInterestPool.topupDeposit(
               1,
               Base.num2str(depositAmount),
@@ -1716,13 +1566,6 @@ contract("DInterest", accounts => {
 
             // acc1 funds 60%
             {
-              await baseContracts.stablecoin.approve(
-                baseContracts.dInterestPool.address,
-                Base.INF,
-                {
-                  from: acc1
-                }
-              );
               const deficitAmount = BigNumber(
                 (
                   await baseContracts.lens.surplusOfDeposit.call(
@@ -1782,11 +1625,7 @@ contract("DInterest", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -1795,13 +1634,6 @@ contract("DInterest", accounts => {
             );
 
             // acc1 funds 90%
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.INF,
-              {
-                from: acc1
-              }
-            );
             const deficitAmount = BigNumber(
               (
                 await baseContracts.lens.surplusOfDeposit.call(
@@ -1884,11 +1716,7 @@ contract("DInterest", accounts => {
             }
 
             // topup
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             await baseContracts.dInterestPool.topupDeposit(
               1,
               Base.num2str(depositAmount),
@@ -1922,13 +1750,6 @@ contract("DInterest", accounts => {
 
             // acc1 funds 90%
             {
-              await baseContracts.stablecoin.approve(
-                baseContracts.dInterestPool.address,
-                Base.INF,
-                {
-                  from: acc1
-                }
-              );
               const deficitAmount = BigNumber(
                 (
                   await baseContracts.lens.surplusOfDeposit.call(
@@ -1984,11 +1805,7 @@ contract("DInterest", accounts => {
             const depositAmount = 10 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits stablecoin into the DInterest pool for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -1997,13 +1814,6 @@ contract("DInterest", accounts => {
             );
 
             // Fund deficit using acc2
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.INF,
-              {
-                from: acc2
-              }
-            );
             await baseContracts.dInterestPool.fund(1, Base.INF, { from: acc2 });
 
             // Wait 0.3 year
@@ -2149,11 +1959,7 @@ contract("DInterest", accounts => {
             const depositAmount = 10 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -2162,13 +1968,6 @@ contract("DInterest", accounts => {
             );
 
             // Fund deficit using acc2
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.INF,
-              {
-                from: acc2
-              }
-            );
             await baseContracts.dInterestPool.fund(1, Base.INF, { from: acc2 });
 
             // Wait 1 year
@@ -2205,11 +2004,6 @@ contract("DInterest", accounts => {
 
         it("single deposit", async () => {
           // acc0 deposits for 1 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           const blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -2260,11 +2054,6 @@ contract("DInterest", accounts => {
 
         it("two deposits", async () => {
           // acc0 deposits for 1 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           const blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -2273,11 +2062,6 @@ contract("DInterest", accounts => {
           );
 
           // acc0 deposits for 0.5 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
             blockNow + 0.5 * Base.YEAR_IN_SEC,
@@ -2342,11 +2126,6 @@ contract("DInterest", accounts => {
 
         it("two deposits at different times", async () => {
           // acc0 deposits for 1 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           let blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -2358,11 +2137,6 @@ contract("DInterest", accounts => {
           await moneyMarketModule.timePass(0.2);
 
           // acc0 deposits for 0.5 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -2439,11 +2213,6 @@ contract("DInterest", accounts => {
 
         it("should be 0 after deposit & early withdraw", async () => {
           // acc0 deposits for 1 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           const blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -2466,11 +2235,6 @@ contract("DInterest", accounts => {
 
         it("should be 0 after deposit & fund", async () => {
           // acc0 deposits for 1 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           const blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -2479,13 +2243,6 @@ contract("DInterest", accounts => {
           );
 
           // Fund deficit using acc2
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.INF,
-            {
-              from: acc2
-            }
-          );
           await baseContracts.dInterestPool.fund(1, Base.INF, { from: acc2 });
 
           // check surplus
@@ -2502,11 +2259,6 @@ contract("DInterest", accounts => {
 
         it("simple deposit", async () => {
           // acc0 deposits for 1 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           const blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -2562,11 +2314,6 @@ contract("DInterest", accounts => {
 
         it("should be 0 after deposit & early withdraw", async () => {
           // acc0 deposits for 1 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           const blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -2591,11 +2338,6 @@ contract("DInterest", accounts => {
 
         it("should be the same after deposit & early withdraw & topup", async () => {
           // acc0 deposits for 1 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           const blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -2609,11 +2351,6 @@ contract("DInterest", accounts => {
           });
 
           // topup
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           await baseContracts.dInterestPool.topupDeposit(
             1,
             Base.num2str(depositAmount),
@@ -2648,11 +2385,6 @@ contract("DInterest", accounts => {
 
         it("simple deposit", async () => {
           // acc0 deposits for 1 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           const blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -2710,11 +2442,6 @@ contract("DInterest", accounts => {
 
         it("should be 0 after deposit & early withdraw", async () => {
           // acc0 deposits for 1 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           const blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -2740,11 +2467,6 @@ contract("DInterest", accounts => {
 
         it("should be the same after deposit & early withdraw & topup", async () => {
           // acc0 deposits for 1 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           const blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -2758,11 +2480,6 @@ contract("DInterest", accounts => {
           });
 
           // topup
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           await baseContracts.dInterestPool.topupDeposit(
             1,
             Base.num2str(depositAmount),
@@ -2794,11 +2511,6 @@ contract("DInterest", accounts => {
 
         it("should be 0 after fully funded", async () => {
           // acc0 deposits for 1 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           const blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -2807,13 +2519,6 @@ contract("DInterest", accounts => {
           );
 
           // Fund deficit using acc2
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.INF,
-            {
-              from: acc2
-            }
-          );
           await baseContracts.dInterestPool.fund(1, Base.INF, { from: acc2 });
 
           // check surplus
@@ -2829,11 +2534,6 @@ contract("DInterest", accounts => {
 
         it("should be correct after partially funded", async () => {
           // acc0 deposits for 1 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           const blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -2849,13 +2549,6 @@ contract("DInterest", accounts => {
                 1
               )
             ).surplusAmount
-          );
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.INF,
-            {
-              from: acc2
-            }
           );
           await baseContracts.dInterestPool.fund(
             1,
@@ -2895,11 +2588,7 @@ contract("DInterest", accounts => {
             const depositAmount = 10 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits stablecoin into the DInterest pool for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -2987,11 +2676,7 @@ contract("DInterest", accounts => {
             const depositAmount = 10 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits stablecoin into the DInterest pool for 1 year
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.num2str(depositAmount),
-              { from: acc0 }
-            );
+
             const blockNow = await Base.latestBlockTimestamp();
             await baseContracts.dInterestPool.deposit(
               Base.num2str(depositAmount),
@@ -3000,13 +2685,6 @@ contract("DInterest", accounts => {
             );
 
             // Fund deficit using acc2
-            await baseContracts.stablecoin.approve(
-              baseContracts.dInterestPool.address,
-              Base.INF,
-              {
-                from: acc2
-              }
-            );
             await baseContracts.dInterestPool.fund(1, Base.INF, { from: acc2 });
 
             // Wait 0.3 year

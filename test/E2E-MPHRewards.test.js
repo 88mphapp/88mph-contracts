@@ -28,11 +28,6 @@ contract("E2E-MPHRewards", accounts => {
       describe("depositor rewards", () => {
         it("works", async () => {
           // acc0 deposits for 1 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           const blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -68,11 +63,6 @@ contract("E2E-MPHRewards", accounts => {
 
         it("early withdraw gives reward earned so far", async () => {
           // acc0 deposits for 1 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           const blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -160,11 +150,6 @@ contract("E2E-MPHRewards", accounts => {
 
         it("topup increases the reward earned after", async () => {
           // acc0 deposits for 1 year
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           const blockNow = await Base.latestBlockTimestamp();
           await baseContracts.dInterestPool.deposit(
             Base.num2str(depositAmount),
@@ -201,11 +186,6 @@ contract("E2E-MPHRewards", accounts => {
           }
 
           // topup the same amount
-          await baseContracts.stablecoin.approve(
-            baseContracts.dInterestPool.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           await baseContracts.dInterestPool.topupDeposit(
             1,
             Base.num2str(depositAmount),
@@ -250,11 +230,6 @@ contract("E2E-MPHRewards", accounts => {
           const blockNow = await Base.latestBlockTimestamp();
 
           // acc0 deposits in pool1 for 1 year
-          await baseContracts.stablecoin.approve(
-            pool1.address,
-            Base.num2str(depositAmount),
-            { from: acc0 }
-          );
           await pool1.deposit(
             Base.num2str(depositAmount),
             Base.num2str(blockNow + Base.YEAR_IN_SEC),
@@ -262,11 +237,6 @@ contract("E2E-MPHRewards", accounts => {
           );
 
           // acc1 deposits in pool2 for 1 year
-          await baseContracts.stablecoin.approve(
-            pool2.address,
-            Base.num2str(depositAmount),
-            { from: acc1 }
-          );
           await pool2.deposit(
             Base.num2str(depositAmount),
             Base.num2str(blockNow + Base.YEAR_IN_SEC),

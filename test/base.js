@@ -273,21 +273,26 @@ const aaveMoneyMarketModule = () => {
 };
 
 const bProtocolMoneyMarketModule = () => {
+  // Contract artifacts
+  const BProtocolMarket = artifacts.require("BProtocolMarket");
+  const CERC20Mock = artifacts.require("CERC20Mock");
+  const RegistryMock = artifacts.require("RegistryMock");
+  const BComptrollerMock = artifacts.require("BComptrollerMock");
+
   let bComptroller;
   let cToken;
   let comp;
   let registry;
+  const cTokenAddressList = [];
+
   const INIT_INTEREST_RATE = 0.1; // 10% APY
 
   const deployMoneyMarket = async (accounts, factory, stablecoin, rewards) => {
-    // Contract artifacts
-    const BProtocolMarket = artifacts.require("BProtocolMarket");
-    const CERC20Mock = artifacts.require("CERC20Mock");
-    const RegistryMock = artifacts.require("RegistryMock");
-    const BComptrollerMock = artifacts.require("BComptrollerMock");
-
     // Deploy B.Protocol mock contracts
     cToken = await CERC20Mock.new(stablecoin.address);
+    if (!cTokenAddressList.includes(cToken.address)) {
+      cTokenAddressList.push(cToken.address);
+    }
     comp = await ERC20Mock.new();
     registry = await RegistryMock.new(comp.address);
     bComptroller = await BComptrollerMock.new(registry.address);
@@ -312,11 +317,14 @@ const bProtocolMoneyMarketModule = () => {
 
   const timePass = async timeInYears => {
     await timeTravel(timeInYears * YEAR_IN_SEC);
-    const currentExRate = BigNumber(await cToken.exchangeRateStored());
-    const rateAfterTimePasses = BigNumber(currentExRate).times(
-      1 + timeInYears * INIT_INTEREST_RATE
-    );
-    await cToken._setExchangeRateStored(num2str(rateAfterTimePasses));
+    for (const cTokenAddress of cTokenAddressList) {
+      const cToken = await CERC20Mock.at(cTokenAddress);
+      const currentExRate = BigNumber(await cToken.exchangeRateStored());
+      const rateAfterTimePasses = BigNumber(currentExRate).times(
+        1 + timeInYears * INIT_INTEREST_RATE
+      );
+      await cToken._setExchangeRateStored(num2str(rateAfterTimePasses));
+    }
   };
 
   return {

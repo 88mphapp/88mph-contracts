@@ -8,6 +8,7 @@ import {NFT} from "./tokens/NFT.sol";
 import {ZeroCouponBond} from "./zero-coupon-bond/ZeroCouponBond.sol";
 import {EMAOracle} from "./models/interest-oracle/EMAOracle.sol";
 import {AaveMarket} from "./moneymarkets/aave/AaveMarket.sol";
+import {BProtocolMarket} from "./moneymarkets/bprotocol/BProtocolMarket.sol";
 import {
     CompoundERC20Market
 } from "./moneymarkets/compound/CompoundERC20Market.sol";
@@ -149,6 +150,32 @@ contract Factory {
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("AaveMarket", template, salt, address(clone));
+        return clone;
+    }
+
+    function createBProtocolMarket(
+        address template,
+        bytes32 salt,
+        address _bToken,
+        address _bComptroller,
+        address _rewards,
+        address _rescuer,
+        address _stablecoin
+    ) external returns (BProtocolMarket) {
+        BProtocolMarket clone =
+            BProtocolMarket(template.cloneDeterministic(salt));
+
+        // initialize
+        clone.initialize(
+            _bToken,
+            _bComptroller,
+            _rewards,
+            _rescuer,
+            _stablecoin
+        );
+        clone.transferOwnership(msg.sender);
+
+        emit CreateClone("BProtocolMarket", template, salt, address(clone));
         return clone;
     }
 

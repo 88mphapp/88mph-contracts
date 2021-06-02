@@ -1,6 +1,6 @@
 const config = require("../deploy-configs/get-network-config");
 const poolConfig = require("../deploy-configs/get-pool-config");
-const compoundConfig = require("../deploy-configs/protocols/compound.json");
+const compoundConfig = require("../deploy-configs/get-protocol-config");
 
 const name = `${poolConfig.name}--CompoundERC20Market`;
 

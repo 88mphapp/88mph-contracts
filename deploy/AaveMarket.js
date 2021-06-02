@@ -1,6 +1,6 @@
 const config = require("../deploy-configs/get-network-config");
 const poolConfig = require("../deploy-configs/get-pool-config");
-const aaveConfig = require("../deploy-configs/protocols/aave.json");
+const aaveConfig = require("../deploy-configs/get-protocol-config");
 
 const name = `${poolConfig.name}--AaveMarket`;
 

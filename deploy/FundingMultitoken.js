@@ -28,7 +28,7 @@ module.exports = async ({
     const dividendTokens = [poolConfig.stablecoin, config.mph];
     const ERC20 = artifacts.require("ERC20");
     const stablecoinContract = await ERC20.at(poolConfig.stablecoin);
-    const stablecoinDecimals = await stablecoinContract.decimals();
+    const stablecoinDecimals = await stablecoinContract.decimals.call();
     const salt = "0x" + BigNumber(Date.now()).toString(16);
     const deployReceipt = await FactoryContract.createFundingMultitoken(
       templateDeployment.address,

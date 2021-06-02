@@ -1,3 +1,5 @@
-const poolName = require("./config.json").pool;
-const config = require(`./pools/${poolName}.json`);
-module.exports = config;
+const config = require("./config.json");
+const poolName = config.pool;
+const networkName = config.network;
+const poolConfig = require(`./pools/${networkName}/${poolName}.json`);
+module.exports = poolConfig;

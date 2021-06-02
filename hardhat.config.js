@@ -55,11 +55,22 @@ module.exports = {
       gasPrice: 84.0000001e9
     },
     hardhat: {
-      forking: {
+      /*forking: {
         url:
           "https://eth-mainnet.alchemyapi.io/v2/pvGDp1uf8J7QZ7MXpLhYs_SnMnsE0TY5"
-      },
+      },*/
       allowUnlimitedContractSize: true
+    },
+    rinkeby: {
+      url:
+        "https://eth-rinkeby.alchemyapi.io/v2/2LxgvUYd5FzgiXVoAWlq-KyM4v-E7KJ4",
+      chainId: 4,
+      from: secret.account,
+      accounts: {
+        mnemonic: secret.mnemonic
+      },
+      gas: "auto",
+      gasPrice: 1.0000001e9
     }
   },
   spdxLicenseIdentifier: {

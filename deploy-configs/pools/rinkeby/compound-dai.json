@@ -1,0 +1,21 @@
+{
+  "name": "88mph cDAI Pool",
+  "nftNamePrefix": "88mph cDAI Pool--",
+  "nftSymbolPrefix": "88mph-cDAI-",
+  "moneyMarket": "CompoundERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 100e18,
+  "stablecoin": "0x5592ec0cfb4dbc12d3ab100b257153436a1f0fea",
+  "multiplierIntercept": 0.5e18,
+  "multiplierSlope": 7922184626,
+  "EMAInitial": 9.51e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0x6d7f0754ffeb405d23c51ce938289d4835be3b14"
+  }
+}

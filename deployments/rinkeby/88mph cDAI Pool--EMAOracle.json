@@ -1,0 +1,204 @@
+{
+  "address": "0xA549Fd670efd4b13Dc2e2a70DA25610c1429D599",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "ONE_MINUS_UPDATE_MULTIPLIER",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true,
+      "signature": "0x079420a8"
+    },
+    {
+      "inputs": [],
+      "name": "UPDATE_INTERVAL",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true,
+      "signature": "0x89ac4147"
+    },
+    {
+      "inputs": [],
+      "name": "UPDATE_MULTIPLIER",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true,
+      "signature": "0x56f6a826"
+    },
+    {
+      "inputs": [],
+      "name": "emaStored",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true,
+      "signature": "0xda18778e"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_emaInitial",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_updateInterval",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_smoothingFactor",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_averageWindowInIntervals",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_moneyMarket",
+          "type": "address"
+        }
+      ],
+      "name": "initialize",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function",
+      "signature": "0xccd65296"
+    },
+    {
+      "inputs": [],
+      "name": "lastIncomeIndex",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true,
+      "signature": "0x9f1253d3"
+    },
+    {
+      "inputs": [],
+      "name": "lastUpdateTimestamp",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true,
+      "signature": "0x14bcec9f"
+    },
+    {
+      "inputs": [],
+      "name": "moneyMarket",
+      "outputs": [
+        {
+          "internalType": "contract IMoneyMarket",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true,
+      "signature": "0xd6d75f51"
+    },
+    {
+      "inputs": [],
+      "name": "query",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true,
+      "signature": "0x2c46b205"
+    },
+    {
+      "inputs": [],
+      "name": "updateAndQuery",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "updated",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function",
+      "signature": "0x85b3a931"
+    }
+  ],
+  "receipt": {
+    "logs": [
+      {
+        "address": "0x3ff23CccEB7A4cFD7d2F47ACC76d131c934BE412",
+        "blockNumber": 8694940,
+        "transactionHash": "0x6cb78ef2e8ab2f87e44f55ab0d2bd11595620a72f71e5866cd658ca5ee4ad5fc",
+        "transactionIndex": 0,
+        "blockHash": "0xeb8a42253b52bff3220a5d9e1ddd802343f5a08721de693cbf99f1db0d2b0878",
+        "logIndex": 1,
+        "removed": false,
+        "id": "log_50ef8514",
+        "event": "CreateClone",
+        "args": {
+          "0": "0xf6b12bbdcba3d81899dd38eee1b4a90c3423cf47e4fcaed36a0f50a7c8793bb4",
+          "1": "0xe5301C3F573465F0fafc07c441A107959c5d5933",
+          "2": "0x179ce12df0f00000000000000000000000000000000000000000000000000000",
+          "3": "0xA549Fd670efd4b13Dc2e2a70DA25610c1429D599",
+          "__length__": 4,
+          "contractName": "0xf6b12bbdcba3d81899dd38eee1b4a90c3423cf47e4fcaed36a0f50a7c8793bb4",
+          "template": "0xe5301C3F573465F0fafc07c441A107959c5d5933",
+          "salt": "0x179ce12df0f00000000000000000000000000000000000000000000000000000",
+          "clone": "0xA549Fd670efd4b13Dc2e2a70DA25610c1429D599"
+        }
+      }
+    ]
+  }
+}

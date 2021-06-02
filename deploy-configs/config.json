@@ -1,4 +1,5 @@
 {
-  "network": "mainnet",
-  "pool": "yvault-dai"
+  "network": "rinkeby",
+  "pool": "compound-dai",
+  "protocol": "compound"
 }

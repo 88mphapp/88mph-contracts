@@ -46,11 +46,11 @@ contract MPHIssuanceModel02 is OwnableUpgradeable, IMPHIssuanceModel {
     /**
         @notice Multiplier used for calculating dev reward
      */
-    uint256 public devRewardMultiplier;
+    uint256 public override devRewardMultiplier;
     /**
         @notice Multiplier used for calculating gov reward
      */
-    uint256 public govRewardMultiplier;
+    uint256 public override govRewardMultiplier;
 
     event ESetParamAddress(
         address indexed sender,

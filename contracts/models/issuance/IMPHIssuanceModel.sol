@@ -111,4 +111,8 @@ interface IMPHIssuanceModel {
         external
         view
         returns (uint256);
+
+    function devRewardMultiplier() external view returns (uint256);
+
+    function govRewardMultiplier() external view returns (uint256);
 }

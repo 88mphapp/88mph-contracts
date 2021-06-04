@@ -100,6 +100,14 @@ contract MPHMinter is MPHMinterLegacy {
         if (amount > 0) {
             mph.ownerMint(account, amount);
         }
+        uint256 devReward = amount.decmul(issuanceModel.devRewardMultiplier());
+        if (devReward > 0) {
+            mph.ownerMint(devWallet, devReward);
+        }
+        uint256 govReward = amount.decmul(issuanceModel.govRewardMultiplier());
+        if (govReward > 0) {
+            mph.ownerMint(govTreasury, govReward);
+        }
         return amount;
     }
 
@@ -126,6 +134,17 @@ contract MPHMinter is MPHMinterLegacy {
             address(mph),
             mintMPHAmount
         );
+
+        uint256 devReward =
+            mintMPHAmount.decmul(issuanceModel.devRewardMultiplier());
+        if (devReward > 0) {
+            mph.ownerMint(devWallet, devReward);
+        }
+        uint256 govReward =
+            mintMPHAmount.decmul(issuanceModel.govRewardMultiplier());
+        if (govReward > 0) {
+            mph.ownerMint(govTreasury, govReward);
+        }
     }
 
     /**

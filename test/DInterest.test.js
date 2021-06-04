@@ -1009,7 +1009,7 @@ contract("DInterest", accounts => {
 
       describe("fund", () => {
         context("happy path", () => {
-          it("fund 10% at the beginning", async () => {
+          it("fund 100% at the beginning", async () => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc0 deposits for 1 year

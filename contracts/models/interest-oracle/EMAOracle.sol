@@ -6,7 +6,7 @@ import {
 } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {DecMath} from "../../libs/DecMath.sol";
 import {IInterestOracle} from "./IInterestOracle.sol";
-import {IMoneyMarket} from "../../moneymarkets/IMoneyMarket.sol";
+import {MoneyMarket} from "../../moneymarkets/MoneyMarket.sol";
 
 contract EMAOracle is IInterestOracle, Initializable {
     using DecMath for uint256;
@@ -30,7 +30,7 @@ contract EMAOracle is IInterestOracle, Initializable {
     /**
         External contracts
      */
-    IMoneyMarket public override moneyMarket;
+    MoneyMarket public override moneyMarket;
 
     function initialize(
         uint256 _emaInitial,
@@ -48,7 +48,7 @@ contract EMAOracle is IInterestOracle, Initializable {
         UPDATE_MULTIPLIER = updateMultiplier;
         ONE_MINUS_UPDATE_MULTIPLIER = PRECISION - updateMultiplier;
 
-        moneyMarket = IMoneyMarket(_moneyMarket);
+        moneyMarket = MoneyMarket(_moneyMarket);
         lastIncomeIndex = moneyMarket.incomeIndex();
     }
 

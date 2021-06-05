@@ -16,7 +16,7 @@ contract DInterestWithDepositFee is DInterest {
         @param _MaxDepositPeriod The maximum deposit period, in seconds
         @param _MinDepositAmount The minimum deposit amount, in stablecoins
         @param _DepositFee The fee charged by the underlying money market
-        @param _moneyMarket Address of IMoneyMarket that's used for generating interest (owner must be set to this DInterest contract)
+        @param _moneyMarket Address of MoneyMarket that's used for generating interest (owner must be set to this DInterest contract)
         @param _stablecoin Address of the stablecoin used to store funds
         @param _feeModel Address of the FeeModel contract that determines how fees are charged
         @param _interestModel Address of the InterestModel contract that determines how much interest to offer

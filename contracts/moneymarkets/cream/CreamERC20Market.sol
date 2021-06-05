@@ -6,11 +6,11 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {
     AddressUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-import {IMoneyMarket} from "../IMoneyMarket.sol";
+import {MoneyMarket} from "../MoneyMarket.sol";
 import {DecMath} from "../../libs/DecMath.sol";
 import {ICrERC20} from "./imports/ICrERC20.sol";
 
-contract CreamERC20Market is IMoneyMarket {
+contract CreamERC20Market is MoneyMarket {
     using DecMath for uint256;
     using SafeERC20 for ERC20;
     using AddressUpgradeable for address;
@@ -25,7 +25,7 @@ contract CreamERC20Market is IMoneyMarket {
         address _rescuer,
         address _stablecoin
     ) external initializer {
-        __IMoneyMarket_init(_rescuer);
+        __MoneyMarket_init(_rescuer);
         // Verify input addresses
         require(
             _cToken.isContract() && _stablecoin.isContract(),

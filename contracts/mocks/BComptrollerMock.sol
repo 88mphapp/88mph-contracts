@@ -8,7 +8,7 @@ contract BComptrollerMock {
     uint256 public constant CLAIM_AMOUNT = 10**18;
     RegistryMock public registry;
 
-    constructor(address _registry) public {
+    constructor(address _registry) {
         registry = RegistryMock(_registry);
     }
 

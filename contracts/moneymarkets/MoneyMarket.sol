@@ -11,14 +11,14 @@ import {
 import {Rescuable} from "../libs/Rescuable.sol";
 
 // Interface for money market protocols (Compound, Aave, etc.)
-abstract contract IMoneyMarket is
+abstract contract MoneyMarket is
     Rescuable,
     OwnableUpgradeable,
     AccessControlUpgradeable
 {
     bytes32 internal constant RESCUER_ROLE = keccak256("RESCUER_ROLE");
 
-    function __IMoneyMarket_init(address rescuer) internal initializer {
+    function __MoneyMarket_init(address rescuer) internal initializer {
         __Ownable_init();
         __AccessControl_init();
 
@@ -51,7 +51,7 @@ abstract contract IMoneyMarket is
         address, /*token*/
         address /*target*/
     ) internal view virtual override {
-        require(hasRole(RESCUER_ROLE, msg.sender), "IMoneyMarket: not rescuer");
+        require(hasRole(RESCUER_ROLE, msg.sender), "MoneyMarket: not rescuer");
     }
 
     event ESetParamAddress(

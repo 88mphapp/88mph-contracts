@@ -6,14 +6,14 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {
     AddressUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-import {IMoneyMarket} from "../IMoneyMarket.sol";
+import {MoneyMarket} from "../MoneyMarket.sol";
 import {ILendingPool} from "./imports/ILendingPool.sol";
 import {
     ILendingPoolAddressesProvider
 } from "./imports/ILendingPoolAddressesProvider.sol";
 import {IAaveMining} from "./imports/IAaveMining.sol";
 
-contract AaveMarket is IMoneyMarket {
+contract AaveMarket is MoneyMarket {
     using SafeERC20 for ERC20;
     using AddressUpgradeable for address;
 
@@ -33,7 +33,7 @@ contract AaveMarket is IMoneyMarket {
         address _rescuer,
         address _stablecoin
     ) external initializer {
-        __IMoneyMarket_init(_rescuer);
+        __MoneyMarket_init(_rescuer);
 
         // Verify input addresses
         require(

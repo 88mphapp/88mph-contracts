@@ -116,7 +116,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
     }
 
     function updateVestForDeposit(
-        address pool,
+        address poolAddress,
         uint64 depositID,
         uint256 currentDepositAmount,
         uint256 depositAmount,
@@ -127,9 +127,9 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
             "Vesting02: not minter"
         );
 
-        uint64 vestID = depositIDToVestID[pool][depositID];
+        uint64 vestID = depositIDToVestID[poolAddress][depositID];
         Vest storage vestEntry = _getVest(vestID);
-        DInterest pool = DInterest(vestEntry.pool);
+        DInterest pool = DInterest(poolAddress);
         DInterest.Deposit memory depositEntry =
             pool.getDeposit(vestEntry.depositID);
         uint256 currentTimestamp =

@@ -2,66 +2,136 @@
 pragma solidity 0.8.3;
 
 import {
+    AccessControlUpgradeable
+} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {
     AddressUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-import {MPHMinterLegacy} from "./MPHMinterLegacy.sol";
 import {Vesting02} from "./Vesting02.sol";
 import {FundingMultitoken} from "../tokens/FundingMultitoken.sol";
 import {DecMath} from "../libs/DecMath.sol";
 import {DInterest} from "../DInterest.sol";
+import {MPHToken} from "./MPHToken.sol";
 
-contract MPHMinter is MPHMinterLegacy {
+contract MPHMinter is AccessControlUpgradeable {
     using AddressUpgradeable for address;
     using DecMath for uint256;
 
+    uint256 internal constant PRECISION = 10**18;
+    bytes32 public constant WHITELISTER_ROLE = keccak256("WHITELISTER_ROLE");
+    bytes32 public constant WHITELISTED_POOL_ROLE =
+        keccak256("WHITELISTED_POOL_ROLE");
+
+    event ESetParamAddress(
+        address indexed sender,
+        string indexed paramName,
+        address newValue
+    );
+    event ESetParamUint(
+        address indexed sender,
+        string indexed paramName,
+        address pool,
+        uint256 newValue
+    );
+    event MintDepositorReward(
+        address indexed sender,
+        address indexed to,
+        uint256 depositorReward
+    );
+    event MintFunderReward(
+        address indexed sender,
+        address indexed to,
+        uint256 funderReward
+    );
+
+    /**
+        @notice The multiplier applied when minting MPH for a pool's depositor reward.
+                Unit is MPH-wei per depositToken-wei per second. (wei here is the smallest decimal place)
+                Scaled by 10^18.
+                NOTE: The depositToken's decimals matter!
+     */
+    mapping(address => uint256) public poolDepositorRewardMintMultiplier;
+    /**
+        @notice The multiplier applied when minting MPH for a pool's funder reward.
+                Unit is MPH-wei per depositToken-wei. (wei here is the smallest decimal place)
+                Scaled by 10^18.
+                NOTE: The depositToken's decimals matter!
+     */
+    mapping(address => uint256) public poolFunderRewardMultiplier;
+    /**
+        @notice Multiplier used for calculating dev reward
+     */
+    uint256 public devRewardMultiplier;
+    /**
+        @notice Multiplier used for calculating gov reward
+     */
+    uint256 public govRewardMultiplier;
+
+    /**
+        External contracts
+     */
+    MPHToken public mph;
+    address public govTreasury;
+    address public devWallet;
     Vesting02 public vesting02;
 
     function __MPHMinter_init(
         address _mph,
         address _govTreasury,
         address _devWallet,
-        address _issuanceModel,
-        address _vesting,
-        address _vesting02
+        address _vesting02,
+        uint256 _devRewardMultiplier,
+        uint256 _govRewardMultiplier
     ) internal initializer {
-        __MPHMinterLegacy_init(
+        __AccessControl_init();
+        __MPHMinter_init_unchained(
             _mph,
             _govTreasury,
             _devWallet,
-            _issuanceModel,
-            _vesting
+            _vesting02,
+            _devRewardMultiplier,
+            _govRewardMultiplier
         );
-        __MPHMinter_init_unchained(_vesting02);
     }
 
-    function __MPHMinter_init_unchained(address _vesting02)
-        internal
-        initializer
-    {
+    function __MPHMinter_init_unchained(
+        address _mph,
+        address _govTreasury,
+        address _devWallet,
+        address _vesting02,
+        uint256 _devRewardMultiplier,
+        uint256 _govRewardMultiplier
+    ) internal initializer {
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        // only accounts with the whitelister role can whitelist pools
+        _setRoleAdmin(WHITELISTED_POOL_ROLE, WHITELISTER_ROLE);
+
+        mph = MPHToken(_mph);
+        govTreasury = _govTreasury;
+        devWallet = _devWallet;
         vesting02 = Vesting02(_vesting02);
+        devRewardMultiplier = _devRewardMultiplier;
+        govRewardMultiplier = _govRewardMultiplier;
     }
 
     function initialize(
         address _mph,
         address _govTreasury,
         address _devWallet,
-        address _issuanceModel,
-        address _vesting,
-        address _vesting02
+        address _vesting02,
+        uint256 _devRewardMultiplier,
+        uint256 _govRewardMultiplier
     ) external initializer {
         __MPHMinter_init(
             _mph,
             _govTreasury,
             _devWallet,
-            _issuanceModel,
-            _vesting,
-            _vesting02
+            _vesting02,
+            _devRewardMultiplier,
+            _govRewardMultiplier
         );
     }
 
-    /**
-        v3 functions
-     */
     function createVestForDeposit(address account, uint64 depositID)
         external
         onlyRole(WHITELISTED_POOL_ROLE)
@@ -70,7 +140,7 @@ contract MPHMinter is MPHMinterLegacy {
             account,
             msg.sender,
             depositID,
-            issuanceModel.poolDepositorRewardMintMultiplier(msg.sender)
+            poolDepositorRewardMintMultiplier[msg.sender]
         );
     }
 
@@ -84,7 +154,7 @@ contract MPHMinter is MPHMinterLegacy {
             depositID,
             currentDepositAmount,
             depositAmount,
-            issuanceModel.poolDepositorRewardMintMultiplier(msg.sender)
+            poolDepositorRewardMintMultiplier[msg.sender]
         );
     }
 
@@ -100,11 +170,11 @@ contract MPHMinter is MPHMinterLegacy {
         if (amount > 0) {
             mph.ownerMint(account, amount);
         }
-        uint256 devReward = amount.decmul(issuanceModel.devRewardMultiplier());
+        uint256 devReward = amount.decmul(devRewardMultiplier);
         if (devReward > 0) {
             mph.ownerMint(devWallet, devReward);
         }
-        uint256 govReward = amount.decmul(issuanceModel.govRewardMultiplier());
+        uint256 govReward = amount.decmul(govRewardMultiplier);
         if (govReward > 0) {
             mph.ownerMint(govTreasury, govReward);
         }
@@ -119,9 +189,7 @@ contract MPHMinter is MPHMinterLegacy {
             return;
         }
         uint256 mintMPHAmount =
-            interestAmount.decmul(
-                issuanceModel.poolFunderRewardMultiplier(msg.sender)
-            );
+            interestAmount.decmul(poolFunderRewardMultiplier[msg.sender]);
         if (mintMPHAmount == 0) {
             return;
         }
@@ -135,13 +203,11 @@ contract MPHMinter is MPHMinterLegacy {
             mintMPHAmount
         );
 
-        uint256 devReward =
-            mintMPHAmount.decmul(issuanceModel.devRewardMultiplier());
+        uint256 devReward = mintMPHAmount.decmul(devRewardMultiplier);
         if (devReward > 0) {
             mph.ownerMint(devWallet, devReward);
         }
-        uint256 govReward =
-            mintMPHAmount.decmul(issuanceModel.govRewardMultiplier());
+        uint256 govReward = mintMPHAmount.decmul(govRewardMultiplier);
         if (govReward > 0) {
             mph.ownerMint(govTreasury, govReward);
         }
@@ -150,6 +216,94 @@ contract MPHMinter is MPHMinterLegacy {
     /**
         Param setters
      */
+    function setPoolDepositorRewardMintMultiplier(
+        address pool,
+        uint256 newMultiplier
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(pool.isContract(), "MPHMinter: pool not contract");
+        poolDepositorRewardMintMultiplier[pool] = newMultiplier;
+        emit ESetParamUint(
+            msg.sender,
+            "poolDepositorRewardMintMultiplier",
+            pool,
+            newMultiplier
+        );
+    }
+
+    function setPoolFunderRewardMultiplier(address pool, uint256 newMultiplier)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        require(pool.isContract(), "MPHMinter: pool not contract");
+        poolFunderRewardMultiplier[pool] = newMultiplier;
+        emit ESetParamUint(
+            msg.sender,
+            "poolFunderRewardMultiplier",
+            pool,
+            newMultiplier
+        );
+    }
+
+    function setDevRewardMultiplier(uint256 newMultiplier)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        require(newMultiplier <= PRECISION, "MPHMinter: invalid multiplier");
+        devRewardMultiplier = newMultiplier;
+        emit ESetParamUint(
+            msg.sender,
+            "devRewardMultiplier",
+            address(0),
+            newMultiplier
+        );
+    }
+
+    function setGovRewardMultiplier(uint256 newMultiplier)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        require(newMultiplier <= PRECISION, "MPHMinter: invalid multiplier");
+        govRewardMultiplier = newMultiplier;
+        emit ESetParamUint(
+            msg.sender,
+            "govRewardMultiplier",
+            address(0),
+            newMultiplier
+        );
+    }
+
+    function setGovTreasury(address newValue)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        require(newValue != address(0), "MPHMinter: 0 address");
+        govTreasury = newValue;
+        emit ESetParamAddress(msg.sender, "govTreasury", newValue);
+    }
+
+    function setDevWallet(address newValue)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        require(newValue != address(0), "MPHMinter: 0 address");
+        devWallet = newValue;
+        emit ESetParamAddress(msg.sender, "devWallet", newValue);
+    }
+
+    function setMPHTokenOwner(address newValue)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        require(newValue != address(0), "MPHMinter: 0 address");
+        mph.transferOwnership(newValue);
+        emit ESetParamAddress(msg.sender, "mphTokenOwner", newValue);
+    }
+
+    function setMPHTokenOwnerToZero() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        mph.renounceOwnership();
+        emit ESetParamAddress(msg.sender, "mphTokenOwner", address(0));
+    }
+
     function setVesting02(address newValue)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
@@ -159,5 +313,5 @@ contract MPHMinter is MPHMinterLegacy {
         emit ESetParamAddress(msg.sender, "vesting02", newValue);
     }
 
-    uint256[49] private __gap;
+    uint256[42] private __gap;
 }

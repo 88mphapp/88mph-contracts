@@ -4,8 +4,6 @@
   "govTimelock": "0x6FE2f50f7BC16264f51aC6fFd07C11984305b612",
   "oneSplitAddress": "0xdEad000000000000000000000000000000000000",
   "mph": "0x6a4De3424732E50dfb0BfA689633990217BD0bEA",
-  "vesting": "0xfA56B3B7322De1CEef0Ea909bEe195bE531620Cb",
-  "mphIssuanceModel": "MPHIssuanceModel02",
   "devRewardMultiplier": 0.1e18,
   "govRewardMultiplier": 0.1e18,
   "xMPHRewardUnlockPeriod": 1209600,

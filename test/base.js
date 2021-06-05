@@ -22,10 +22,6 @@ const MPHToken = (module.exports.MPHToken = artifacts.require("MPHToken"));
 const MPHMinter = (module.exports.MPHMinter = artifacts.require("MPHMinter"));
 const ERC20Mock = (module.exports.ERC20Mock = artifacts.require("ERC20Mock"));
 const EMAOracle = (module.exports.EMAOracle = artifacts.require("EMAOracle"));
-const MPHIssuanceModel = (module.exports.MPHIssuanceModel = artifacts.require(
-  "MPHIssuanceModel02"
-));
-const Vesting = (module.exports.Vesting = artifacts.require("Vesting"));
 const Vesting02 = (module.exports.Vesting02 = artifacts.require("Vesting02"));
 const ERC20Wrapper = (module.exports.ERC20Wrapper = artifacts.require(
   "ERC20Wrapper"
@@ -61,8 +57,6 @@ const EMASmoothingFactor = (module.exports.EMASmoothingFactor = BigNumber(
   2 * PRECISION
 ).toFixed());
 const EMAAverageWindowInIntervals = (module.exports.EMAAverageWindowInIntervals = 30);
-const PoolFunderRewardVestPeriod = (module.exports.PoolFunderRewardVestPeriod =
-  0 * 24 * 60 * 60); // 0 days
 const interestFee = (module.exports.interestFee = BigNumber(
   0.2 * PRECISION
 ).toFixed());
@@ -601,8 +595,6 @@ const setupTest = (module.exports.setupTest = async (
   let fundingMultitoken;
   let mph;
   let mphMinter;
-  let mphIssuanceModel;
-  let vesting;
   let vesting02;
   let factory;
   let lens;
@@ -628,19 +620,16 @@ const setupTest = (module.exports.setupTest = async (
   // Initialize MPH
   mph = await MPHToken.new();
   await mph.initialize();
-  vesting = await Vesting.new(mph.address);
   vesting02 = await Vesting02.new();
   await vesting02.initialize(mph.address, "Vested MPH", "veMPH");
-  mphIssuanceModel = await MPHIssuanceModel.new();
-  await mphIssuanceModel.initialize(DevRewardMultiplier, GovRewardMultiplier);
   mphMinter = await MPHMinter.new();
   await mphMinter.initialize(
     mph.address,
     govTreasury,
     devWallet,
-    mphIssuanceModel.address,
-    vesting.address,
-    vesting02.address
+    vesting02.address,
+    DevRewardMultiplier,
+    GovRewardMultiplier
   );
   await vesting02.setMPHMinter(mphMinter.address);
   await mph.transferOwnership(mphMinter.address);
@@ -740,17 +729,13 @@ const setupTest = (module.exports.setupTest = async (
     await mphMinter.grantRole(WHITELISTED_POOL_ROLE, dInterestPool.address, {
       from: acc0
     });
-    await mphIssuanceModel.setPoolDepositorRewardMintMultiplier(
+    await mphMinter.setPoolDepositorRewardMintMultiplier(
       dInterestPool.address,
       PoolDepositorRewardMintMultiplier
     );
-    await mphIssuanceModel.setPoolFunderRewardMultiplier(
+    await mphMinter.setPoolFunderRewardMultiplier(
       dInterestPool.address,
       PoolFunderRewardMultiplier
-    );
-    await mphIssuanceModel.setPoolFunderRewardVestPeriod(
-      dInterestPool.address,
-      PoolFunderRewardVestPeriod
     );
 
     // Transfer the ownership of the money market to the DInterest pool
@@ -796,8 +781,6 @@ const setupTest = (module.exports.setupTest = async (
     fundingMultitoken,
     mph,
     mphMinter,
-    mphIssuanceModel,
-    vesting,
     vesting02,
     factory,
     lens,

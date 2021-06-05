@@ -15,7 +15,7 @@ import {
 import {
     MulticallUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
-import {IMoneyMarket} from "./moneymarkets/IMoneyMarket.sol";
+import {MoneyMarket} from "./moneymarkets/MoneyMarket.sol";
 import {IFeeModel} from "./models/fee/IFeeModel.sol";
 import {IInterestModel} from "./models/interest/IInterestModel.sol";
 import {NFT} from "./tokens/NFT.sol";
@@ -95,7 +95,7 @@ contract DInterest is
     uint256 public totalFundedPrincipalAmount;
 
     // External smart contracts
-    IMoneyMarket public moneyMarket;
+    MoneyMarket public moneyMarket;
     ERC20 public stablecoin;
     IFeeModel public feeModel;
     IInterestModel public interestModel;
@@ -169,7 +169,7 @@ contract DInterest is
         __ReentrancyGuard_init();
         __Ownable_init();
 
-        moneyMarket = IMoneyMarket(_moneyMarket);
+        moneyMarket = MoneyMarket(_moneyMarket);
         stablecoin = ERC20(_stablecoin);
         feeModel = IFeeModel(_feeModel);
         interestModel = IInterestModel(_interestModel);
@@ -184,7 +184,7 @@ contract DInterest is
     /**
         @param _MaxDepositPeriod The maximum deposit period, in seconds
         @param _MinDepositAmount The minimum deposit amount, in stablecoins
-        @param _moneyMarket Address of IMoneyMarket that's used for generating interest (owner must be set to this DInterest contract)
+        @param _moneyMarket Address of MoneyMarket that's used for generating interest (owner must be set to this DInterest contract)
         @param _stablecoin Address of the stablecoin used to store funds
         @param _feeModel Address of the FeeModel contract that determines how fees are charged
         @param _interestModel Address of the InterestModel contract that determines how much interest to offer

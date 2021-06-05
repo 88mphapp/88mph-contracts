@@ -10,3 +10,4 @@ coverage
 coverage.json
 
 docgen
+crytic-export

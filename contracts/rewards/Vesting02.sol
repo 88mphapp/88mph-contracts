@@ -90,6 +90,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
         );
 
         // create vest object
+        require(block.timestamp <= type(uint64).max, "Vesting02: OVERFLOW");
         vestList.push(
             Vest({
                 pool: pool,
@@ -100,6 +101,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
                 vestAmountPerStablecoinPerSecond: vestAmountPerStablecoinPerSecond
             })
         );
+        require(vestList.length <= type(uint64).max, "Vesting02: OVERFLOW");
         vestID = uint64(vestList.length); // 1-indexed
         depositIDToVestID[pool][depositID] = vestID;
 
@@ -140,6 +142,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
         vestEntry.accumulatedAmount += (currentDepositAmount *
             (currentTimestamp - vestEntry.lastUpdateTimestamp))
             .decmul(vestEntry.vestAmountPerStablecoinPerSecond);
+        require(block.timestamp <= type(uint64).max, "Vesting02: OVERFLOW");
         vestEntry.lastUpdateTimestamp = uint64(block.timestamp);
         vestEntry.vestAmountPerStablecoinPerSecond =
             (vestEntry.vestAmountPerStablecoinPerSecond *

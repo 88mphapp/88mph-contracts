@@ -634,7 +634,6 @@ contract DInterest is
         require(interestAmount > 0, "DInterest: BAD_INTEREST");
 
         // Calculate fee
-        depositID = uint64(deposits.length) + 1;
         uint256 feeAmount =
             feeModel.getInterestFeeAmount(address(this), interestAmount);
         interestAmount -= feeAmount;
@@ -650,6 +649,8 @@ contract DInterest is
                 averageRecordedIncomeIndex: moneyMarket.incomeIndex()
             })
         );
+        require(deposits.length <= type(uint64).max, "DInterest: OVERFLOW");
+        depositID = uint64(deposits.length);
 
         // Update global values
         totalDeposit += depositAmount;
@@ -1123,6 +1124,10 @@ contract DInterest is
                     recordedMoneyMarketIncomeIndex: incomeIndex,
                     principalPerToken: ULTRA_PRECISION
                 })
+            );
+            require(
+                fundingList.length <= type(uint64).max,
+                "DInterest: OVERFLOW"
             );
             fundingID = uint64(fundingList.length);
             depositEntry.fundingID = fundingID;

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {
     ERC20Upgradeable
 } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
@@ -21,28 +22,30 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
     uint256 internal constant MAX_REWARD_UNLOCK_PERIOD = 365 days;
     bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
 
-    ERC20Upgradeable public mph;
+    ERC20 public mph;
     uint256 public rewardUnlockPeriod;
     uint256 public currentUnlockEndTimestamp;
     uint256 public lastRewardTimestamp;
     uint256 public lastRewardAmount;
 
-    /**
-        @param _mph The MPH token
-        @param _rewardUnlockPeriod The length of each reward distribution period, in seconds
-        @param _distributor The account that will call distributeReward()
-     */
-    function initialize(
-        ERC20Upgradeable _mph,
+    function __xMPH_init(
+        address _mph,
         uint256 _rewardUnlockPeriod,
         address _distributor
-    ) external initializer {
+    ) internal initializer {
         __ERC20_init("Staked MPH", "xMPH");
         __AccessControl_init();
+        __xMPH_init_unchained(_mph, _rewardUnlockPeriod, _distributor);
+    }
 
+    function __xMPH_init_unchained(
+        address _mph,
+        uint256 _rewardUnlockPeriod,
+        address _distributor
+    ) internal initializer {
         // Validate input
         require(
-            address(_mph) != address(0) && _distributor != address(0),
+            _mph != address(0) && _distributor != address(0),
             "xMPH: 0 address"
         );
         require(
@@ -59,8 +62,21 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
         _setupRole(DISTRIBUTOR_ROLE, msg.sender);
         _setupRole(DISTRIBUTOR_ROLE, _distributor);
         _setRoleAdmin(DISTRIBUTOR_ROLE, DISTRIBUTOR_ROLE);
-        mph = _mph;
+        mph = ERC20(_mph);
         rewardUnlockPeriod = _rewardUnlockPeriod;
+    }
+
+    /**
+        @param _mph The MPH token
+        @param _rewardUnlockPeriod The length of each reward distribution period, in seconds
+        @param _distributor The account that will call distributeReward()
+     */
+    function initialize(
+        address _mph,
+        uint256 _rewardUnlockPeriod,
+        address _distributor
+    ) external initializer {
+        __xMPH_init(_mph, _rewardUnlockPeriod, _distributor);
     }
 
     /**
@@ -71,12 +87,10 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
      */
     function deposit(uint256 _mphAmount)
         external
+        virtual
         returns (uint256 shareAmount)
     {
-        require(_mphAmount > 0, "xMPH: 0 amount");
-        shareAmount = _mphAmount.decdiv(getPricePerFullShare());
-        _mint(msg.sender, shareAmount);
-        mph.transferFrom(msg.sender, address(this), _mphAmount);
+        return _deposit(_mphAmount);
     }
 
     /**
@@ -87,12 +101,10 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
      */
     function withdraw(uint256 _shareAmount)
         external
+        virtual
         returns (uint256 mphAmount)
     {
-        require(_shareAmount > 0, "xMPH: 0 amount");
-        mphAmount = _shareAmount.decmul(getPricePerFullShare());
-        _burn(msg.sender, _shareAmount);
-        mph.transfer(msg.sender, mphAmount);
+        return _withdraw(_shareAmount);
     }
 
     /**
@@ -134,7 +146,51 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
         @dev When not in a distribution period, start a new one with rewardUnlockPeriod seconds.
              When in a distribution period, add rewards to current period
      */
-    function distributeReward(uint256 rewardAmount) external {
+    function distributeReward(uint256 rewardAmount) external virtual {
+        _distributeReward(rewardAmount);
+    }
+
+    function setRewardUnlockPeriod(uint256 newValue) external {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "xMPH: not admin");
+        require(
+            newValue > 0 && newValue <= MAX_REWARD_UNLOCK_PERIOD,
+            "xMPH: invalid value"
+        );
+        rewardUnlockPeriod = newValue;
+    }
+
+    /**
+        @dev See {deposit}
+     */
+    function _deposit(uint256 _mphAmount)
+        internal
+        virtual
+        returns (uint256 shareAmount)
+    {
+        require(_mphAmount > 0, "xMPH: 0 amount");
+        shareAmount = _mphAmount.decdiv(getPricePerFullShare());
+        _mint(msg.sender, shareAmount);
+        mph.transferFrom(msg.sender, address(this), _mphAmount);
+    }
+
+    /**
+        @dev See {withdraw}
+     */
+    function _withdraw(uint256 _shareAmount)
+        internal
+        virtual
+        returns (uint256 mphAmount)
+    {
+        require(_shareAmount > 0, "xMPH: 0 amount");
+        mphAmount = _shareAmount.decmul(getPricePerFullShare());
+        _burn(msg.sender, _shareAmount);
+        mph.transfer(msg.sender, mphAmount);
+    }
+
+    /**
+        @dev See {distributeReward}
+     */
+    function _distributeReward(uint256 rewardAmount) internal {
         require(rewardAmount > 0, "xMPH: reward == 0");
         require(
             rewardAmount < type(uint256).max / PRECISION,
@@ -159,15 +215,6 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
             lastRewardTimestamp = block.timestamp;
             lastRewardAmount = rewardAmount + lockedRewardAmount;
         }
-    }
-
-    function setRewardUnlockPeriod(uint256 newValue) external {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "xMPH: not admin");
-        require(
-            newValue > 0 && newValue <= MAX_REWARD_UNLOCK_PERIOD,
-            "xMPH: invalid value"
-        );
-        rewardUnlockPeriod = newValue;
     }
 
     uint256[45] private __gap;

@@ -12,13 +12,11 @@ contract ERC20Mock is ERC20("", "") {
         return 6;
     }
 
-    function transfer(address recipient, uint256 amount)
-        public
-        override
-        returns (bool)
-    {
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal pure override {
         require(amount > 0, "ERC20Mock: amount 0");
-        _transfer(_msgSender(), recipient, amount);
-        return true;
     }
 }

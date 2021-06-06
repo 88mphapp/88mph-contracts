@@ -5,81 +5,99 @@ pragma solidity 0.8.3;
 import {MPHToken} from "../rewards/MPHToken.sol";
 import {xMPH} from "../rewards/xMPH.sol";
 import {DecMath} from "../libs/DecMath.sol";
+import {Asserts} from "./Asserts.sol";
 
-contract xMPHEchidnaTest is xMPH {
+contract xMPHEchidnaTest is Asserts {
     using DecMath for uint256;
 
-    address private constant ECHIDNA_CALLER =
-        0x00a329C0648769a73afAC7F9381e08fb43DBEA70;
     uint256 private constant REWARD_UNLOCK_PERIOD = 14 days;
+
+    MPHToken private mphToken;
+    xMPH private xMPHToken;
 
     constructor() {
         // initialize
-        MPHToken _mph = new MPHToken();
-        _mph.initialize();
-        __xMPH_init(address(_mph), REWARD_UNLOCK_PERIOD, ECHIDNA_CALLER);
+        mphToken = new MPHToken();
+        mphToken.initialize();
 
-        // mint caller some MPH
-        _mph.ownerMint(ECHIDNA_CALLER, 100 * PRECISION);
+        // mint this contract some MPH
+        mphToken.ownerMint(address(this), 100 * PRECISION);
+
+        // deploy xMPH
+        xMPHToken = new xMPH();
+        uint256 mphAmount = xMPHToken.MIN_AMOUNT();
+        mphToken.increaseAllowance(address(xMPHToken), mphAmount);
+        xMPHToken.initialize(
+            address(mphToken),
+            REWARD_UNLOCK_PERIOD,
+            address(this)
+        );
     }
 
-    function deposit(uint256 _mphAmount)
-        external
-        override
-        returns (uint256 shareAmount)
-    {
-        uint256 beforeMPHBalance = mph.balanceOf(msg.sender);
-        uint256 beforePricePerFullShare = getPricePerFullShare();
-        uint256 beforeShareBalance = balanceOf(msg.sender);
+    /**
+        Checks
+     */
 
-        shareAmount = _deposit(_mphAmount);
+    function sanityChecks_deposit(uint256 _mphAmount) external {
+        uint256 beforeMPHBalance = mphToken.balanceOf(address(this));
+        uint256 beforePricePerFullShare = xMPHToken.getPricePerFullShare();
+        uint256 beforeShareBalance = xMPHToken.balanceOf(address(this));
 
-        uint256 afterMPHBalance = mph.balanceOf(msg.sender);
-        uint256 afterPricePerFullShare = getPricePerFullShare();
-        uint256 afterShareBalance = balanceOf(msg.sender);
+        mphToken.increaseAllowance(address(xMPHToken), _mphAmount);
+        uint256 shareAmount = xMPHToken.deposit(_mphAmount);
 
-        assert(beforeMPHBalance - afterMPHBalance == _mphAmount);
-        assert(beforePricePerFullShare == afterPricePerFullShare);
-        assert(
+        uint256 afterMPHBalance = mphToken.balanceOf(address(this));
+        uint256 afterPricePerFullShare = xMPHToken.getPricePerFullShare();
+        uint256 afterShareBalance = xMPHToken.balanceOf(address(this));
+
+        Assert(beforeMPHBalance - afterMPHBalance == _mphAmount);
+        AssertEpsilonEqual(beforePricePerFullShare, afterPricePerFullShare);
+        Assert(
             afterShareBalance - beforeShareBalance ==
                 _mphAmount.decdiv(beforePricePerFullShare)
         );
+        Assert(afterShareBalance - beforeShareBalance == shareAmount);
     }
 
-    function withdraw(uint256 _shareAmount)
-        external
-        override
-        returns (uint256 mphAmount)
-    {
-        uint256 beforeMPHBalance = mph.balanceOf(msg.sender);
-        uint256 beforePricePerFullShare = getPricePerFullShare();
-        uint256 beforeShareBalance = balanceOf(msg.sender);
+    function sanityChecks_withdraw(uint256 _shareAmount) external {
+        uint256 beforeMPHBalance = mphToken.balanceOf(address(this));
+        uint256 beforePricePerFullShare = xMPHToken.getPricePerFullShare();
+        uint256 beforeShareBalance = xMPHToken.balanceOf(address(this));
 
-        mphAmount = _withdraw(_shareAmount);
+        uint256 mphAmount = xMPHToken.withdraw(_shareAmount);
 
-        uint256 afterMPHBalance = mph.balanceOf(msg.sender);
-        uint256 afterPricePerFullShare = getPricePerFullShare();
-        uint256 afterShareBalance = balanceOf(msg.sender);
+        uint256 afterMPHBalance = mphToken.balanceOf(address(this));
+        uint256 afterPricePerFullShare = xMPHToken.getPricePerFullShare();
+        uint256 afterShareBalance = xMPHToken.balanceOf(address(this));
 
-        assert(
+        Assert(
             afterMPHBalance - beforeMPHBalance ==
                 _shareAmount.decmul(beforePricePerFullShare)
         );
-        assert(beforePricePerFullShare == afterPricePerFullShare);
-        assert(beforeShareBalance - afterShareBalance == _shareAmount);
+        Assert(afterMPHBalance - beforeMPHBalance == mphAmount);
+        AssertEpsilonEqual(beforePricePerFullShare, afterPricePerFullShare);
+        Assert(beforeShareBalance - afterShareBalance == _shareAmount);
     }
 
-    function distributeReward(uint256 rewardAmount) external override {
-        uint256 beforeMPHBalance = mph.balanceOf(msg.sender);
-        uint256 beforePricePerFullShare = getPricePerFullShare();
+    function sanityChecks_distributeReward(uint256 rewardAmount) external {
+        uint256 beforeMPHBalance = mphToken.balanceOf(address(this));
+        uint256 beforePricePerFullShare = xMPHToken.getPricePerFullShare();
 
-        _distributeReward(rewardAmount);
+        mphToken.increaseAllowance(address(xMPHToken), rewardAmount);
+        xMPHToken.distributeReward(rewardAmount);
 
-        uint256 afterMPHBalance = mph.balanceOf(msg.sender);
-        uint256 afterPricePerFullShare = getPricePerFullShare();
+        uint256 afterMPHBalance = mphToken.balanceOf(address(this));
+        uint256 afterPricePerFullShare = xMPHToken.getPricePerFullShare();
 
-        assert(hasRole(DISTRIBUTOR_ROLE, msg.sender));
-        assert(beforeMPHBalance - afterMPHBalance == rewardAmount);
-        assert(beforePricePerFullShare == afterPricePerFullShare);
+        Assert(xMPHToken.hasRole(xMPHToken.DISTRIBUTOR_ROLE(), address(this)));
+        Assert(beforeMPHBalance - afterMPHBalance == rewardAmount);
+        AssertEpsilonEqual(beforePricePerFullShare, afterPricePerFullShare);
+    }
+
+    /**
+        Actions
+     */
+    function action_sendMPHToContract(uint256 mphAmount) external {
+        mphToken.transfer(address(xMPHToken), mphAmount);
     }
 }

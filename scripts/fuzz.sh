@@ -1,0 +1,1 @@
+echidna-test contracts/echidna/$1EchidnaTest.sol --contract $1EchidnaTest --config echidna-config.yaml --check-asserts

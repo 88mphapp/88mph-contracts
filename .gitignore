@@ -11,3 +11,4 @@ coverage.json
 
 docgen
 crytic-export
+echidna-corpus

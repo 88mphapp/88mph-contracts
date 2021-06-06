@@ -21,6 +21,7 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
     uint256 internal constant PRECISION = 10**18;
     uint256 internal constant MAX_REWARD_UNLOCK_PERIOD = 365 days;
     bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
+    uint256 public constant MIN_AMOUNT = 10**9;
 
     ERC20 public mph;
     uint256 public rewardUnlockPeriod;
@@ -64,6 +65,9 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
         _setRoleAdmin(DISTRIBUTOR_ROLE, DISTRIBUTOR_ROLE);
         mph = ERC20(_mph);
         rewardUnlockPeriod = _rewardUnlockPeriod;
+
+        // force the deployer to deposit to prevent rounding schenanigans
+        _deposit(MIN_AMOUNT);
     }
 
     /**
@@ -167,7 +171,7 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
         virtual
         returns (uint256 shareAmount)
     {
-        require(_mphAmount > 0, "xMPH: 0 amount");
+        require(_mphAmount > 0, "xMPH: amount");
         shareAmount = _mphAmount.decdiv(getPricePerFullShare());
         _mint(msg.sender, shareAmount);
         mph.transferFrom(msg.sender, address(this), _mphAmount);
@@ -181,7 +185,10 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
         virtual
         returns (uint256 mphAmount)
     {
-        require(_shareAmount > 0, "xMPH: 0 amount");
+        require(
+            totalSupply() >= _shareAmount + MIN_AMOUNT && _shareAmount > 0,
+            "xMPH: amount"
+        );
         mphAmount = _shareAmount.decmul(getPricePerFullShare());
         _burn(msg.sender, _shareAmount);
         mph.transfer(msg.sender, mphAmount);
@@ -191,7 +198,8 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
         @dev See {distributeReward}
      */
     function _distributeReward(uint256 rewardAmount) internal {
-        require(rewardAmount > 0, "xMPH: reward == 0");
+        require(totalSupply() >= MIN_AMOUNT, "xMPH: supply");
+        require(rewardAmount >= MIN_AMOUNT, "xMPH: reward");
         require(
             rewardAmount < type(uint256).max / PRECISION,
             "xMPH: rewards too large, would lock"

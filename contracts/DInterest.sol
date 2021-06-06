@@ -71,6 +71,7 @@ contract DInterest is
     // Each funding has an ID used in the fundingMultitoken, which is equal to its index in `fundingList` plus 1
     struct Funding {
         uint64 depositID; // The ID of the associated Deposit struct.
+        uint64 lastInterestPayoutTimestamp; // Unix timestamp of the most recent interest payout, in seconds
         uint256 recordedMoneyMarketIncomeIndex; // the income index at the last update (creation or withdrawal)
         uint256 principalPerToken; // The amount of stablecoins that's earning interest for you per funding token you own. Scaled to 18 decimals regardless of stablecoin decimals.
     }
@@ -1064,7 +1065,7 @@ contract DInterest is
             );
             // Mint funder rewards
             if (fundingInterestAmount >= refundAmount) {
-                mphMinter.distributeFundingRewards(
+                _distributeFundingRewards(
                     fundingID,
                     fundingInterestAmount - refundAmount
                 );
@@ -1118,9 +1119,11 @@ contract DInterest is
         uint256 mintTokenAmount;
         if (fundingID == 0 || _getFunding(fundingID).principalPerToken == 0) {
             // The first funder, create struct
+            require(block.timestamp <= type(uint64).max, "DInterest: OVERFLOW");
             fundingList.push(
                 Funding({
                     depositID: depositID,
+                    lastInterestPayoutTimestamp: uint64(block.timestamp),
                     recordedMoneyMarketIncomeIndex: incomeIndex,
                     principalPerToken: ULTRA_PRECISION
                 })
@@ -1197,28 +1200,32 @@ contract DInterest is
         returns (uint256 interestAmount)
     {
         Funding storage f = _getFunding(fundingID);
-        uint256 recordedMoneyMarketIncomeIndex =
-            f.recordedMoneyMarketIncomeIndex;
-        uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
-        uint256 fundingTokenTotalSupply =
-            fundingMultitoken.totalSupply(fundingID);
-        uint256 recordedFundedPrincipalAmount =
-            (fundingTokenTotalSupply * f.principalPerToken) / ULTRA_PRECISION;
+        {
+            uint256 recordedMoneyMarketIncomeIndex =
+                f.recordedMoneyMarketIncomeIndex;
+            uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
+            uint256 fundingTokenTotalSupply =
+                fundingMultitoken.totalSupply(fundingID);
+            uint256 recordedFundedPrincipalAmount =
+                (fundingTokenTotalSupply * f.principalPerToken) /
+                    ULTRA_PRECISION;
 
-        // Update funding values
-        sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex =
-            sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex +
-            (recordedFundedPrincipalAmount * EXTRA_PRECISION) /
-            currentMoneyMarketIncomeIndex -
-            (recordedFundedPrincipalAmount * EXTRA_PRECISION) /
-            recordedMoneyMarketIncomeIndex;
-        f.recordedMoneyMarketIncomeIndex = currentMoneyMarketIncomeIndex;
+            // Update funding values
+            sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex =
+                sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex +
+                (recordedFundedPrincipalAmount * EXTRA_PRECISION) /
+                currentMoneyMarketIncomeIndex -
+                (recordedFundedPrincipalAmount * EXTRA_PRECISION) /
+                recordedMoneyMarketIncomeIndex;
+            f.recordedMoneyMarketIncomeIndex = currentMoneyMarketIncomeIndex;
 
-        // Compute interest to funders
-        interestAmount =
-            (recordedFundedPrincipalAmount * currentMoneyMarketIncomeIndex) /
-            recordedMoneyMarketIncomeIndex -
-            recordedFundedPrincipalAmount;
+            // Compute interest to funders
+            interestAmount =
+                (recordedFundedPrincipalAmount *
+                    currentMoneyMarketIncomeIndex) /
+                recordedMoneyMarketIncomeIndex -
+                recordedFundedPrincipalAmount;
+        }
 
         // Distribute interest to funders
         if (interestAmount > 0) {
@@ -1234,12 +1241,48 @@ contract DInterest is
                     interestAmount
                 );
 
-                // Mint funder rewards
-                mphMinter.distributeFundingRewards(fundingID, interestAmount);
+                _distributeFundingRewards(fundingID, interestAmount);
             }
         }
 
         emit EPayFundingInterest(fundingID, interestAmount, 0);
+    }
+
+    /**
+        @dev Mints MPH rewards to the holders of an FRB. If past the deposit maturation,
+             only mint proportional to the time from the last distribution to the maturation.
+        @param fundingID The ID of the funding
+        @param rawInterestAmount The interest being distributed
+     */
+    function _distributeFundingRewards(
+        uint64 fundingID,
+        uint256 rawInterestAmount
+    ) internal {
+        Funding storage f = _getFunding(fundingID);
+
+        // Mint funder rewards
+        uint256 maturationTimestamp =
+            _getDeposit(f.depositID).maturationTimestamp;
+        if (block.timestamp > maturationTimestamp) {
+            // past maturation, only mint proportionally to maturation - last payout
+            uint256 lastInterestPayoutTimestamp = f.lastInterestPayoutTimestamp;
+            if (lastInterestPayoutTimestamp < maturationTimestamp) {
+                uint256 effectiveInterestAmount =
+                    (rawInterestAmount *
+                        (maturationTimestamp - lastInterestPayoutTimestamp)) /
+                        (block.timestamp - lastInterestPayoutTimestamp);
+                mphMinter.distributeFundingRewards(
+                    fundingID,
+                    effectiveInterestAmount
+                );
+            }
+        } else {
+            // before maturation, mint full amount
+            mphMinter.distributeFundingRewards(fundingID, rawInterestAmount);
+        }
+        // update last payout timestamp
+        require(block.timestamp <= type(uint64).max, "DInterest: OVERFLOW");
+        f.lastInterestPayoutTimestamp = uint64(block.timestamp);
     }
 
     /**

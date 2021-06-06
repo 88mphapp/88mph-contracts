@@ -486,14 +486,12 @@ const harvestMoneyMarketModule = () => {
     await timeTravel(timeInYears * YEAR_IN_SEC);
     for (const vaultAddress of vaultAddressList) {
       const vault = await VaultMock.at(vaultAddress);
-      await stablecoin.mint(
-        vault.address,
-        num2str(
-          BigNumber(await stablecoin.balanceOf(vault.address))
-            .times(INIT_INTEREST_RATE)
-            .times(timeInYears)
-        )
-      );
+      const mintAmount = BigNumber(await stablecoin.balanceOf(vault.address))
+        .times(INIT_INTEREST_RATE)
+        .times(timeInYears);
+      if (mintAmount.gt(0)) {
+        await stablecoin.mint(vault.address, num2str(mintAmount));
+      }
     }
   };
 
@@ -537,14 +535,12 @@ const yvaultMoneyMarketModule = () => {
     await timeTravel(timeInYears * YEAR_IN_SEC);
     for (const vaultAddress of vaultAddressList) {
       const vault = await VaultMock.at(vaultAddress);
-      await stablecoin.mint(
-        vault.address,
-        num2str(
-          BigNumber(await stablecoin.balanceOf(vault.address))
-            .times(INIT_INTEREST_RATE)
-            .times(timeInYears)
-        )
-      );
+      const mintAmount = BigNumber(await stablecoin.balanceOf(vault.address))
+        .times(INIT_INTEREST_RATE)
+        .times(timeInYears);
+      if (mintAmount.gt(0)) {
+        await stablecoin.mint(vault.address, num2str(mintAmount));
+      }
     }
   };
 

@@ -531,7 +531,7 @@ contract DInterest is
         virtual
         returns (bool isNegative, uint256 surplusAmount)
     {
-        Deposit memory depositEntry = _getDeposit(depositID);
+        Deposit storage depositEntry = _getDeposit(depositID);
         uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
         uint256 depositTokenTotalSupply = depositEntry.virtualTokenTotalSupply;
         uint256 depositAmount =
@@ -713,7 +713,7 @@ contract DInterest is
         uint64 depositID,
         uint256 depositAmount
     ) internal virtual returns (uint256 interestAmount) {
-        Deposit memory depositEntry = _getDeposit(depositID);
+        Deposit storage depositEntry = _getDeposit(depositID);
         require(
             depositNFT.ownerOf(depositID) == sender,
             "DInterest: NOT_OWNER"
@@ -733,16 +733,14 @@ contract DInterest is
         interestAmount -= feeAmount;
 
         // Update deposit struct
+        uint256 interestRate = depositEntry.interestRate;
         uint256 currentDepositAmount =
             depositEntry.virtualTokenTotalSupply.decdiv(
-                depositEntry.interestRate + PRECISION
+                interestRate + PRECISION
             );
         depositEntry.virtualTokenTotalSupply += depositAmount + interestAmount;
         depositEntry.interestRate =
-            (PRECISION *
-                interestAmount +
-                currentDepositAmount *
-                depositEntry.interestRate) /
+            (PRECISION * interestAmount + currentDepositAmount * interestRate) /
             (depositAmount + currentDepositAmount);
         depositEntry.feeRate =
             (PRECISION *
@@ -758,8 +756,6 @@ contract DInterest is
         depositEntry.averageRecordedIncomeIndex =
             ((depositAmount + currentDepositAmount) * EXTRA_PRECISION) /
             sumOfRecordedDepositAmountDivRecordedIncomeIndex;
-
-        deposits[depositID - 1] = depositEntry;
 
         // Update global values
         totalDeposit += depositAmount;
@@ -864,7 +860,7 @@ contract DInterest is
     {
         // Verify input
         require(virtualTokenAmount > 0, "DInterest: BAD_AMOUNT");
-        Deposit memory depositEntry = _getDeposit(depositID);
+        Deposit storage depositEntry = _getDeposit(depositID);
         if (early) {
             require(
                 block.timestamp < depositEntry.maturationTimestamp,
@@ -882,13 +878,19 @@ contract DInterest is
         );
 
         // Check if withdrawing all funds
-        if (virtualTokenAmount > depositEntry.virtualTokenTotalSupply) {
-            virtualTokenAmount = depositEntry.virtualTokenTotalSupply;
+        {
+            uint256 virtualTokenTotalSupply =
+                depositEntry.virtualTokenTotalSupply;
+            if (virtualTokenAmount > virtualTokenTotalSupply) {
+                virtualTokenAmount = virtualTokenTotalSupply;
+            }
         }
 
         // Compute token amounts
+        uint256 interestRate = depositEntry.interestRate;
+        uint256 feeRate = depositEntry.feeRate;
         uint256 depositAmount =
-            virtualTokenAmount.decdiv(depositEntry.interestRate + PRECISION);
+            virtualTokenAmount.decdiv(interestRate + PRECISION);
         {
             uint256 interestAmount =
                 early ? 0 : virtualTokenAmount - depositAmount;
@@ -905,42 +907,43 @@ contract DInterest is
             feeAmount = earlyWithdrawFee;
             withdrawAmount -= earlyWithdrawFee;
         } else {
-            feeAmount = depositAmount.decmul(depositEntry.feeRate);
+            feeAmount = depositAmount.decmul(feeRate);
         }
 
         // Update global values
         totalDeposit -= depositAmount;
         totalInterestOwed -= virtualTokenAmount - depositAmount;
-        totalFeeOwed -= depositAmount.decmul(depositEntry.feeRate);
+        totalFeeOwed -= depositAmount.decmul(feeRate);
 
         // If deposit was funded, compute funding interest payout
-        if (depositEntry.fundingID > 0) {
-            Funding storage funding = _getFunding(depositEntry.fundingID);
+        uint64 fundingID = depositEntry.fundingID;
+        if (fundingID > 0) {
+            Funding storage funding = _getFunding(fundingID);
 
             // Compute funded deposit amount before withdrawal
-            uint256 fundingTokenTotalSupply =
-                fundingMultitoken.totalSupply(depositEntry.fundingID);
             uint256 recordedFundedPrincipalAmount =
-                (fundingTokenTotalSupply * funding.principalPerToken) /
-                    ULTRA_PRECISION;
-            uint256 totalPrincipal =
-                _depositVirtualTokenToPrincipal(
-                    depositID,
-                    depositEntry.virtualTokenTotalSupply
-                );
+                (fundingMultitoken.totalSupply(fundingID) *
+                    funding.principalPerToken) / ULTRA_PRECISION;
 
             // Shrink funding principal per token value
-            uint256 totalPrincipalDecrease =
-                virtualTokenAmount + depositAmount.decmul(depositEntry.feeRate);
-            if (
-                totalPrincipal <=
-                totalPrincipalDecrease + recordedFundedPrincipalAmount
-            ) {
-                // Not enough unfunded principal, need to decrease funding principal per token value
-                funding.principalPerToken =
-                    (funding.principalPerToken *
-                        (totalPrincipal - totalPrincipalDecrease)) /
-                    recordedFundedPrincipalAmount;
+            {
+                uint256 totalPrincipal =
+                    _depositVirtualTokenToPrincipal(
+                        depositID,
+                        depositEntry.virtualTokenTotalSupply
+                    );
+                uint256 totalPrincipalDecrease =
+                    virtualTokenAmount + depositAmount.decmul(feeRate);
+                if (
+                    totalPrincipal <=
+                    totalPrincipalDecrease + recordedFundedPrincipalAmount
+                ) {
+                    // Not enough unfunded principal, need to decrease funding principal per token value
+                    funding.principalPerToken =
+                        (funding.principalPerToken *
+                            (totalPrincipal - totalPrincipalDecrease)) /
+                        recordedFundedPrincipalAmount;
+                }
             }
 
             // Compute interest payout + refund
@@ -949,7 +952,7 @@ contract DInterest is
                 fundingInterestAmount,
                 refundAmount
             ) = _computeAndUpdateFundingInterestAfterWithdraw(
-                depositEntry.fundingID,
+                fundingID,
                 recordedFundedPrincipalAmount,
                 early
             );
@@ -959,7 +962,7 @@ contract DInterest is
         {
             uint256 depositAmountBeforeWithdrawal =
                 _getDeposit(depositID).virtualTokenTotalSupply.decdiv(
-                    depositEntry.interestRate + PRECISION
+                    interestRate + PRECISION
                 );
             mphMinter.updateVestForDeposit(
                 depositID,
@@ -1305,16 +1308,16 @@ contract DInterest is
         returns (uint256 fundingInterestAmount, uint256 refundAmount)
     {
         Funding storage f = _getFunding(fundingID);
-        uint256 recordedMoneyMarketIncomeIndex =
-            f.recordedMoneyMarketIncomeIndex;
-        uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
-        require(currentMoneyMarketIncomeIndex > 0, "DInterest: BAD_INDEX");
         uint256 currentFundedPrincipalAmount =
             (fundingMultitoken.totalSupply(fundingID) * f.principalPerToken) /
                 ULTRA_PRECISION;
 
         // Update funding values
         {
+            uint256 recordedMoneyMarketIncomeIndex =
+                f.recordedMoneyMarketIncomeIndex;
+            uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
+            require(currentMoneyMarketIncomeIndex > 0, "DInterest: BAD_INDEX");
             uint256 currentFundedPrincipalAmountDivRecordedIncomeIndex =
                 (currentFundedPrincipalAmount * EXTRA_PRECISION) /
                     currentMoneyMarketIncomeIndex;
@@ -1333,22 +1336,25 @@ contract DInterest is
             } else {
                 sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex = 0;
             }
+
+            f.recordedMoneyMarketIncomeIndex = currentMoneyMarketIncomeIndex;
+            totalFundedPrincipalAmount -=
+                recordedFundedPrincipalAmount -
+                currentFundedPrincipalAmount;
+
+            // Compute interest to funders
+            fundingInterestAmount =
+                (recordedFundedPrincipalAmount *
+                    currentMoneyMarketIncomeIndex) /
+                recordedMoneyMarketIncomeIndex -
+                recordedFundedPrincipalAmount;
         }
-
-        f.recordedMoneyMarketIncomeIndex = currentMoneyMarketIncomeIndex;
-        totalFundedPrincipalAmount -=
-            recordedFundedPrincipalAmount -
-            currentFundedPrincipalAmount;
-
-        // Compute interest to funders
-        fundingInterestAmount =
-            (recordedFundedPrincipalAmount * currentMoneyMarketIncomeIndex) /
-            recordedMoneyMarketIncomeIndex -
-            recordedFundedPrincipalAmount;
 
         // Add refund to interestAmount
         if (early) {
-            Deposit memory depositEntry = _getDeposit(f.depositID);
+            Deposit storage depositEntry = _getDeposit(f.depositID);
+            uint256 interestRate = depositEntry.interestRate;
+            uint256 feeRate = depositEntry.feeRate;
             (, uint256 moneyMarketInterestRatePerSecond) =
                 interestOracle.updateAndQuery();
             refundAmount =
@@ -1359,10 +1365,8 @@ contract DInterest is
                 PRECISION;
             uint256 maxRefundAmount =
                 (recordedFundedPrincipalAmount - currentFundedPrincipalAmount)
-                    .decdiv(
-                    PRECISION + depositEntry.interestRate + depositEntry.feeRate
-                )
-                    .decmul(depositEntry.interestRate + depositEntry.feeRate);
+                    .decdiv(PRECISION + interestRate + feeRate)
+                    .decmul(interestRate + feeRate);
             refundAmount = refundAmount <= maxRefundAmount
                 ? refundAmount
                 : maxRefundAmount;
@@ -1503,23 +1507,23 @@ contract DInterest is
         external
         onlyOwner
     {
-        Deposit memory depositMemory = _getDeposit(depositID);
         Deposit storage depositStorage = _getDeposit(depositID);
-        require(newFeeRate < depositMemory.feeRate, "DInterest: BAD_VAL");
+        uint256 feeRate = depositStorage.feeRate;
+        uint256 interestRate = depositStorage.interestRate;
+        uint256 virtualTokenTotalSupply =
+            depositStorage.virtualTokenTotalSupply;
+        require(newFeeRate < feeRate, "DInterest: BAD_VAL");
         uint256 depositAmount =
-            depositMemory.virtualTokenTotalSupply.decdiv(
-                depositMemory.interestRate + PRECISION
-            );
+            virtualTokenTotalSupply.decdiv(interestRate + PRECISION);
 
         // update fee rate
         depositStorage.feeRate = newFeeRate;
 
         // update interest rate
         // fee reduction is allocated to interest
-        uint256 reducedFeeAmount =
-            depositAmount.decmul(depositMemory.feeRate - newFeeRate);
+        uint256 reducedFeeAmount = depositAmount.decmul(feeRate - newFeeRate);
         depositStorage.interestRate =
-            depositMemory.interestRate +
+            interestRate +
             reducedFeeAmount.decdiv(depositAmount);
 
         // update global amounts

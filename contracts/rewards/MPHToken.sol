@@ -16,14 +16,14 @@ contract MPHToken is
     ERC20BurnableUpgradeable,
     OwnableUpgradeable
 {
-    function initialize() public initializer {
+    function initialize() external initializer {
         __Ownable_init();
         __ERC20Burnable_init();
         __ERC20_init("88mph.app", "MPH");
     }
 
     function ownerMint(address account, uint256 amount)
-        public
+        external
         onlyOwner
         returns (bool)
     {

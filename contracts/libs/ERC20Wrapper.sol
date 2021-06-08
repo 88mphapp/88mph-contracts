@@ -36,7 +36,7 @@ contract ERC20Wrapper is Initializable, IERC20 {
     /**
      * @dev See {IERC20-totalSupply}.
      */
-    function totalSupply() public view virtual override returns (uint256) {
+    function totalSupply() external view virtual override returns (uint256) {
         return parentMultitoken.totalSupply(tokenID);
     }
 
@@ -44,7 +44,7 @@ contract ERC20Wrapper is Initializable, IERC20 {
      * @dev See {IERC20-balanceOf}.
      */
     function balanceOf(address account)
-        public
+        external
         view
         virtual
         override
@@ -62,7 +62,7 @@ contract ERC20Wrapper is Initializable, IERC20 {
      * - the caller must have a balance of at least `amount`.
      */
     function transfer(address recipient, uint256 amount)
-        public
+        external
         virtual
         override
         returns (bool)
@@ -75,7 +75,7 @@ contract ERC20Wrapper is Initializable, IERC20 {
      * @dev See {IERC20-allowance}.
      */
     function allowance(address owner, address spender)
-        public
+        external
         view
         virtual
         override
@@ -92,7 +92,7 @@ contract ERC20Wrapper is Initializable, IERC20 {
      * - `spender` cannot be the zero address.
      */
     function approve(address spender, uint256 amount)
-        public
+        external
         virtual
         override
         returns (bool)
@@ -118,7 +118,7 @@ contract ERC20Wrapper is Initializable, IERC20 {
         address sender,
         address recipient,
         uint256 amount
-    ) public virtual override returns (bool) {
+    ) external virtual override returns (bool) {
         _transfer(sender, recipient, amount);
 
         uint256 currentAllowance = _allowances[sender][msg.sender];
@@ -144,7 +144,7 @@ contract ERC20Wrapper is Initializable, IERC20 {
      * - `spender` cannot be the zero address.
      */
     function increaseAllowance(address spender, uint256 addedValue)
-        public
+        external
         virtual
         returns (bool)
     {
@@ -171,7 +171,7 @@ contract ERC20Wrapper is Initializable, IERC20 {
      * `subtractedValue`.
      */
     function decreaseAllowance(address spender, uint256 subtractedValue)
-        public
+        external
         virtual
         returns (bool)
     {

@@ -1,5 +1,5 @@
 {
-  "address": "0xF0FC18B5B74Ef7998E1C9D8Df5685A3808A8F70B",
+  "address": "0x459858ed3B42BE1960d7C8E662DC1Cba0139588A",
   "abi": [
     {
       "anonymous": false,
@@ -530,25 +530,25 @@
   "receipt": {
     "logs": [
       {
-        "address": "0x3ff23CccEB7A4cFD7d2F47ACC76d131c934BE412",
-        "blockNumber": 8694942,
-        "transactionHash": "0x69b9b5c14500edb9e503b2f53ed1adec7c193670eeea4b3ec25a18ea667731bd",
-        "transactionIndex": 0,
-        "blockHash": "0x71c1c4ed26a772fac2e6f768fc420953b75072a761794f4d993d1a88334ede79",
-        "logIndex": 2,
+        "address": "0x9B5e71a3DBBB1B2fCf0BEc8781323909C9CB61E6",
+        "blockNumber": 8735241,
+        "transactionHash": "0x5f2f07a9682d506a25faf7fbda622b65fc25ea5131d0be4a5242f5835402392a",
+        "transactionIndex": 2,
+        "blockHash": "0x47794381bebe46073c87aa70743bf7154344688bca689eb6c8983317dc833e8d",
+        "logIndex": 3,
         "removed": false,
-        "id": "log_f5ca203b",
+        "id": "log_b3f81443",
         "event": "CreateClone",
         "args": {
           "0": "0x9c4138cd0a1311e4748f70d0fe3dc55f0f5f75e0f20db731225cbc3b8914016a",
-          "1": "0x373aAa0Bf07a7E15A3075dfA8C72891084822591",
-          "2": "0x179ce134c1600000000000000000000000000000000000000000000000000000",
-          "3": "0xF0FC18B5B74Ef7998E1C9D8Df5685A3808A8F70B",
+          "1": "0x54f686f5AD65C55E45c4D6B35de623142a0d3069",
+          "2": "0x179f21dbfe600000000000000000000000000000000000000000000000000000",
+          "3": "0x459858ed3B42BE1960d7C8E662DC1Cba0139588A",
           "__length__": 4,
           "contractName": "0x9c4138cd0a1311e4748f70d0fe3dc55f0f5f75e0f20db731225cbc3b8914016a",
-          "template": "0x373aAa0Bf07a7E15A3075dfA8C72891084822591",
-          "salt": "0x179ce134c1600000000000000000000000000000000000000000000000000000",
-          "clone": "0xF0FC18B5B74Ef7998E1C9D8Df5685A3808A8F70B"
+          "template": "0x54f686f5AD65C55E45c4D6B35de623142a0d3069",
+          "salt": "0x179f21dbfe600000000000000000000000000000000000000000000000000000",
+          "clone": "0x459858ed3B42BE1960d7C8E662DC1Cba0139588A"
         }
       }
     ]

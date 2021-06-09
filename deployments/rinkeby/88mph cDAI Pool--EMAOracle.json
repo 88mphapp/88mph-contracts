@@ -1,5 +1,5 @@
 {
-  "address": "0xA549Fd670efd4b13Dc2e2a70DA25610c1429D599",
+  "address": "0x7Dc5cB1af3CAF36a0C6945fedB5DCa399E6d8F69",
   "abi": [
     {
       "inputs": [],
@@ -130,7 +130,7 @@
       "name": "moneyMarket",
       "outputs": [
         {
-          "internalType": "contract IMoneyMarket",
+          "internalType": "contract MoneyMarket",
           "name": "",
           "type": "address"
         }
@@ -178,25 +178,25 @@
   "receipt": {
     "logs": [
       {
-        "address": "0x3ff23CccEB7A4cFD7d2F47ACC76d131c934BE412",
-        "blockNumber": 8694940,
-        "transactionHash": "0x6cb78ef2e8ab2f87e44f55ab0d2bd11595620a72f71e5866cd658ca5ee4ad5fc",
-        "transactionIndex": 0,
-        "blockHash": "0xeb8a42253b52bff3220a5d9e1ddd802343f5a08721de693cbf99f1db0d2b0878",
-        "logIndex": 1,
+        "address": "0x9B5e71a3DBBB1B2fCf0BEc8781323909C9CB61E6",
+        "blockNumber": 8735239,
+        "transactionHash": "0xe3955c2726a3a961b603d1756558ec0fdd9be1e11c22649d991f6be124e6894b",
+        "transactionIndex": 1,
+        "blockHash": "0x95d6f6beff0d4fee859779780b6046569197583f886770975006ff483cb080f1",
+        "logIndex": 2,
         "removed": false,
-        "id": "log_50ef8514",
+        "id": "log_dc111ca0",
         "event": "CreateClone",
         "args": {
           "0": "0xf6b12bbdcba3d81899dd38eee1b4a90c3423cf47e4fcaed36a0f50a7c8793bb4",
-          "1": "0xe5301C3F573465F0fafc07c441A107959c5d5933",
-          "2": "0x179ce12df0f00000000000000000000000000000000000000000000000000000",
-          "3": "0xA549Fd670efd4b13Dc2e2a70DA25610c1429D599",
+          "1": "0x52BD4AD7525020081d5583DA1993d8b8ab01f855",
+          "2": "0x179f21d502d00000000000000000000000000000000000000000000000000000",
+          "3": "0x7Dc5cB1af3CAF36a0C6945fedB5DCa399E6d8F69",
           "__length__": 4,
           "contractName": "0xf6b12bbdcba3d81899dd38eee1b4a90c3423cf47e4fcaed36a0f50a7c8793bb4",
-          "template": "0xe5301C3F573465F0fafc07c441A107959c5d5933",
-          "salt": "0x179ce12df0f00000000000000000000000000000000000000000000000000000",
-          "clone": "0xA549Fd670efd4b13Dc2e2a70DA25610c1429D599"
+          "template": "0x52BD4AD7525020081d5583DA1993d8b8ab01f855",
+          "salt": "0x179f21d502d00000000000000000000000000000000000000000000000000000",
+          "clone": "0x7Dc5cB1af3CAF36a0C6945fedB5DCa399E6d8F69"
         }
       }
     ]

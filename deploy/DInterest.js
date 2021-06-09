@@ -148,5 +148,7 @@ module.exports.dependencies = [
   `${poolConfig.name}--${poolConfig.interestOracle}`,
   `${poolConfig.nftNamePrefix}Deposit`,
   `${poolConfig.nftNamePrefix}Floating Rate Bond`,
-  "MPHRewards"
+  "MPHRewards",
+  "DInterestLens",
+  "MPHMinterLegacy"
 ];

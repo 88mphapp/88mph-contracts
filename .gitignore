@@ -12,3 +12,4 @@ coverage.json
 docgen
 crytic-export
 echidna-corpus
+.DS_Store

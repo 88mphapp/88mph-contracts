@@ -20,6 +20,9 @@ module.exports = async ({
   if (deployResult.newlyDeployed) {
     const xMPH = artifacts.require("xMPH");
     const contract = await xMPH.at(deployResult.address);
+    const MPHToken = artifacts.require("MPHToken");
+    const mphContract = await MPHToken.at(config.mph);
+    await mphContract.approve(deployResult.address, 1e9);
     await contract.initialize(
       config.mph,
       config.xMPHRewardUnlockPeriod,

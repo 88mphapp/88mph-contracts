@@ -1,5 +1,5 @@
 {
-  "address": "0xD092dedB3a012B13f139c78D63e29190c9D6A9Ec",
+  "address": "0x3341f08314a45Bfd8a0759945C7fc64cCcd786DF",
   "abi": [
     {
       "inputs": [
@@ -115,24 +115,24 @@
       "type": "function"
     }
   ],
-  "transactionHash": "0xbb3e784876450df41d38242af42f2843e662bff6998ea561c0b1c63009daf6c2",
+  "transactionHash": "0xd73d3b5425165f3019bb4c9b337dcd33229766877721f07e2e129483e0489c32",
   "receipt": {
     "to": null,
     "from": "0xc0FcF8403e10B65f1D18f1B81b093004B1127275",
-    "contractAddress": "0xD092dedB3a012B13f139c78D63e29190c9D6A9Ec",
-    "transactionIndex": 11,
+    "contractAddress": "0x3341f08314a45Bfd8a0759945C7fc64cCcd786DF",
+    "transactionIndex": 1,
     "gasUsed": "233324",
     "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-    "blockHash": "0x76a733eb96c9b13541dd33c21671255a44266aff9b9e436a4a7b3ffa7fb62ce1",
-    "transactionHash": "0xbb3e784876450df41d38242af42f2843e662bff6998ea561c0b1c63009daf6c2",
+    "blockHash": "0x38b6c92270b27505e9117061eca164fc9b1edd66de57fed4e1a5d59583341380",
+    "transactionHash": "0xd73d3b5425165f3019bb4c9b337dcd33229766877721f07e2e129483e0489c32",
     "logs": [],
-    "blockNumber": 8694937,
-    "cumulativeGasUsed": "845308",
+    "blockNumber": 8735236,
+    "cumulativeGasUsed": "254324",
     "status": 1,
     "byzantium": true
   },
   "args": ["500000000000000000", "7922184626"],
-  "solcInputHash": "e60ae8ce476666259c0e591d71d287b8",
+  "solcInputHash": "ef30a810f52e8546dd2d48092c96ad7a",
   "metadata": "{\"compiler\":{\"version\":\"0.8.3+commit.8d00100c\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_multiplierIntercept\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_multiplierSlope\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"PRECISION\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"depositAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"depositPeriodInSeconds\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"moneyMarketInterestRatePerSecond\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"calculateInterestAmount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"interestAmount\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"depositPeriodInSeconds\",\"type\":\"uint256\"}],\"name\":\"getIRMultiplier\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"multiplierIntercept\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"multiplierSlope\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/models/interest/LinearDecayInterestModel.sol\":\"LinearDecayInterestModel\"},\"evmVersion\":\"istanbul\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"contracts/libs/DecMath.sol\":{\"content\":\"// SPDX-License-Identifier: GPL-3.0-or-later\\npragma solidity 0.8.3;\\n\\n// Decimal math library\\nlibrary DecMath {\\n    uint256 internal constant PRECISION = 10**18;\\n\\n    function decmul(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return (a * b) / PRECISION;\\n    }\\n\\n    function decdiv(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return (a * PRECISION) / b;\\n    }\\n}\\n\",\"keccak256\":\"0x830cccda720ec3797259ec651073e91c889e7e3aeec81e034c793ca9d106eb8b\",\"license\":\"GPL-3.0-or-later\"},\"contracts/models/interest/IInterestModel.sol\":{\"content\":\"// SPDX-License-Identifier: GPL-3.0-or-later\\npragma solidity 0.8.3;\\n\\ninterface IInterestModel {\\n    function calculateInterestAmount(\\n        uint256 depositAmount,\\n        uint256 depositPeriodInSeconds,\\n        uint256 moneyMarketInterestRatePerSecond,\\n        bool surplusIsNegative,\\n        uint256 surplusAmount\\n    ) external view returns (uint256 interestAmount);\\n}\\n\",\"keccak256\":\"0xbdb2b0d689338683188ff2f54e4b77bd7f6a4ef284e0c15c88fedb4a07caca78\",\"license\":\"GPL-3.0-or-later\"},\"contracts/models/interest/LinearDecayInterestModel.sol\":{\"content\":\"// SPDX-License-Identifier: GPL-3.0-or-later\\npragma solidity 0.8.3;\\n\\nimport {DecMath} from \\\"../../libs/DecMath.sol\\\";\\nimport {IInterestModel} from \\\"./IInterestModel.sol\\\";\\n\\ncontract LinearDecayInterestModel is IInterestModel {\\n    using DecMath for uint256;\\n\\n    uint256 public constant PRECISION = 10**18;\\n    uint256 public multiplierIntercept;\\n    uint256 public multiplierSlope;\\n\\n    constructor(uint256 _multiplierIntercept, uint256 _multiplierSlope) {\\n        multiplierIntercept = _multiplierIntercept;\\n        multiplierSlope = _multiplierSlope;\\n    }\\n\\n    function getIRMultiplier(uint256 depositPeriodInSeconds)\\n        public\\n        view\\n        returns (uint256)\\n    {\\n        uint256 multiplierDecrease = depositPeriodInSeconds * multiplierSlope;\\n        if (multiplierDecrease >= multiplierIntercept) {\\n            return 0;\\n        } else {\\n            return multiplierIntercept - multiplierDecrease;\\n        }\\n    }\\n\\n    function calculateInterestAmount(\\n        uint256 depositAmount,\\n        uint256 depositPeriodInSeconds,\\n        uint256 moneyMarketInterestRatePerSecond,\\n        bool, /*surplusIsNegative*/\\n        uint256 /*surplusAmount*/\\n    ) external view override returns (uint256 interestAmount) {\\n        // interestAmount = depositAmount * moneyMarketInterestRatePerSecond * IRMultiplier * depositPeriodInSeconds\\n        interestAmount =\\n            ((depositAmount * PRECISION)\\n                .decmul(moneyMarketInterestRatePerSecond)\\n                .decmul(getIRMultiplier(depositPeriodInSeconds)) *\\n                depositPeriodInSeconds) /\\n            PRECISION;\\n    }\\n}\\n\",\"keccak256\":\"0x0669a1a6d0a866b18da7d731d00161743bea36032a5965cdcedc47de67e878ff\",\"license\":\"GPL-3.0-or-later\"}},\"version\":1}",
   "bytecode": "0x608060405234801561001057600080fd5b506040516102dd3803806102dd83398101604081905261002f9161003d565b600091909155600155610060565b6000806040838503121561004f578182fd5b505080516020909101519092909150565b61026e8061006f6000396000f3fe608060405234801561001057600080fd5b50600436106100575760003560e01c806371755d991461005c578063aaf5eb6814610081578063bce606cc14610090578063ca7082b614610099578063d09be34e146100a2575b600080fd5b61006f61006a366004610168565b6100b5565b60405190815260200160405180910390f35b61006f670de0b6b3a764000081565b61006f60005481565b61006f60015481565b61006f6100b0366004610180565b6100f2565b600080600154836100c691906101ec565b905060005481106100db5760009150506100ed565b806000546100e9919061020b565b9150505b919050565b6000670de0b6b3a76400008561012461010a886100b5565b61011e8881670de0b6b3a76400008d6101ec565b90610142565b61012e91906101ec565b61013891906101cc565b9695505050505050565b6000670de0b6b3a764000061015783856101ec565b61016191906101cc565b9392505050565b600060208284031215610179578081fd5b5035919050565b600080600080600060a08688031215610197578081fd5b853594506020860135935060408601359250606086013580151581146101bb578182fd5b949793965091946080013592915050565b6000826101e757634e487b7160e01b81526012600452602481fd5b500490565b600081600019048311821515161561020657610206610222565b500290565b60008282101561021d5761021d610222565b500390565b634e487b7160e01b600052601160045260246000fdfea264697066735822122087582eb86925e3d7adc25560c82add3612d7f66d03cdc53aa399c21ad81d1c2664736f6c63430008030033",
   "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106100575760003560e01c806371755d991461005c578063aaf5eb6814610081578063bce606cc14610090578063ca7082b614610099578063d09be34e146100a2575b600080fd5b61006f61006a366004610168565b6100b5565b60405190815260200160405180910390f35b61006f670de0b6b3a764000081565b61006f60005481565b61006f60015481565b61006f6100b0366004610180565b6100f2565b600080600154836100c691906101ec565b905060005481106100db5760009150506100ed565b806000546100e9919061020b565b9150505b919050565b6000670de0b6b3a76400008561012461010a886100b5565b61011e8881670de0b6b3a76400008d6101ec565b90610142565b61012e91906101ec565b61013891906101cc565b9695505050505050565b6000670de0b6b3a764000061015783856101ec565b61016191906101cc565b9392505050565b600060208284031215610179578081fd5b5035919050565b600080600080600060a08688031215610197578081fd5b853594506020860135935060408601359250606086013580151581146101bb578182fd5b949793965091946080013592915050565b6000826101e757634e487b7160e01b81526012600452602481fd5b500490565b600081600019048311821515161561020657610206610222565b500290565b60008282101561021d5761021d610222565b500390565b634e487b7160e01b600052601160045260246000fdfea264697066735822122087582eb86925e3d7adc25560c82add3612d7f66d03cdc53aa399c21ad81d1c2664736f6c63430008030033",
@@ -149,7 +149,7 @@
   "storageLayout": {
     "storage": [
       {
-        "astId": 16116,
+        "astId": 16859,
         "contract": "contracts/models/interest/LinearDecayInterestModel.sol:LinearDecayInterestModel",
         "label": "multiplierIntercept",
         "offset": 0,
@@ -157,7 +157,7 @@
         "type": "t_uint256"
       },
       {
-        "astId": 16118,
+        "astId": 16861,
         "contract": "contracts/models/interest/LinearDecayInterestModel.sol:LinearDecayInterestModel",
         "label": "multiplierSlope",
         "offset": 0,

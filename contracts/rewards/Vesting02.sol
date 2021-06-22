@@ -45,7 +45,14 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
         uint64 vestID,
         uint256 vestAmountPerStablecoinPerSecond
     );
-    event EUpdateVest(uint64 indexed vestID);
+    event EUpdateVest(
+        uint64 indexed vestID,
+        address poolAddress,
+        uint64 depositID,
+        uint256 currentDepositAmount,
+        uint256 depositAmount,
+        uint256 vestAmountPerStablecoinPerSecond
+    );
     event EWithdraw(
         address indexed sender,
         uint64 indexed vestID,
@@ -151,7 +158,14 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
                 depositAmount) /
             (currentDepositAmount + depositAmount);
 
-        emit EUpdateVest(vestID);
+        emit EUpdateVest(
+            vestID,
+            poolAddress,
+            depositID,
+            currentDepositAmount,
+            depositAmount,
+            vestAmountPerStablecoinPerSecond
+        );
     }
 
     /**

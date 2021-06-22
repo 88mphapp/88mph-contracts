@@ -20,9 +20,9 @@ module.exports = async ({
   if (deployResult.newlyDeployed) {
     const Vesting02 = artifacts.require("Vesting02");
     const contract = await Vesting02.at(deployResult.address);
-    await contract.initialize(config.mph, "Vested MPH", "veMPH", {
+    /*await contract.initialize(config.mph, "Vested MPH", "veMPH", {
       from: deployer
-    });
+    });*/
     log(`Vesting02 deployed at ${deployResult.address}`);
   }
 };

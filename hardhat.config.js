@@ -36,7 +36,7 @@ module.exports = {
   },
   namedAccounts: {
     deployer: {
-      default: 1
+      default: 2
     }
   },
   paths: {

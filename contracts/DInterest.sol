@@ -661,9 +661,6 @@ contract DInterest is
         // Mint depositNFT
         depositNFT.mint(sender, depositID);
 
-        // Vest MPH to sender
-        mphMinter.createVestForDeposit(sender, depositID);
-
         // Emit event
         emit EDeposit(
             sender,
@@ -673,6 +670,9 @@ contract DInterest is
             feeAmount,
             maturationTimestamp
         );
+
+        // Vest MPH to sender
+        mphMinter.createVestForDeposit(sender, depositID);
     }
 
     function _depositTransferFunds(
@@ -762,13 +762,6 @@ contract DInterest is
         totalInterestOwed += interestAmount;
         totalFeeOwed += feeAmount;
 
-        // Update vest
-        mphMinter.updateVestForDeposit(
-            depositID,
-            currentDepositAmount,
-            depositAmount
-        );
-
         // Emit event
         emit ETopupDeposit(
             sender,
@@ -776,6 +769,13 @@ contract DInterest is
             depositAmount,
             interestAmount,
             feeAmount
+        );
+
+        // Update vest
+        mphMinter.updateVestForDeposit(
+            depositID,
+            currentDepositAmount,
+            depositAmount
         );
     }
 

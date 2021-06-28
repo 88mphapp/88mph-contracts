@@ -102,9 +102,16 @@ contract AaveMarket is MoneyMarket {
         return aToken.balanceOf(address(this));
     }
 
-    function incomeIndex() external view override returns (uint256) {
+    function totalValue(
+        uint256 /*currentIncomeIndex*/
+    ) external view override returns (uint256) {
+        return aToken.balanceOf(address(this));
+    }
+
+    function incomeIndex() external view override returns (uint256 index) {
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
-        return lendingPool.getReserveNormalizedIncome(address(stablecoin));
+        index = lendingPool.getReserveNormalizedIncome(address(stablecoin));
+        require(index > 0, "AaveMarket: BAD_INDEX");
     }
 
     /**

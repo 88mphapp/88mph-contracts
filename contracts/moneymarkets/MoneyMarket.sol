@@ -36,6 +36,12 @@ abstract contract MoneyMarket is
 
     function totalValue() external virtual returns (uint256); // The total value locked in the money market, in terms of the underlying stablecoin
 
+    function totalValue(uint256 currentIncomeIndex)
+        external
+        view
+        virtual
+        returns (uint256); // The total value locked in the money market, in terms of the underlying stablecoin
+
     function incomeIndex() external virtual returns (uint256); // Used for calculating the interest generated (e.g. cDai's price for the Compound market)
 
     function stablecoin() external view virtual returns (ERC20);

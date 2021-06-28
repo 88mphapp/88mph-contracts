@@ -97,8 +97,19 @@ contract BProtocolMarket is MoneyMarket {
         return bTokenBalance.decmul(bTokenPrice);
     }
 
-    function incomeIndex() external override returns (uint256) {
-        return bToken.exchangeRateCurrent();
+    function totalValue(uint256 currentIncomeIndex)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        uint256 bTokenBalance = bToken.balanceOf(address(this));
+        return bTokenBalance.decmul(currentIncomeIndex);
+    }
+
+    function incomeIndex() external override returns (uint256 index) {
+        index = bToken.exchangeRateCurrent();
+        require(index > 0, "BProtocolMarket: BAD_INDEX");
     }
 
     /**

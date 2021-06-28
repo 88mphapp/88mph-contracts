@@ -81,8 +81,19 @@ contract YVaultMarket is MoneyMarket {
         return shareBalance.decmul(sharePrice);
     }
 
-    function incomeIndex() external view override returns (uint256) {
-        return vault.pricePerShare();
+    function totalValue(uint256 currentIncomeIndex)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        uint256 shareBalance = vault.balanceOf(address(this));
+        return shareBalance.decmul(currentIncomeIndex);
+    }
+
+    function incomeIndex() external view override returns (uint256 index) {
+        index = vault.pricePerShare();
+        require(index > 0, "YVaultMarket: BAD_INDEX");
     }
 
     function setRewards(address newValue) external override {}

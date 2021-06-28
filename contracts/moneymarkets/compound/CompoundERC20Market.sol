@@ -97,8 +97,19 @@ contract CompoundERC20Market is MoneyMarket {
         return cTokenBalance.decmul(cTokenPrice);
     }
 
-    function incomeIndex() external override returns (uint256) {
-        return cToken.exchangeRateCurrent();
+    function totalValue(uint256 currentIncomeIndex)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        uint256 cTokenBalance = cToken.balanceOf(address(this));
+        return cTokenBalance.decmul(currentIncomeIndex);
+    }
+
+    function incomeIndex() external override returns (uint256 index) {
+        index = cToken.exchangeRateCurrent();
+        require(index > 0, "CompoundERC20Market: BAD_INDEX");
     }
 
     /**

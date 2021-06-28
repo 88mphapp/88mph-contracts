@@ -319,7 +319,7 @@ contract DInterest is
         nonReentrant
         returns (uint256 interestAmount)
     {
-        return _payInterestToFunders(fundingID);
+        return _payInterestToFunders(fundingID, moneyMarket.incomeIndex());
     }
 
     /**
@@ -443,7 +443,7 @@ contract DInterest is
         )
         returns (uint256 interestAmount)
     {
-        return _payInterestToFunders(fundingID);
+        return _payInterestToFunders(fundingID, moneyMarket.incomeIndex());
     }
 
     /**
@@ -488,9 +488,21 @@ contract DInterest is
         virtual
         returns (bool isNegative, uint256 surplusAmount)
     {
+        return _surplus(moneyMarket.incomeIndex());
+    }
+
+    /**
+        @dev See {surplus}
+        @param incomeIndex The moneyMarket's current incomeIndex
+     */
+    function _surplus(uint256 incomeIndex)
+        internal
+        virtual
+        returns (bool isNegative, uint256 surplusAmount)
+    {
         // compute totalInterestOwedToFunders
         uint256 currentValue =
-            (moneyMarket.incomeIndex() *
+            (incomeIndex *
                 sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex) /
                 EXTRA_PRECISION;
         uint256 initialValue = totalFundedPrincipalAmount;
@@ -500,7 +512,7 @@ contract DInterest is
         }
 
         // compute surplus
-        uint256 totalValue = moneyMarket.totalValue();
+        uint256 totalValue = moneyMarket.totalValue(incomeIndex);
         uint256 totalOwed =
             totalDeposit +
                 totalInterestOwed +
@@ -531,8 +543,18 @@ contract DInterest is
         virtual
         returns (bool isNegative, uint256 surplusAmount)
     {
+        return _rawSurplusOfDeposit(depositID, moneyMarket.incomeIndex());
+    }
+
+    /**
+        @dev See {rawSurplusOfDeposit}
+        @param currentMoneyMarketIncomeIndex The moneyMarket's current incomeIndex
+     */
+    function _rawSurplusOfDeposit(
+        uint64 depositID,
+        uint256 currentMoneyMarketIncomeIndex
+    ) internal virtual returns (bool isNegative, uint256 surplusAmount) {
         Deposit storage depositEntry = _getDeposit(depositID);
-        uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
         uint256 depositTokenTotalSupply = depositEntry.virtualTokenTotalSupply;
         uint256 depositAmount =
             depositTokenTotalSupply.decdiv(
@@ -1099,19 +1121,21 @@ contract DInterest is
         uint256 fundAmount
     ) internal virtual returns (uint64 fundingID, uint256 actualFundAmount) {
         Deposit storage depositEntry = _getDeposit(depositID);
+        uint256 incomeIndex = moneyMarket.incomeIndex();
 
-        (bool isNegative, uint256 surplusMagnitude) = surplus();
+        (bool isNegative, uint256 surplusMagnitude) = _surplus(incomeIndex);
         require(isNegative, "DInterest: NO_DEBT");
 
-        (isNegative, surplusMagnitude) = rawSurplusOfDeposit(depositID);
+        (isNegative, surplusMagnitude) = _rawSurplusOfDeposit(
+            depositID,
+            incomeIndex
+        );
         require(isNegative, "DInterest: NO_DEBT");
         if (fundAmount > surplusMagnitude) {
             fundAmount = surplusMagnitude;
         }
 
         // Create funding struct if one doesn't exist
-        uint256 incomeIndex = moneyMarket.incomeIndex();
-        require(incomeIndex > 0, "DInterest: BAD_INDEX");
         uint256 totalPrincipal =
             _depositVirtualTokenToPrincipal(
                 depositID,
@@ -1144,7 +1168,7 @@ contract DInterest is
         } else {
             // Not the first funder
             // Trigger interest payment for existing funders
-            _payInterestToFunders(fundingID);
+            _payInterestToFunders(fundingID, incomeIndex);
 
             // Compute amount of principal to fund
             uint256 principalPerToken =
@@ -1196,17 +1220,16 @@ contract DInterest is
 
     /**
         @dev See {payInterestToFunders}
+        @param currentMoneyMarketIncomeIndex The moneyMarket's current incomeIndex
      */
-    function _payInterestToFunders(uint64 fundingID)
-        internal
-        virtual
-        returns (uint256 interestAmount)
-    {
+    function _payInterestToFunders(
+        uint64 fundingID,
+        uint256 currentMoneyMarketIncomeIndex
+    ) internal virtual returns (uint256 interestAmount) {
         Funding storage f = _getFunding(fundingID);
         {
             uint256 recordedMoneyMarketIncomeIndex =
                 f.recordedMoneyMarketIncomeIndex;
-            uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
             uint256 fundingTokenTotalSupply =
                 fundingMultitoken.totalSupply(fundingID);
             uint256 recordedFundedPrincipalAmount =
@@ -1317,7 +1340,6 @@ contract DInterest is
             uint256 recordedMoneyMarketIncomeIndex =
                 f.recordedMoneyMarketIncomeIndex;
             uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
-            require(currentMoneyMarketIncomeIndex > 0, "DInterest: BAD_INDEX");
             uint256 currentFundedPrincipalAmountDivRecordedIncomeIndex =
                 (currentFundedPrincipalAmount * EXTRA_PRECISION) /
                     currentMoneyMarketIncomeIndex;

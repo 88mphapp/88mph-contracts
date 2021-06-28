@@ -54,6 +54,10 @@ contract DInterest is
         @dev used for funding.principalPerToken
      */
     uint256 internal constant ULTRA_PRECISION = 2**128;
+    /**
+        @dev Specifies the threshold for paying out funder interests
+     */
+    uint256 internal constant FUNDER_PAYOUT_THRESHOLD_DIVISOR = 10**10;
 
     // User deposit data
     // Each deposit has an ID used in the depositNFT, which is equal to its index in `deposits` plus 1
@@ -1255,19 +1259,29 @@ contract DInterest is
 
         // Distribute interest to funders
         if (interestAmount > 0) {
-            interestAmount = moneyMarket.withdraw(interestAmount);
-            if (interestAmount > 0) {
-                stablecoin.safeApprove(
-                    address(fundingMultitoken),
-                    interestAmount
-                );
-                fundingMultitoken.distributeDividends(
-                    fundingID,
-                    address(stablecoin),
-                    interestAmount
-                );
+            uint256 stablecoinPrecision = 10**uint256(stablecoin.decimals());
+            if (
+                interestAmount >
+                stablecoinPrecision / FUNDER_PAYOUT_THRESHOLD_DIVISOR
+            ) {
+                interestAmount = moneyMarket.withdraw(interestAmount);
+                if (interestAmount > 0) {
+                    stablecoin.safeApprove(
+                        address(fundingMultitoken),
+                        interestAmount
+                    );
+                    fundingMultitoken.distributeDividends(
+                        fundingID,
+                        address(stablecoin),
+                        interestAmount
+                    );
 
-                _distributeFundingRewards(fundingID, interestAmount);
+                    _distributeFundingRewards(fundingID, interestAmount);
+                }
+            } else {
+                // interestAmount below minimum payout threshold, pay nothing
+                emit EPayFundingInterest(fundingID, 0, 0);
+                return 0;
             }
         }
 

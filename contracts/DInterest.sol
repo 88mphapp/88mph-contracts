@@ -109,6 +109,12 @@ contract DInterest is
     FundingMultitoken public fundingMultitoken;
     MPHMinter public mphMinter;
 
+    // Extra params
+    /**
+        @dev The maximum amount of deposit in the pool. Set to 0 to disable the cap.
+     */
+    uint256 public GlobalDepositCap;
+
     // Events
     event EDeposit(
         address indexed sender,
@@ -496,44 +502,6 @@ contract DInterest is
     }
 
     /**
-        @dev See {surplus}
-        @param incomeIndex The moneyMarket's current incomeIndex
-     */
-    function _surplus(uint256 incomeIndex)
-        internal
-        virtual
-        returns (bool isNegative, uint256 surplusAmount)
-    {
-        // compute totalInterestOwedToFunders
-        uint256 currentValue =
-            (incomeIndex *
-                sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex) /
-                EXTRA_PRECISION;
-        uint256 initialValue = totalFundedPrincipalAmount;
-        uint256 totalInterestOwedToFunders;
-        if (currentValue > initialValue) {
-            totalInterestOwedToFunders = currentValue - initialValue;
-        }
-
-        // compute surplus
-        uint256 totalValue = moneyMarket.totalValue(incomeIndex);
-        uint256 totalOwed =
-            totalDeposit +
-                totalInterestOwed +
-                totalFeeOwed +
-                totalInterestOwedToFunders;
-        if (totalValue >= totalOwed) {
-            // Locked value more than owed deposits, positive surplus
-            isNegative = false;
-            surplusAmount = totalValue - totalOwed;
-        } else {
-            // Locked value less than owed deposits, negative surplus
-            isNegative = true;
-            surplusAmount = totalOwed - totalValue;
-        }
-    }
-
-    /**
         @notice Computes the raw surplus of a deposit, which is the current value of the
                 deposit in the money market minus the amount owed (deposit + interest + fee).
                 The deposit's funding status is not considered here, meaning even if a deposit's
@@ -548,37 +516,6 @@ contract DInterest is
         returns (bool isNegative, uint256 surplusAmount)
     {
         return _rawSurplusOfDeposit(depositID, moneyMarket.incomeIndex());
-    }
-
-    /**
-        @dev See {rawSurplusOfDeposit}
-        @param currentMoneyMarketIncomeIndex The moneyMarket's current incomeIndex
-     */
-    function _rawSurplusOfDeposit(
-        uint64 depositID,
-        uint256 currentMoneyMarketIncomeIndex
-    ) internal virtual returns (bool isNegative, uint256 surplusAmount) {
-        Deposit storage depositEntry = _getDeposit(depositID);
-        uint256 depositTokenTotalSupply = depositEntry.virtualTokenTotalSupply;
-        uint256 depositAmount =
-            depositTokenTotalSupply.decdiv(
-                depositEntry.interestRate + PRECISION
-            );
-        uint256 interestAmount = depositTokenTotalSupply - depositAmount;
-        uint256 feeAmount = depositAmount.decmul(depositEntry.feeRate);
-        uint256 currentDepositValue =
-            (depositAmount * currentMoneyMarketIncomeIndex) /
-                depositEntry.averageRecordedIncomeIndex;
-        uint256 owed = depositAmount + interestAmount + feeAmount;
-        if (currentDepositValue >= owed) {
-            // Locked value more than owed deposits, positive surplus
-            isNegative = false;
-            surplusAmount = currentDepositValue - owed;
-        } else {
-            // Locked value less than owed deposits, negative surplus
-            isNegative = true;
-            surplusAmount = owed - currentDepositValue;
-        }
     }
 
     /**
@@ -681,6 +618,13 @@ contract DInterest is
 
         // Update global values
         totalDeposit += depositAmount;
+        {
+            uint256 depositCap = GlobalDepositCap;
+            require(
+                depositCap == 0 || totalDeposit <= depositCap,
+                "DInterest: CAP"
+            );
+        }
         totalInterestOwed += interestAmount;
         totalFeeOwed += feeAmount;
 
@@ -785,6 +729,13 @@ contract DInterest is
 
         // Update global values
         totalDeposit += depositAmount;
+        {
+            uint256 depositCap = GlobalDepositCap;
+            require(
+                depositCap == 0 || totalDeposit <= depositCap,
+                "DInterest: CAP"
+            );
+        }
         totalInterestOwed += interestAmount;
         totalFeeOwed += feeAmount;
 
@@ -1472,6 +1423,75 @@ contract DInterest is
     }
 
     /**
+        @dev See {surplus}
+        @param incomeIndex The moneyMarket's current incomeIndex
+     */
+    function _surplus(uint256 incomeIndex)
+        internal
+        virtual
+        returns (bool isNegative, uint256 surplusAmount)
+    {
+        // compute totalInterestOwedToFunders
+        uint256 currentValue =
+            (incomeIndex *
+                sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex) /
+                EXTRA_PRECISION;
+        uint256 initialValue = totalFundedPrincipalAmount;
+        uint256 totalInterestOwedToFunders;
+        if (currentValue > initialValue) {
+            totalInterestOwedToFunders = currentValue - initialValue;
+        }
+
+        // compute surplus
+        uint256 totalValue = moneyMarket.totalValue(incomeIndex);
+        uint256 totalOwed =
+            totalDeposit +
+                totalInterestOwed +
+                totalFeeOwed +
+                totalInterestOwedToFunders;
+        if (totalValue >= totalOwed) {
+            // Locked value more than owed deposits, positive surplus
+            isNegative = false;
+            surplusAmount = totalValue - totalOwed;
+        } else {
+            // Locked value less than owed deposits, negative surplus
+            isNegative = true;
+            surplusAmount = totalOwed - totalValue;
+        }
+    }
+
+    /**
+        @dev See {rawSurplusOfDeposit}
+        @param currentMoneyMarketIncomeIndex The moneyMarket's current incomeIndex
+     */
+    function _rawSurplusOfDeposit(
+        uint64 depositID,
+        uint256 currentMoneyMarketIncomeIndex
+    ) internal virtual returns (bool isNegative, uint256 surplusAmount) {
+        Deposit storage depositEntry = _getDeposit(depositID);
+        uint256 depositTokenTotalSupply = depositEntry.virtualTokenTotalSupply;
+        uint256 depositAmount =
+            depositTokenTotalSupply.decdiv(
+                depositEntry.interestRate + PRECISION
+            );
+        uint256 interestAmount = depositTokenTotalSupply - depositAmount;
+        uint256 feeAmount = depositAmount.decmul(depositEntry.feeRate);
+        uint256 currentDepositValue =
+            (depositAmount * currentMoneyMarketIncomeIndex) /
+                depositEntry.averageRecordedIncomeIndex;
+        uint256 owed = depositAmount + interestAmount + feeAmount;
+        if (currentDepositValue >= owed) {
+            // Locked value more than owed deposits, positive surplus
+            isNegative = false;
+            surplusAmount = currentDepositValue - owed;
+        } else {
+            // Locked value less than owed deposits, negative surplus
+            isNegative = true;
+            surplusAmount = owed - currentDepositValue;
+        }
+    }
+
+    /**
         Param setters (only callable by the owner)
      */
     function setFeeModel(address newValue) external onlyOwner {
@@ -1518,6 +1538,11 @@ contract DInterest is
         require(newValue > 0, "DInterest: BAD_VAL");
         MinDepositAmount = newValue;
         emit ESetParamUint(msg.sender, "MinDepositAmount", newValue);
+    }
+
+    function setGlobalDepositCap(uint256 newValue) external onlyOwner {
+        GlobalDepositCap = newValue;
+        emit ESetParamUint(msg.sender, "GlobalDepositCap", newValue);
     }
 
     function setDepositNFTBaseURI(string calldata newURI) external onlyOwner {
@@ -1567,5 +1592,5 @@ contract DInterest is
         totalFeeOwed -= reducedFeeAmount;
     }
 
-    uint256[33] private __gap;
+    uint256[32] private __gap;
 }

@@ -916,10 +916,12 @@ contract DInterest is
                     totalPrincipalDecrease + recordedFundedPrincipalAmount
                 ) {
                     // Not enough unfunded principal, need to decrease funding principal per token value
-                    funding.principalPerToken =
-                        (funding.principalPerToken *
+                    funding.principalPerToken = (totalPrincipal >=
+                        totalPrincipalDecrease)
+                        ? (funding.principalPerToken *
                             (totalPrincipal - totalPrincipalDecrease)) /
-                        recordedFundedPrincipalAmount;
+                            recordedFundedPrincipalAmount
+                        : 0;
                 }
             }
 

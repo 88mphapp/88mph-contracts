@@ -11,3 +11,6 @@ coverage
 coverage.json
 
 docgen
+docs
+deployments
+deployments-exported

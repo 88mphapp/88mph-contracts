@@ -1018,10 +1018,13 @@ contract DInterest is
                 // enough to pay withdrawal + remainder
                 // give remainder to fee
                 feeAmount = actualWithdrawnAmount - withdrawAmount;
+                fundingInterestAmount = 0;
             } else {
                 // not enough to pay withdrawal
                 // give everything to withdrawal
                 withdrawnStablecoinAmount = actualWithdrawnAmount;
+                feeAmount = 0;
+                fundingInterestAmount = 0;
             }
 
             if (withdrawnStablecoinAmount > 0) {
@@ -1046,7 +1049,7 @@ contract DInterest is
                 fundingInterestAmount
             );
             // Mint funder rewards
-            if (fundingInterestAmount >= refundAmount) {
+            if (fundingInterestAmount > refundAmount) {
                 _distributeFundingRewards(
                     fundingID,
                     fundingInterestAmount - refundAmount

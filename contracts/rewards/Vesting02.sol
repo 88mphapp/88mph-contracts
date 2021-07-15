@@ -176,6 +176,19 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
         external
         returns (uint256 withdrawnAmount)
     {
+        return _withdraw(vestID);
+    }
+
+    function multiWithdraw(uint64[] memory vestIDList) external {
+        for (uint256 i = 0; i < vestIDList.length; i++) {
+            _withdraw(vestIDList[i]);
+        }
+    }
+
+    function _withdraw(uint64 vestID)
+        internal
+        returns (uint256 withdrawnAmount)
+    {
         require(ownerOf(vestID) == msg.sender, "Vesting02: not owner");
 
         // compute withdrawable amount

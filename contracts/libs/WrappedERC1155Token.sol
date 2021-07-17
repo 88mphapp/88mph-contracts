@@ -148,11 +148,11 @@ abstract contract WrappedERC1155Token is ERC1155Base {
      */
     function _shouldSkipSafeTransferAcceptanceCheck(
         address operator,
-        address from,
-        address to,
+        address, /*from*/
+        address, /*to*/
         uint256 id,
-        uint256 amount,
-        bytes memory data
+        uint256, /*amount*/
+        bytes memory /*data*/
     ) internal virtual override(ERC1155Upgradeable) returns (bool) {
         address wrapperAddress = tokenIDToWrapper[id];
         if (wrapperAddress != address(0)) {

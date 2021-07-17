@@ -13,8 +13,8 @@ contract ERC20Mock is ERC20("", "") {
     }
 
     function _beforeTokenTransfer(
-        address from,
-        address to,
+        address, /*from*/
+        address, /*to*/
         uint256 amount
     ) internal pure override {
         require(amount > 0, "ERC20Mock: amount 0");

@@ -517,12 +517,12 @@ contract ERC1155Upgradeable is
              single transfers.
      */
     function _shouldSkipSafeTransferAcceptanceCheck(
-        address operator,
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes memory data
+        address, /*operator*/
+        address, /*from*/
+        address, /*to*/
+        uint256, /*id*/
+        uint256, /*amount*/
+        bytes memory /*data*/
     ) internal virtual returns (bool) {
         return false;
     }

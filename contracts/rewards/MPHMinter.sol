@@ -21,6 +21,8 @@ contract MPHMinter is AccessControlUpgradeable {
     bytes32 public constant WHITELISTER_ROLE = keccak256("WHITELISTER_ROLE");
     bytes32 public constant WHITELISTED_POOL_ROLE =
         keccak256("WHITELISTED_POOL_ROLE");
+    bytes32 public constant LEGACY_MINTER_ROLE =
+        keccak256("LEGACY_MINTER_ROLE");
 
     event ESetParamAddress(
         address indexed sender,
@@ -211,6 +213,55 @@ contract MPHMinter is AccessControlUpgradeable {
         if (govReward > 0) {
             mph.ownerMint(govTreasury, govReward);
         }
+    }
+
+    /**
+        @dev Used for supporting the v2 MPHMinterLegacy
+     */
+    function legacyMintFunderReward(
+        address pool,
+        address to,
+        uint256 depositAmount,
+        uint256 fundingCreationTimestamp,
+        uint256 maturationTimestamp,
+        uint256, /*interestPayoutAmount*/
+        bool early
+    ) external onlyRole(LEGACY_MINTER_ROLE) returns (uint256) {
+        require(hasRole(WHITELISTED_POOL_ROLE, pool), "MPHMinter: not pool");
+
+        if (mph.owner() != address(this)) {
+            // not the owner of the MPH token, cannot mint
+            return 0;
+        }
+
+        uint256 funderReward;
+        uint256 devReward;
+        uint256 govReward;
+        if (!early) {
+            funderReward = maturationTimestamp > fundingCreationTimestamp
+                ? depositAmount *
+                    (maturationTimestamp - fundingCreationTimestamp).decmul(
+                        poolFunderRewardMultiplier[pool]
+                    )
+                : 0;
+            devReward = funderReward.decmul(devRewardMultiplier);
+            govReward = funderReward.decmul(govRewardMultiplier);
+        } else {
+            return 0;
+        }
+
+        // mint and vest funder reward
+        if (funderReward > 0) {
+            mph.ownerMint(to, funderReward);
+        }
+        if (devReward > 0) {
+            mph.ownerMint(devWallet, devReward);
+        }
+        if (govReward > 0) {
+            mph.ownerMint(govTreasury, govReward);
+        }
+
+        return funderReward;
     }
 
     /**

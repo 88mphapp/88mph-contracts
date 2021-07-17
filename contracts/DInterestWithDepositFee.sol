@@ -149,7 +149,7 @@ contract DInterestWithDepositFee is DInterest {
      */
 
     function setDepositFee(uint256 newValue) external onlyOwner {
-        require(newValue < PRECISION, "DInterestWithDepositFee: BAD_VALUE");
+        require(newValue < PRECISION, "BAD_VALUE");
         DepositFee = newValue;
         emit ESetParamUint(msg.sender, "DepositFee", newValue);
     }

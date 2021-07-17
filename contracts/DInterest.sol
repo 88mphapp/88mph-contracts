@@ -440,22 +440,6 @@ contract DInterest is
         return _fund(sponsorship.sender, depositID, fundAmount);
     }
 
-    function sponsoredPayInterestToFunders(
-        uint64 fundingID,
-        Sponsorship calldata sponsorship
-    )
-        external
-        nonReentrant
-        sponsored(
-            sponsorship,
-            this.sponsoredPayInterestToFunders.selector,
-            abi.encode(fundingID)
-        )
-        returns (uint256 interestAmount)
-    {
-        return _payInterestToFunders(fundingID, moneyMarket.incomeIndex());
-    }
-
     /**
         Public getter functions
      */
@@ -589,13 +573,13 @@ contract DInterest is
         uint64 maturationTimestamp
     ) internal virtual returns (uint64 depositID, uint256 interestAmount) {
         // Ensure input is valid
-        require(depositAmount >= MinDepositAmount, "DInterest: BAD_AMOUNT");
+        require(depositAmount >= MinDepositAmount, "BAD_AMOUNT");
         uint256 depositPeriod = maturationTimestamp - block.timestamp;
-        require(depositPeriod <= MaxDepositPeriod, "DInterest: BAD_TIME");
+        require(depositPeriod <= MaxDepositPeriod, "BAD_TIME");
 
         // Calculate interest
         interestAmount = calculateInterestAmount(depositAmount, depositPeriod);
-        require(interestAmount > 0, "DInterest: BAD_INTEREST");
+        require(interestAmount > 0, "BAD_INTEREST");
 
         // Calculate fee
         uint256 feeAmount =
@@ -613,17 +597,14 @@ contract DInterest is
                 averageRecordedIncomeIndex: moneyMarket.incomeIndex()
             })
         );
-        require(deposits.length <= type(uint64).max, "DInterest: OVERFLOW");
+        require(deposits.length <= type(uint64).max, "OVERFLOW");
         depositID = uint64(deposits.length);
 
         // Update global values
         totalDeposit += depositAmount;
         {
             uint256 depositCap = GlobalDepositCap;
-            require(
-                depositCap == 0 || totalDeposit <= depositCap,
-                "DInterest: CAP"
-            );
+            require(depositCap == 0 || totalDeposit <= depositCap, "CAP");
         }
         totalInterestOwed += interestAmount;
         totalFeeOwed += feeAmount;
@@ -684,10 +665,7 @@ contract DInterest is
         uint256 depositAmount
     ) internal virtual returns (uint256 interestAmount) {
         Deposit storage depositEntry = _getDeposit(depositID);
-        require(
-            depositNFT.ownerOf(depositID) == sender,
-            "DInterest: NOT_OWNER"
-        );
+        require(depositNFT.ownerOf(depositID) == sender, "NOT_OWNER");
 
         // underflow check prevents topups after maturation
         uint256 depositPeriod =
@@ -695,7 +673,7 @@ contract DInterest is
 
         // Calculate interest
         interestAmount = calculateInterestAmount(depositAmount, depositPeriod);
-        require(interestAmount > 0, "DInterest: BAD_INTEREST");
+        require(interestAmount > 0, "BAD_INTEREST");
 
         // Calculate fee
         uint256 feeAmount =
@@ -731,10 +709,7 @@ contract DInterest is
         totalDeposit += depositAmount;
         {
             uint256 depositCap = GlobalDepositCap;
-            require(
-                depositCap == 0 || totalDeposit <= depositCap,
-                "DInterest: CAP"
-            );
+            require(depositCap == 0 || totalDeposit <= depositCap, "CAP");
         }
         totalInterestOwed += interestAmount;
         totalFeeOwed += feeAmount;
@@ -836,23 +811,20 @@ contract DInterest is
         )
     {
         // Verify input
-        require(virtualTokenAmount > 0, "DInterest: BAD_AMOUNT");
+        require(virtualTokenAmount > 0, "BAD_AMOUNT");
         Deposit storage depositEntry = _getDeposit(depositID);
         if (early) {
             require(
                 block.timestamp < depositEntry.maturationTimestamp,
-                "DInterest: MATURE"
+                "MATURE"
             );
         } else {
             require(
                 block.timestamp >= depositEntry.maturationTimestamp,
-                "DInterest: IMMATURE"
+                "IMMATURE"
             );
         }
-        require(
-            depositNFT.ownerOf(depositID) == sender,
-            "DInterest: NOT_OWNER"
-        );
+        require(depositNFT.ownerOf(depositID) == sender, "NOT_OWNER");
 
         // Check if withdrawing all funds
         {
@@ -1084,13 +1056,13 @@ contract DInterest is
         uint256 incomeIndex = moneyMarket.incomeIndex();
 
         (bool isNegative, uint256 surplusMagnitude) = _surplus(incomeIndex);
-        require(isNegative, "DInterest: NO_DEBT");
+        require(isNegative, "NO_DEBT");
 
         (isNegative, surplusMagnitude) = _rawSurplusOfDeposit(
             depositID,
             incomeIndex
         );
-        require(isNegative, "DInterest: NO_DEBT");
+        require(isNegative, "NO_DEBT");
         if (fundAmount > surplusMagnitude) {
             fundAmount = surplusMagnitude;
         }
@@ -1106,7 +1078,7 @@ contract DInterest is
         uint256 mintTokenAmount;
         if (fundingID == 0 || _getFunding(fundingID).principalPerToken == 0) {
             // The first funder, create struct
-            require(block.timestamp <= type(uint64).max, "DInterest: OVERFLOW");
+            require(block.timestamp <= type(uint64).max, "OVERFLOW");
             fundingList.push(
                 Funding({
                     depositID: depositID,
@@ -1115,10 +1087,7 @@ contract DInterest is
                     principalPerToken: ULTRA_PRECISION
                 })
             );
-            require(
-                fundingList.length <= type(uint64).max,
-                "DInterest: OVERFLOW"
-            );
+            require(fundingList.length <= type(uint64).max, "OVERFLOW");
             fundingID = uint64(fundingList.length);
             depositEntry.fundingID = fundingID;
             totalPrincipalToFund =
@@ -1277,7 +1246,7 @@ contract DInterest is
             mphMinter.distributeFundingRewards(fundingID, rawInterestAmount);
         }
         // update last payout timestamp
-        require(block.timestamp <= type(uint64).max, "DInterest: OVERFLOW");
+        require(block.timestamp <= type(uint64).max, "OVERFLOW");
         f.lastInterestPayoutTimestamp = uint64(block.timestamp);
     }
 
@@ -1424,7 +1393,7 @@ contract DInterest is
         address, /*token*/
         address /*target*/
     ) internal view override {
-        require(msg.sender == owner(), "DInterest: NOT_OWNER");
+        require(msg.sender == owner(), "NOT_OWNER");
     }
 
     /**
@@ -1500,47 +1469,44 @@ contract DInterest is
         Param setters (only callable by the owner)
      */
     function setFeeModel(address newValue) external onlyOwner {
-        require(newValue.isContract(), "DInterest: NOT_CONTRACT");
+        require(newValue.isContract(), "NOT_CONTRACT");
         feeModel = IFeeModel(newValue);
         emit ESetParamAddress(msg.sender, "feeModel", newValue);
     }
 
     function setInterestModel(address newValue) external onlyOwner {
-        require(newValue.isContract(), "DInterest: NOT_CONTRACT");
+        require(newValue.isContract(), "NOT_CONTRACT");
         interestModel = IInterestModel(newValue);
         emit ESetParamAddress(msg.sender, "interestModel", newValue);
     }
 
     function setInterestOracle(address newValue) external onlyOwner {
-        require(newValue.isContract(), "DInterest: NOT_CONTRACT");
+        require(newValue.isContract(), "NOT_CONTRACT");
         interestOracle = IInterestOracle(newValue);
-        require(
-            interestOracle.moneyMarket() == moneyMarket,
-            "DInterest: BAD_ORACLE"
-        );
+        require(interestOracle.moneyMarket() == moneyMarket, "BAD_ORACLE");
         emit ESetParamAddress(msg.sender, "interestOracle", newValue);
     }
 
     function setRewards(address newValue) external onlyOwner {
-        require(newValue.isContract(), "DInterest: NOT_CONTRACT");
+        require(newValue.isContract(), "NOT_CONTRACT");
         moneyMarket.setRewards(newValue);
         emit ESetParamAddress(msg.sender, "moneyMarket.rewards", newValue);
     }
 
     function setMPHMinter(address newValue) external onlyOwner {
-        require(newValue.isContract(), "DInterest: NOT_CONTRACT");
+        require(newValue.isContract(), "NOT_CONTRACT");
         mphMinter = MPHMinter(newValue);
         emit ESetParamAddress(msg.sender, "mphMinter", newValue);
     }
 
     function setMaxDepositPeriod(uint64 newValue) external onlyOwner {
-        require(newValue > 0, "DInterest: BAD_VAL");
+        require(newValue > 0, "BAD_VAL");
         MaxDepositPeriod = newValue;
         emit ESetParamUint(msg.sender, "MaxDepositPeriod", uint256(newValue));
     }
 
     function setMinDepositAmount(uint256 newValue) external onlyOwner {
-        require(newValue > 0, "DInterest: BAD_VAL");
+        require(newValue > 0, "BAD_VAL");
         MinDepositAmount = newValue;
         emit ESetParamUint(msg.sender, "MinDepositAmount", newValue);
     }
@@ -1578,7 +1544,7 @@ contract DInterest is
         uint256 interestRate = depositStorage.interestRate;
         uint256 virtualTokenTotalSupply =
             depositStorage.virtualTokenTotalSupply;
-        require(newFeeRate < feeRate, "DInterest: BAD_VAL");
+        require(newFeeRate < feeRate, "BAD_VAL");
         uint256 depositAmount =
             virtualTokenTotalSupply.decdiv(interestRate + PRECISION);
 

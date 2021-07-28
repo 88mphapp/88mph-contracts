@@ -264,7 +264,6 @@ contract Factory {
         bytes32 salt,
         uint64 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
-        address _moneyMarket,
         address _stablecoin,
         address _feeModel,
         address _interestModel,
@@ -279,7 +278,6 @@ contract Factory {
         clone.initialize(
             _MaxDepositPeriod,
             _MinDepositAmount,
-            _moneyMarket,
             _stablecoin,
             _feeModel,
             _interestModel,
@@ -298,7 +296,6 @@ contract Factory {
         uint64 _MaxDepositPeriod;
         uint256 _MinDepositAmount;
         uint256 _DepositFee;
-        address _moneyMarket;
         address _stablecoin;
         address _feeModel;
         address _interestModel;
@@ -321,7 +318,6 @@ contract Factory {
             params._MaxDepositPeriod,
             params._MinDepositAmount,
             params._DepositFee,
-            params._moneyMarket,
             params._stablecoin,
             params._feeModel,
             params._interestModel,

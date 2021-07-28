@@ -100,7 +100,6 @@ contract DInterest is
     uint256 public totalFundedPrincipalAmount;
 
     // External smart contracts
-    MoneyMarket public moneyMarket;
     ERC20 public stablecoin;
     IFeeModel public feeModel;
     IInterestModel public interestModel;
@@ -168,7 +167,6 @@ contract DInterest is
     function __DInterest_init(
         uint64 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
-        address _moneyMarket,
         address _stablecoin,
         address _feeModel,
         address _interestModel,
@@ -180,7 +178,6 @@ contract DInterest is
         __ReentrancyGuard_init();
         __Ownable_init();
 
-        moneyMarket = MoneyMarket(_moneyMarket);
         stablecoin = ERC20(_stablecoin);
         feeModel = IFeeModel(_feeModel);
         interestModel = IInterestModel(_interestModel);
@@ -195,7 +192,6 @@ contract DInterest is
     /**
         @param _MaxDepositPeriod The maximum deposit period, in seconds
         @param _MinDepositAmount The minimum deposit amount, in stablecoins
-        @param _moneyMarket Address of MoneyMarket that's used for generating interest (owner must be set to this DInterest contract)
         @param _stablecoin Address of the stablecoin used to store funds
         @param _feeModel Address of the FeeModel contract that determines how fees are charged
         @param _interestModel Address of the InterestModel contract that determines how much interest to offer
@@ -207,7 +203,6 @@ contract DInterest is
     function initialize(
         uint64 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
-        address _moneyMarket,
         address _stablecoin,
         address _feeModel,
         address _interestModel,
@@ -219,7 +214,6 @@ contract DInterest is
         __DInterest_init(
             _MaxDepositPeriod,
             _MinDepositAmount,
-            _moneyMarket,
             _stablecoin,
             _feeModel,
             _interestModel,
@@ -329,7 +323,7 @@ contract DInterest is
         nonReentrant
         returns (uint256 interestAmount)
     {
-        return _payInterestToFunders(fundingID, moneyMarket.incomeIndex());
+        return _payInterestToFunders(fundingID, moneyMarket().incomeIndex());
     }
 
     /**
@@ -482,7 +476,7 @@ contract DInterest is
         virtual
         returns (bool isNegative, uint256 surplusAmount)
     {
-        return _surplus(moneyMarket.incomeIndex());
+        return _surplus(moneyMarket().incomeIndex());
     }
 
     /**
@@ -499,7 +493,7 @@ contract DInterest is
         virtual
         returns (bool isNegative, uint256 surplusAmount)
     {
-        return _rawSurplusOfDeposit(depositID, moneyMarket.incomeIndex());
+        return _rawSurplusOfDeposit(depositID, moneyMarket().incomeIndex());
     }
 
     /**
@@ -544,6 +538,14 @@ contract DInterest is
         returns (Funding memory)
     {
         return fundingList[fundingID - 1];
+    }
+
+    /**
+        @notice Returns the moneyMarket contract
+        @return The moneyMarket
+     */
+    function moneyMarket() public view returns (MoneyMarket) {
+        return interestOracle.moneyMarket();
     }
 
     /**
@@ -594,7 +596,9 @@ contract DInterest is
                 feeRate: feeAmount.decdiv(depositAmount),
                 maturationTimestamp: maturationTimestamp,
                 fundingID: 0,
-                averageRecordedIncomeIndex: moneyMarket.incomeIndex()
+                averageRecordedIncomeIndex: interestOracle
+                    .moneyMarket()
+                    .incomeIndex()
             })
         );
         require(deposits.length <= type(uint64).max, "OVERFLOW");
@@ -638,8 +642,9 @@ contract DInterest is
             stablecoin.safeTransferFrom(sender, address(this), depositAmount);
 
             // Lend `depositAmount` stablecoin to money market
-            stablecoin.safeApprove(address(moneyMarket), depositAmount);
-            moneyMarket.deposit(depositAmount);
+            MoneyMarket _moneyMarket = moneyMarket();
+            stablecoin.safeApprove(address(_moneyMarket), depositAmount);
+            _moneyMarket.deposit(depositAmount);
         }
     }
 
@@ -700,7 +705,7 @@ contract DInterest is
             (currentDepositAmount * EXTRA_PRECISION) /
                 depositEntry.averageRecordedIncomeIndex +
                 (depositAmount * EXTRA_PRECISION) /
-                moneyMarket.incomeIndex();
+                moneyMarket().incomeIndex();
         depositEntry.averageRecordedIncomeIndex =
             ((depositAmount + currentDepositAmount) * EXTRA_PRECISION) /
             sumOfRecordedDepositAmountDivRecordedIncomeIndex;
@@ -739,8 +744,9 @@ contract DInterest is
         stablecoin.safeTransferFrom(sender, address(this), depositAmount);
 
         // Lend `depositAmount` stablecoin to money market
-        stablecoin.safeApprove(address(moneyMarket), depositAmount);
-        moneyMarket.deposit(depositAmount);
+        MoneyMarket _moneyMarket = moneyMarket();
+        stablecoin.safeApprove(address(_moneyMarket), depositAmount);
+        _moneyMarket.deposit(depositAmount);
     }
 
     /**
@@ -946,7 +952,7 @@ contract DInterest is
             // We do this because feePlusFundingInterest might
             // be slightly less due to rounding
             uint256 feePlusFundingInterest =
-                moneyMarket.withdraw(feeAmount + fundingInterestAmount);
+                moneyMarket().withdraw(feeAmount + fundingInterestAmount);
             if (feePlusFundingInterest >= feeAmount + fundingInterestAmount) {
                 // enough to pay everything, if there's extra give to feeAmount
                 feeAmount = feePlusFundingInterest - fundingInterestAmount;
@@ -963,7 +969,7 @@ contract DInterest is
             withdrawnStablecoinAmount = withdrawAmount;
         } else {
             uint256 actualWithdrawnAmount =
-                moneyMarket.withdraw(
+                moneyMarket().withdraw(
                     withdrawAmount + feeAmount + fundingInterestAmount
                 );
 
@@ -1053,7 +1059,7 @@ contract DInterest is
         uint256 fundAmount
     ) internal virtual returns (uint64 fundingID, uint256 actualFundAmount) {
         Deposit storage depositEntry = _getDeposit(depositID);
-        uint256 incomeIndex = moneyMarket.incomeIndex();
+        uint256 incomeIndex = moneyMarket().incomeIndex();
 
         (bool isNegative, uint256 surplusMagnitude) = _surplus(incomeIndex);
         require(isNegative, "NO_DEBT");
@@ -1142,9 +1148,10 @@ contract DInterest is
         // Transfer `fundAmount` stablecoins from sender
         stablecoin.safeTransferFrom(sender, address(this), fundAmount);
 
-        // Deposit `fundAmount` stablecoins into moneyMarket
-        stablecoin.safeApprove(address(moneyMarket), fundAmount);
-        moneyMarket.deposit(fundAmount);
+        // Deposit `fundAmount` stablecoins into
+        MoneyMarket _moneyMarket = moneyMarket();
+        stablecoin.safeApprove(address(_moneyMarket), fundAmount);
+        _moneyMarket.deposit(fundAmount);
     }
 
     /**
@@ -1189,7 +1196,7 @@ contract DInterest is
                 interestAmount >
                 stablecoinPrecision / FUNDER_PAYOUT_THRESHOLD_DIVISOR
             ) {
-                interestAmount = moneyMarket.withdraw(interestAmount);
+                interestAmount = moneyMarket().withdraw(interestAmount);
                 if (interestAmount > 0) {
                     stablecoin.safeApprove(
                         address(fundingMultitoken),
@@ -1278,7 +1285,7 @@ contract DInterest is
         {
             uint256 recordedMoneyMarketIncomeIndex =
                 f.recordedMoneyMarketIncomeIndex;
-            uint256 currentMoneyMarketIncomeIndex = moneyMarket.incomeIndex();
+            uint256 currentMoneyMarketIncomeIndex = moneyMarket().incomeIndex();
             uint256 currentFundedPrincipalAmountDivRecordedIncomeIndex =
                 (currentFundedPrincipalAmount * EXTRA_PRECISION) /
                     currentMoneyMarketIncomeIndex;
@@ -1417,7 +1424,7 @@ contract DInterest is
         }
 
         // compute surplus
-        uint256 totalValue = moneyMarket.totalValue(incomeIndex);
+        uint256 totalValue = moneyMarket().totalValue(incomeIndex);
         uint256 totalOwed =
             totalDeposit +
                 totalInterestOwed +
@@ -1483,13 +1490,13 @@ contract DInterest is
     function setInterestOracle(address newValue) external onlyOwner {
         require(newValue.isContract(), "NOT_CONTRACT");
         interestOracle = IInterestOracle(newValue);
-        require(interestOracle.moneyMarket() == moneyMarket, "BAD_ORACLE");
+        require(moneyMarket().stablecoin() == stablecoin, "BAD_ORACLE");
         emit ESetParamAddress(msg.sender, "interestOracle", newValue);
     }
 
     function setRewards(address newValue) external onlyOwner {
         require(newValue.isContract(), "NOT_CONTRACT");
-        moneyMarket.setRewards(newValue);
+        moneyMarket().setRewards(newValue);
         emit ESetParamAddress(msg.sender, "moneyMarket.rewards", newValue);
     }
 
@@ -1530,7 +1537,7 @@ contract DInterest is
     function skimSurplus(address recipient) external onlyOwner {
         (bool isNegative, uint256 surplusMagnitude) = surplus();
         if (!isNegative) {
-            surplusMagnitude = moneyMarket.withdraw(surplusMagnitude);
+            surplusMagnitude = moneyMarket().withdraw(surplusMagnitude);
             stablecoin.safeTransfer(recipient, surplusMagnitude);
         }
     }

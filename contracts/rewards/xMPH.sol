@@ -29,6 +29,8 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
     uint256 public lastRewardTimestamp;
     uint256 public lastRewardAmount;
 
+    event DistributeReward(uint256 rewardAmount);
+
     function __xMPH_init(
         address _mph,
         uint256 _rewardUnlockPeriod,
@@ -223,6 +225,7 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
             lastRewardTimestamp = block.timestamp;
             lastRewardAmount = rewardAmount + lockedRewardAmount;
         }
+        emit DistributeReward(rewardAmount);
     }
 
     uint256[45] private __gap;

@@ -9,6 +9,7 @@ import {
     AccessControlUpgradeable
 } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {DecMath} from "../libs/DecMath.sol";
+import {SafeERC20} from "../libs/SafeERC20.sol";
 
 /**
     @title Staked MPH
@@ -17,6 +18,7 @@ import {DecMath} from "../libs/DecMath.sol";
  */
 contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
     using DecMath for uint256;
+    using SafeERC20 for ERC20;
 
     uint256 internal constant PRECISION = 10**18;
     uint256 internal constant MAX_REWARD_UNLOCK_PERIOD = 365 days;
@@ -176,7 +178,7 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
         require(_mphAmount > 0, "xMPH: amount");
         shareAmount = _mphAmount.decdiv(getPricePerFullShare());
         _mint(msg.sender, shareAmount);
-        mph.transferFrom(msg.sender, address(this), _mphAmount);
+        mph.safeTransferFrom(msg.sender, address(this), _mphAmount);
     }
 
     /**
@@ -193,7 +195,7 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
         );
         mphAmount = _shareAmount.decmul(getPricePerFullShare());
         _burn(msg.sender, _shareAmount);
-        mph.transfer(msg.sender, mphAmount);
+        mph.safeTransfer(msg.sender, mphAmount);
     }
 
     /**
@@ -209,7 +211,7 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
         require(hasRole(DISTRIBUTOR_ROLE, msg.sender), "xMPH: not distributor");
 
         // transfer rewards from sender
-        mph.transferFrom(msg.sender, address(this), rewardAmount);
+        mph.safeTransferFrom(msg.sender, address(this), rewardAmount);
 
         if (block.timestamp >= currentUnlockEndTimestamp) {
             // start new reward period

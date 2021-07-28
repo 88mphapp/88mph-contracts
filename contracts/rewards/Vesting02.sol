@@ -6,9 +6,7 @@ import {SafeERC20} from "../libs/SafeERC20.sol";
 import {
     ERC721URIStorageUpgradeable
 } from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
-import {
-    OwnableUpgradeable
-} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {BoringOwnable} from "../libs/BoringOwnable.sol";
 import {
     MathUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
@@ -16,7 +14,7 @@ import {MPHMinter} from "./MPHMinter.sol";
 import {DInterest} from "../DInterest.sol";
 import {DecMath} from "../libs/DecMath.sol";
 
-contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
+contract Vesting02 is ERC721URIStorageUpgradeable, BoringOwnable {
     using SafeERC20 for IERC20;
     using DecMath for uint256;
 

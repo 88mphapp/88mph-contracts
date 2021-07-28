@@ -247,7 +247,32 @@ contract DInterest is
         nonReentrant
         returns (uint64 depositID, uint256 interestAmount)
     {
-        return _deposit(msg.sender, depositAmount, maturationTimestamp, false);
+        return
+            _deposit(msg.sender, depositAmount, maturationTimestamp, false, 0);
+    }
+
+    /**
+        @notice Create a deposit using `depositAmount` stablecoin that matures at timestamp `maturationTimestamp`.
+        @dev The ERC-721 NFT representing deposit ownership is given to msg.sender
+        @param depositAmount The amount of deposit, in stablecoin
+        @param maturationTimestamp The Unix timestamp of maturation, in seconds
+        @param minimumInterestAmount If the interest amount is less than this, revert
+        @return depositID The ID of the created deposit
+        @return interestAmount The amount of fixed-rate interest
+     */
+    function deposit(
+        uint256 depositAmount,
+        uint64 maturationTimestamp,
+        uint256 minimumInterestAmount
+    ) external nonReentrant returns (uint64 depositID, uint256 interestAmount) {
+        return
+            _deposit(
+                msg.sender,
+                depositAmount,
+                maturationTimestamp,
+                false,
+                minimumInterestAmount
+            );
     }
 
     /**
@@ -262,7 +287,29 @@ contract DInterest is
         nonReentrant
         returns (uint256 interestAmount)
     {
-        return _topupDeposit(msg.sender, depositID, depositAmount);
+        return _topupDeposit(msg.sender, depositID, depositAmount, 0);
+    }
+
+    /**
+        @notice Add `depositAmount` stablecoin to the existing deposit with ID `depositID`.
+        @dev The interest rate for the topped up funds will be the current oracle rate.
+        @param depositID The deposit to top up
+        @param depositAmount The amount to top up, in stablecoin
+        @param minimumInterestAmount If the interest amount is less than this, revert
+        @return interestAmount The amount of interest that will be earned by the topped up funds at maturation
+     */
+    function topupDeposit(
+        uint64 depositID,
+        uint256 depositAmount,
+        uint256 minimumInterestAmount
+    ) external nonReentrant returns (uint256 interestAmount) {
+        return
+            _topupDeposit(
+                msg.sender,
+                depositID,
+                depositAmount,
+                minimumInterestAmount
+            );
     }
 
     /**
@@ -277,7 +324,33 @@ contract DInterest is
         nonReentrant
         returns (uint256 newDepositID, uint256 interestAmount)
     {
-        return _rolloverDeposit(msg.sender, depositID, maturationTimestamp);
+        return _rolloverDeposit(msg.sender, depositID, maturationTimestamp, 0);
+    }
+
+    /**
+        @notice Withdraw all funds from deposit with ID `depositID` and use them
+                to create a new deposit that matures at time `maturationTimestamp`
+        @param depositID The deposit to roll over
+        @param maturationTimestamp The Unix timestamp of the new deposit, in seconds
+        @param minimumInterestAmount If the interest amount is less than this, revert
+        @return newDepositID The ID of the new deposit
+     */
+    function rolloverDeposit(
+        uint64 depositID,
+        uint64 maturationTimestamp,
+        uint256 minimumInterestAmount
+    )
+        external
+        nonReentrant
+        returns (uint256 newDepositID, uint256 interestAmount)
+    {
+        return
+            _rolloverDeposit(
+                msg.sender,
+                depositID,
+                maturationTimestamp,
+                minimumInterestAmount
+            );
     }
 
     /**
@@ -339,6 +412,7 @@ contract DInterest is
     function sponsoredDeposit(
         uint256 depositAmount,
         uint64 maturationTimestamp,
+        uint256 minimumInterestAmount,
         Sponsorship calldata sponsorship
     )
         external
@@ -346,7 +420,11 @@ contract DInterest is
         sponsored(
             sponsorship,
             this.sponsoredDeposit.selector,
-            abi.encode(depositAmount, maturationTimestamp)
+            abi.encode(
+                depositAmount,
+                maturationTimestamp,
+                minimumInterestAmount
+            )
         )
         returns (uint64 depositID, uint256 interestAmount)
     {
@@ -355,13 +433,15 @@ contract DInterest is
                 sponsorship.sender,
                 depositAmount,
                 maturationTimestamp,
-                false
+                false,
+                minimumInterestAmount
             );
     }
 
     function sponsoredTopupDeposit(
         uint64 depositID,
         uint256 depositAmount,
+        uint256 minimumInterestAmount,
         Sponsorship calldata sponsorship
     )
         external
@@ -369,16 +449,23 @@ contract DInterest is
         sponsored(
             sponsorship,
             this.sponsoredTopupDeposit.selector,
-            abi.encode(depositID, depositAmount)
+            abi.encode(depositID, depositAmount, minimumInterestAmount)
         )
         returns (uint256 interestAmount)
     {
-        return _topupDeposit(sponsorship.sender, depositID, depositAmount);
+        return
+            _topupDeposit(
+                sponsorship.sender,
+                depositID,
+                depositAmount,
+                minimumInterestAmount
+            );
     }
 
     function sponsoredRolloverDeposit(
         uint64 depositID,
         uint64 maturationTimestamp,
+        uint256 minimumInterestAmount,
         Sponsorship calldata sponsorship
     )
         external
@@ -386,7 +473,7 @@ contract DInterest is
         sponsored(
             sponsorship,
             this.sponsoredRolloverDeposit.selector,
-            abi.encode(depositID, maturationTimestamp)
+            abi.encode(depositID, maturationTimestamp, minimumInterestAmount)
         )
         returns (uint256 newDepositID, uint256 interestAmount)
     {
@@ -394,7 +481,8 @@ contract DInterest is
             _rolloverDeposit(
                 sponsorship.sender,
                 depositID,
-                maturationTimestamp
+                maturationTimestamp,
+                minimumInterestAmount
             );
     }
 
@@ -421,23 +509,6 @@ contract DInterest is
                 early,
                 false
             );
-    }
-
-    function sponsoredFund(
-        uint64 depositID,
-        uint256 fundAmount,
-        Sponsorship calldata sponsorship
-    )
-        external
-        nonReentrant
-        sponsored(
-            sponsorship,
-            this.sponsoredFund.selector,
-            abi.encode(depositID, fundAmount)
-        )
-        returns (uint64 fundingID)
-    {
-        return _fund(sponsorship.sender, depositID, fundAmount);
     }
 
     /**
@@ -557,12 +628,14 @@ contract DInterest is
         address sender,
         uint256 depositAmount,
         uint64 maturationTimestamp,
-        bool rollover
+        bool rollover,
+        uint256 minimumInterestAmount
     ) internal virtual returns (uint64 depositID, uint256 interestAmount) {
         (depositID, interestAmount) = _depositRecordData(
             sender,
             depositAmount,
-            maturationTimestamp
+            maturationTimestamp,
+            minimumInterestAmount
         );
         _depositTransferFunds(sender, depositAmount, rollover);
     }
@@ -570,7 +643,8 @@ contract DInterest is
     function _depositRecordData(
         address sender,
         uint256 depositAmount,
-        uint64 maturationTimestamp
+        uint64 maturationTimestamp,
+        uint256 minimumInterestAmount
     ) internal virtual returns (uint64 depositID, uint256 interestAmount) {
         // Ensure input is valid
         require(depositAmount >= MinDepositAmount, "BAD_AMOUNT");
@@ -579,7 +653,10 @@ contract DInterest is
 
         // Calculate interest
         interestAmount = calculateInterestAmount(depositAmount, depositPeriod);
-        require(interestAmount > 0, "BAD_INTEREST");
+        require(
+            interestAmount > 0 && interestAmount >= minimumInterestAmount,
+            "BAD_INTEREST"
+        );
 
         // Calculate fee
         uint256 feeAmount =
@@ -649,12 +726,14 @@ contract DInterest is
     function _topupDeposit(
         address sender,
         uint64 depositID,
-        uint256 depositAmount
+        uint256 depositAmount,
+        uint256 minimumInterestAmount
     ) internal virtual returns (uint256 interestAmount) {
         interestAmount = _topupDepositRecordData(
             sender,
             depositID,
-            depositAmount
+            depositAmount,
+            minimumInterestAmount
         );
         _topupDepositTransferFunds(sender, depositAmount);
     }
@@ -662,7 +741,8 @@ contract DInterest is
     function _topupDepositRecordData(
         address sender,
         uint64 depositID,
-        uint256 depositAmount
+        uint256 depositAmount,
+        uint256 minimumInterestAmount
     ) internal virtual returns (uint256 interestAmount) {
         Deposit storage depositEntry = _getDeposit(depositID);
         require(depositNFT.ownerOf(depositID) == sender, "NOT_OWNER");
@@ -673,7 +753,10 @@ contract DInterest is
 
         // Calculate interest
         interestAmount = calculateInterestAmount(depositAmount, depositPeriod);
-        require(interestAmount > 0, "BAD_INTEREST");
+        require(
+            interestAmount > 0 && interestAmount >= minimumInterestAmount,
+            "BAD_INTEREST"
+        );
 
         // Calculate fee
         uint256 feeAmount =
@@ -749,7 +832,8 @@ contract DInterest is
     function _rolloverDeposit(
         address sender,
         uint64 depositID,
-        uint64 maturationTimestamp
+        uint64 maturationTimestamp,
+        uint256 minimumInterestAmount
     ) internal virtual returns (uint64 newDepositID, uint256 interestAmount) {
         // withdraw from existing deposit
         uint256 withdrawnStablecoinAmount =
@@ -760,7 +844,8 @@ contract DInterest is
             sender,
             withdrawnStablecoinAmount,
             maturationTimestamp,
-            true
+            true,
+            minimumInterestAmount
         );
 
         emit ERolloverDeposit(sender, depositID, newDepositID);

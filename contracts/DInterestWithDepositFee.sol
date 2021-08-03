@@ -125,7 +125,7 @@ contract DInterestWithDepositFee is DInterest {
             _applyDepositFee(fundAmount),
             minPrincipalFunded
         );
-        _fundTransferFunds(sender, _unapplyDepositFee(fundAmount));
+        _fundTransferFunds(sender, _unapplyDepositFee(actualFundAmount));
     }
 
     /**

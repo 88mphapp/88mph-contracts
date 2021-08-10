@@ -95,23 +95,6 @@ contract HarvestMarket is MoneyMarket {
         rewardToken.safeTransfer(rewards, rewardToken.balanceOf(address(this)));
     }
 
-    function totalValue() external view override returns (uint256) {
-        return _totalValue(_incomeIndex());
-    }
-
-    function totalValue(uint256 currentIncomeIndex)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        return _totalValue(currentIncomeIndex);
-    }
-
-    function incomeIndex() external view override returns (uint256 index) {
-        return _incomeIndex();
-    }
-
     /**
         Param setters
      */
@@ -136,6 +119,7 @@ contract HarvestMarket is MoneyMarket {
     function _totalValue(uint256 currentIncomeIndex)
         internal
         view
+        override
         returns (uint256)
     {
         // not including vault token balance
@@ -146,7 +130,7 @@ contract HarvestMarket is MoneyMarket {
         return shareBalance.decmul(currentIncomeIndex);
     }
 
-    function _incomeIndex() internal view returns (uint256 index) {
+    function _incomeIndex() internal view override returns (uint256 index) {
         index = vault.getPricePerFullShare();
         require(index > 0, "HarvestMarket: BAD_INDEX");
     }

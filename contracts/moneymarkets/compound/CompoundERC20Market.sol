@@ -90,28 +90,6 @@ contract CompoundERC20Market is MoneyMarket {
         comp.safeTransfer(rewards, comp.balanceOf(address(this)));
     }
 
-    function totalValue() external override returns (uint256) {
-        uint256 cTokenBalance = cToken.balanceOf(address(this));
-        // Amount of stablecoin units that 1 unit of cToken can be exchanged for, scaled by 10^18
-        uint256 cTokenPrice = cToken.exchangeRateCurrent();
-        return cTokenBalance.decmul(cTokenPrice);
-    }
-
-    function totalValue(uint256 currentIncomeIndex)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        uint256 cTokenBalance = cToken.balanceOf(address(this));
-        return cTokenBalance.decmul(currentIncomeIndex);
-    }
-
-    function incomeIndex() external override returns (uint256 index) {
-        index = cToken.exchangeRateCurrent();
-        require(index > 0, "CompoundERC20Market: BAD_INDEX");
-    }
-
     /**
         Param setters
      */
@@ -131,6 +109,21 @@ contract CompoundERC20Market is MoneyMarket {
     {
         super._authorizeRescue(token, target);
         require(token != address(cToken), "CompoundERC20Market: no steal");
+    }
+
+    function _totalValue(uint256 currentIncomeIndex)
+        internal
+        view
+        override
+        returns (uint256)
+    {
+        uint256 cTokenBalance = cToken.balanceOf(address(this));
+        return cTokenBalance.decmul(currentIncomeIndex);
+    }
+
+    function _incomeIndex() internal override returns (uint256 index) {
+        index = cToken.exchangeRateCurrent();
+        require(index > 0, "CompoundERC20Market: BAD_INDEX");
     }
 
     uint256[46] private __gap;

@@ -75,27 +75,6 @@ contract YVaultMarket is MoneyMarket {
 
     function claimRewards() external override {}
 
-    function totalValue() external view override returns (uint256) {
-        uint256 sharePrice = vault.pricePerShare();
-        uint256 shareBalance = vault.balanceOf(address(this));
-        return shareBalance.decmul(sharePrice);
-    }
-
-    function totalValue(uint256 currentIncomeIndex)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        uint256 shareBalance = vault.balanceOf(address(this));
-        return shareBalance.decmul(currentIncomeIndex);
-    }
-
-    function incomeIndex() external view override returns (uint256 index) {
-        index = vault.pricePerShare();
-        require(index > 0, "YVaultMarket: BAD_INDEX");
-    }
-
     function setRewards(address newValue) external override {}
 
     /**
@@ -108,6 +87,21 @@ contract YVaultMarket is MoneyMarket {
     {
         super._authorizeRescue(token, target);
         require(token != address(vault), "YVaultMarket: no steal");
+    }
+
+    function _totalValue(uint256 currentIncomeIndex)
+        internal
+        view
+        override
+        returns (uint256)
+    {
+        uint256 shareBalance = vault.balanceOf(address(this));
+        return shareBalance.decmul(currentIncomeIndex);
+    }
+
+    function _incomeIndex() internal view override returns (uint256 index) {
+        index = vault.pricePerShare();
+        require(index > 0, "YVaultMarket: BAD_INDEX");
     }
 
     uint256[48] private __gap;

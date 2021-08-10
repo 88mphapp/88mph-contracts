@@ -90,28 +90,6 @@ contract BProtocolMarket is MoneyMarket {
         comp.safeTransfer(rewards, comp.balanceOf(address(this)));
     }
 
-    function totalValue() external override returns (uint256) {
-        uint256 bTokenBalance = bToken.balanceOf(address(this));
-        // Amount of stablecoin units that 1 unit of bToken can be exchanged for, scaled by 10^18
-        uint256 bTokenPrice = bToken.exchangeRateCurrent();
-        return bTokenBalance.decmul(bTokenPrice);
-    }
-
-    function totalValue(uint256 currentIncomeIndex)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        uint256 bTokenBalance = bToken.balanceOf(address(this));
-        return bTokenBalance.decmul(currentIncomeIndex);
-    }
-
-    function incomeIndex() external override returns (uint256 index) {
-        index = bToken.exchangeRateCurrent();
-        require(index > 0, "BProtocolMarket: BAD_INDEX");
-    }
-
     /**
         Param setters
      */
@@ -131,6 +109,21 @@ contract BProtocolMarket is MoneyMarket {
     {
         super._authorizeRescue(token, target);
         require(token != address(bToken), "BProtocolMarket: no steal");
+    }
+
+    function _totalValue(uint256 currentIncomeIndex)
+        internal
+        view
+        override
+        returns (uint256)
+    {
+        uint256 bTokenBalance = bToken.balanceOf(address(this));
+        return bTokenBalance.decmul(currentIncomeIndex);
+    }
+
+    function _incomeIndex() internal override returns (uint256 index) {
+        index = bToken.exchangeRateCurrent();
+        require(index > 0, "BProtocolMarket: BAD_INDEX");
     }
 
     uint256[46] private __gap;

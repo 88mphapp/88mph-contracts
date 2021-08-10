@@ -40,6 +40,7 @@ contract AaveMarket is MoneyMarket {
             _provider.isContract() &&
                 _aToken.isContract() &&
                 _aaveMining.isContract() &&
+                _rewards != address(0) &&
                 _stablecoin.isContract(),
             "AaveMarket: An input address is not a contract"
         );
@@ -118,7 +119,7 @@ contract AaveMarket is MoneyMarket {
         Param setters
      */
     function setRewards(address newValue) external override onlyOwner {
-        require(newValue.isContract(), "AaveMarket: not contract");
+        require(newValue != address(0), "AaveMarket: 0 address");
         rewards = newValue;
         emit ESetParamAddress(msg.sender, "rewards", newValue);
     }

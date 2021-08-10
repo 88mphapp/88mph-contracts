@@ -116,7 +116,7 @@ contract BProtocolMarket is MoneyMarket {
         Param setters
      */
     function setRewards(address newValue) external override onlyOwner {
-        require(newValue.isContract(), "BProtocolMarket: not contract");
+        require(newValue != address(0), "BProtocolMarket: 0 address");
         rewards = newValue;
         emit ESetParamAddress(msg.sender, "rewards", newValue);
     }

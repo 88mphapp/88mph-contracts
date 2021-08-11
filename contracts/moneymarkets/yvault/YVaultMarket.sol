@@ -62,12 +62,15 @@ contract YVaultMarket is MoneyMarket {
         // Withdraw `amountInShares` shares from vault
         uint256 sharePrice = vault.pricePerShare();
         uint256 amountInShares = amountInUnderlying.decdiv(sharePrice);
+        uint256 beforeBalance = stablecoin.balanceOf(address(this));
         if (amountInShares > 0) {
             vault.withdraw(amountInShares);
         }
 
         // Transfer stablecoin to `msg.sender`
-        actualAmountWithdrawn = stablecoin.balanceOf(address(this));
+        actualAmountWithdrawn =
+            stablecoin.balanceOf(address(this)) -
+            beforeBalance;
         if (actualAmountWithdrawn > 0) {
             stablecoin.safeTransfer(msg.sender, actualAmountWithdrawn);
         }

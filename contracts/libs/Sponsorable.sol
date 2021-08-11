@@ -141,11 +141,8 @@ abstract contract Sponsorable {
 
         IERC20 token = IERC20(sponsorFeeToken);
 
-        // transfer tokens from sender
-        token.safeTransferFrom(sender, address(this), sponsorFeeAmount);
-
-        // transfer tokens to sponsor
-        token.safeTransfer(sponsor, sponsorFeeAmount);
+        // transfer tokens from sender to sponsor
+        token.safeTransferFrom(sender, sponsor, sponsorFeeAmount);
     }
 
     uint256[49] private __gap;

@@ -43,7 +43,8 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.1.0",
-    "@openzeppelin/contracts-upgradeable": "^4.1.0"
+    "@openzeppelin/contracts-upgradeable": "^4.1.0",
+    "prb-math": "^2.2.0"
   },
   "lint-staged": {
     "*.{js,sol,md,json}": "prettier --write"

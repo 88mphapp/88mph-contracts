@@ -7,12 +7,12 @@ import {
     AddressUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import {MoneyMarket} from "../MoneyMarket.sol";
-import {DecMath} from "../../libs/DecMath.sol";
+import {DSMath} from "../../libs/math.sol";
 import {IBToken} from "./imports/IBToken.sol";
 import {IBComptroller} from "./imports/IBComptroller.sol";
 
 contract BProtocolMarket is MoneyMarket {
-    using DecMath for uint256;
+    using DSMath for uint256;
     using SafeERC20 for ERC20;
     using AddressUpgradeable for address;
 
@@ -94,7 +94,7 @@ contract BProtocolMarket is MoneyMarket {
         uint256 bTokenBalance = bToken.balanceOf(address(this));
         // Amount of stablecoin units that 1 unit of bToken can be exchanged for, scaled by 10^18
         uint256 bTokenPrice = bToken.exchangeRateCurrent();
-        return bTokenBalance.decmul(bTokenPrice);
+        return bTokenBalance.wmul(bTokenPrice);
     }
 
     function totalValue(uint256 currentIncomeIndex)
@@ -104,7 +104,7 @@ contract BProtocolMarket is MoneyMarket {
         returns (uint256)
     {
         uint256 bTokenBalance = bToken.balanceOf(address(this));
-        return bTokenBalance.decmul(currentIncomeIndex);
+        return bTokenBalance.wmul(currentIncomeIndex);
     }
 
     function incomeIndex() external override returns (uint256 index) {

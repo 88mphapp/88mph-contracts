@@ -8,7 +8,7 @@ import {
 import {
     AccessControlUpgradeable
 } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {DecMath} from "../libs/DecMath.sol";
+import {DSMath} from "../libs/math.sol";
 
 /**
     @title Staked MPH
@@ -16,7 +16,7 @@ import {DecMath} from "../libs/DecMath.sol";
     @notice The MPH staking contract
  */
 contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
-    using DecMath for uint256;
+    using DSMath for uint256;
 
     uint256 internal constant PRECISION = 10**18;
     uint256 internal constant MAX_REWARD_UNLOCK_PERIOD = 365 days;
@@ -134,7 +134,7 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
         ) {
             // no rewards or rewards fully unlocked
             // entire balance is withdrawable
-            return mphBalance.decdiv(totalShares);
+            return mphBalance.wdiv(totalShares);
         } else {
             // rewards not fully unlocked
             // deduct locked rewards from balance
@@ -143,7 +143,7 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
                 (_lastRewardAmount *
                     (_currentUnlockEndTimestamp - block.timestamp)) /
                     (_currentUnlockEndTimestamp - _lastRewardTimestamp);
-            return (mphBalance - lockedRewardAmount).decdiv(totalShares);
+            return (mphBalance - lockedRewardAmount).wdiv(totalShares);
         }
     }
 
@@ -174,7 +174,7 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
         returns (uint256 shareAmount)
     {
         require(_mphAmount > 0, "xMPH: amount");
-        shareAmount = _mphAmount.decdiv(getPricePerFullShare());
+        shareAmount = _mphAmount.wdiv(getPricePerFullShare());
         _mint(msg.sender, shareAmount);
         mph.transferFrom(msg.sender, address(this), _mphAmount);
     }
@@ -191,7 +191,7 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
             totalSupply() >= _shareAmount + MIN_AMOUNT && _shareAmount > 0,
             "xMPH: amount"
         );
-        mphAmount = _shareAmount.decmul(getPricePerFullShare());
+        mphAmount = _shareAmount.wmul(getPricePerFullShare());
         _burn(msg.sender, _shareAmount);
         mph.transfer(msg.sender, mphAmount);
     }

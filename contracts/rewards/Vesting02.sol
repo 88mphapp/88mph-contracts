@@ -14,11 +14,11 @@ import {
 } from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import {MPHMinter} from "./MPHMinter.sol";
 import {DInterest} from "../DInterest.sol";
-import {DecMath} from "../libs/DecMath.sol";
+import {DSMath} from "../libs/math.sol";
 
 contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
-    using DecMath for uint256;
+    using DSMath for uint256;
 
     uint256 internal constant PRECISION = 10**18;
 
@@ -148,7 +148,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
             );
         vestEntry.accumulatedAmount += (currentDepositAmount *
             (currentTimestamp - vestEntry.lastUpdateTimestamp))
-            .decmul(vestEntry.vestAmountPerStablecoinPerSecond);
+            .wmul(vestEntry.vestAmountPerStablecoinPerSecond);
         require(block.timestamp <= type(uint64).max, "Vesting02: OVERFLOW");
         vestEntry.lastUpdateTimestamp = uint64(block.timestamp);
         vestEntry.vestAmountPerStablecoinPerSecond =
@@ -240,13 +240,13 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
             return vestEntry.accumulatedAmount - vestEntry.withdrawnAmount;
         }
         uint256 depositAmount =
-            depositEntry.virtualTokenTotalSupply.decdiv(
+            depositEntry.virtualTokenTotalSupply.wdiv(
                 PRECISION + depositEntry.interestRate
             );
         return
             vestEntry.accumulatedAmount +
             (depositAmount * (currentTimestamp - vestEntry.lastUpdateTimestamp))
-                .decmul(vestEntry.vestAmountPerStablecoinPerSecond) -
+                .wmul(vestEntry.vestAmountPerStablecoinPerSecond) -
             vestEntry.withdrawnAmount;
     }
 

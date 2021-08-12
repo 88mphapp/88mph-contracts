@@ -4,12 +4,12 @@ pragma solidity 0.8.3;
 import {
     Initializable
 } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {DSMath} from "../../libs/math.sol";
+import {DecMath} from "../../libs/DecMath.sol";
 import {IInterestOracle} from "./IInterestOracle.sol";
 import {MoneyMarket} from "../../moneymarkets/MoneyMarket.sol";
 
 contract EMAOracle is IInterestOracle, Initializable {
-    using DSMath for uint256;
+    using DecMath for uint256;
 
     uint256 internal constant PRECISION = 10**18;
 
@@ -75,7 +75,7 @@ contract EMAOracle is IInterestOracle, Initializable {
             newIncomeIndex = _lastIncomeIndex;
         }
         uint256 incomingValue =
-            (newIncomeIndex - _lastIncomeIndex).wdiv(_lastIncomeIndex) /
+            (newIncomeIndex - _lastIncomeIndex).decdiv(_lastIncomeIndex) /
                 timeElapsed;
 
         updated = true;

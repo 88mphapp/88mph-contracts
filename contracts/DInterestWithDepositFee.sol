@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import {DSMath} from "./libs/math.sol";
+import {DecMath} from "./libs/DecMath.sol";
 import {DInterest} from "./DInterest.sol";
 
 /**
     @dev A variant of DInterest that supports money markets with deposit fees
  */
 contract DInterestWithDepositFee is DInterest {
-    using DSMath for uint256;
+    using DecMath for uint256;
 
     uint256 public DepositFee; // The deposit fee charged by the money market
 
@@ -127,7 +127,7 @@ contract DInterestWithDepositFee is DInterest {
         virtual
         returns (uint256)
     {
-        return amount.wmul(PRECISION - DepositFee);
+        return amount.decmul(PRECISION - DepositFee);
     }
 
     /**
@@ -141,7 +141,7 @@ contract DInterestWithDepositFee is DInterest {
         virtual
         returns (uint256)
     {
-        return amount.wdiv(PRECISION - DepositFee);
+        return amount.decdiv(PRECISION - DepositFee);
     }
 
     /**

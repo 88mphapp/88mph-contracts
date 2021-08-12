@@ -2,10 +2,10 @@
 pragma solidity 0.8.3;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {DSMath} from "../libs/math.sol";
+import {DecMath} from "../libs/DecMath.sol";
 
 contract ATokenMock is ERC20 {
-    using DSMath for uint256;
+    using DecMath for uint256;
 
     uint256 internal constant YEAR = 31556952; // Number of seconds in one Gregorian calendar year (365.2425 days)
 

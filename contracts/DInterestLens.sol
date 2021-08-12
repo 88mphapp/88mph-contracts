@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import {DSMath} from "./libs/math.sol";
+import {DecMath} from "./libs/DecMath.sol";
 import {DInterest} from "./DInterest.sol";
 
 contract DInterestLens {
-    using DSMath for uint256;
+    using DecMath for uint256;
 
     uint256 internal constant PRECISION = 10**18;
     /**
@@ -47,7 +47,7 @@ contract DInterestLens {
         // Compute token amounts
         bool early = block.timestamp < depositEntry.maturationTimestamp;
         uint256 depositAmount =
-            virtualTokenAmount.wdiv(depositEntry.interestRate + PRECISION);
+            virtualTokenAmount.decdiv(depositEntry.interestRate + PRECISION);
         uint256 interestAmount = early ? 0 : virtualTokenAmount - depositAmount;
         withdrawableAmount = depositAmount + interestAmount;
 
@@ -62,7 +62,7 @@ contract DInterestLens {
             feeAmount = earlyWithdrawFee;
             withdrawableAmount -= earlyWithdrawFee;
         } else {
-            feeAmount = depositAmount.wmul(depositEntry.feeRate);
+            feeAmount = depositAmount.decmul(depositEntry.feeRate);
         }
     }
 
@@ -188,7 +188,7 @@ contract DInterestLens {
     ) internal pure virtual returns (uint256) {
         uint256 depositInterestRate = depositEntry.interestRate;
         return
-            virtualTokenAmount.wdiv(depositInterestRate + PRECISION).wmul(
+            virtualTokenAmount.decdiv(depositInterestRate + PRECISION).decmul(
                 depositInterestRate + depositEntry.feeRate + PRECISION
             );
     }

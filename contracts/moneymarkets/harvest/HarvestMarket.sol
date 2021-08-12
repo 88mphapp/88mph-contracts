@@ -7,12 +7,12 @@ import {
     AddressUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import {MoneyMarket} from "../MoneyMarket.sol";
-import {DSMath} from "../../libs/math.sol";
+import {DecMath} from "../../libs/DecMath.sol";
 import {HarvestVault} from "./imports/HarvestVault.sol";
 import {HarvestStaking} from "./imports/HarvestStaking.sol";
 
 contract HarvestMarket is MoneyMarket {
-    using DSMath for uint256;
+    using DecMath for uint256;
     using SafeERC20 for ERC20;
     using AddressUpgradeable for address;
 
@@ -76,7 +76,7 @@ contract HarvestMarket is MoneyMarket {
 
         // Withdraw `amountInShares` shares from vault
         uint256 sharePrice = vault.getPricePerFullShare();
-        uint256 amountInShares = amountInUnderlying.wdiv(sharePrice);
+        uint256 amountInShares = amountInUnderlying.decdiv(sharePrice);
         if (amountInShares > 0) {
             stakingPool.withdraw(amountInShares);
             vault.withdraw(amountInShares);
@@ -100,7 +100,7 @@ contract HarvestMarket is MoneyMarket {
         uint256 shareBalance =
             vault.balanceOf(address(this)) +
                 stakingPool.balanceOf(address(this));
-        return shareBalance.wmul(sharePrice);
+        return shareBalance.decmul(sharePrice);
     }
 
     function totalValue(uint256 currentIncomeIndex)
@@ -112,7 +112,7 @@ contract HarvestMarket is MoneyMarket {
         uint256 shareBalance =
             vault.balanceOf(address(this)) +
                 stakingPool.balanceOf(address(this));
-        return shareBalance.wmul(currentIncomeIndex);
+        return shareBalance.decmul(currentIncomeIndex);
     }
 
     function incomeIndex() external view override returns (uint256 index) {

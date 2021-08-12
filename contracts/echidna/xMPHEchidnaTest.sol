@@ -4,11 +4,11 @@ pragma solidity 0.8.3;
 
 import {MPHToken} from "../rewards/MPHToken.sol";
 import {xMPH} from "../rewards/xMPH.sol";
-import {DSMath} from "../libs/math.sol";
+import {DecMath} from "../libs/DecMath.sol";
 import {Asserts} from "./Asserts.sol";
 
 contract xMPHEchidnaTest is Asserts {
-    using DSMath for uint256;
+    using DecMath for uint256;
 
     uint256 private constant REWARD_UNLOCK_PERIOD = 14 days;
 
@@ -54,7 +54,7 @@ contract xMPHEchidnaTest is Asserts {
         AssertEpsilonEqual(beforePricePerFullShare, afterPricePerFullShare);
         Assert(
             afterShareBalance - beforeShareBalance ==
-                _mphAmount.wdiv(beforePricePerFullShare)
+                _mphAmount.decdiv(beforePricePerFullShare)
         );
         Assert(afterShareBalance - beforeShareBalance == shareAmount);
     }
@@ -72,7 +72,7 @@ contract xMPHEchidnaTest is Asserts {
 
         Assert(
             afterMPHBalance - beforeMPHBalance ==
-                _shareAmount.wmul(beforePricePerFullShare)
+                _shareAmount.decmul(beforePricePerFullShare)
         );
         Assert(afterMPHBalance - beforeMPHBalance == mphAmount);
         AssertEpsilonEqual(beforePricePerFullShare, afterPricePerFullShare);

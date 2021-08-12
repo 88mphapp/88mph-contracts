@@ -7,11 +7,11 @@ import {
     AddressUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import {MoneyMarket} from "../MoneyMarket.sol";
-import {DSMath} from "../../libs/math.sol";
+import {DecMath} from "../../libs/DecMath.sol";
 import {Vault} from "./imports/Vault.sol";
 
 contract YVaultMarket is MoneyMarket {
-    using DSMath for uint256;
+    using DecMath for uint256;
     using SafeERC20 for ERC20;
     using AddressUpgradeable for address;
 
@@ -61,7 +61,7 @@ contract YVaultMarket is MoneyMarket {
 
         // Withdraw `amountInShares` shares from vault
         uint256 sharePrice = vault.pricePerShare();
-        uint256 amountInShares = amountInUnderlying.wdiv(sharePrice);
+        uint256 amountInShares = amountInUnderlying.decdiv(sharePrice);
         if (amountInShares > 0) {
             vault.withdraw(amountInShares);
         }
@@ -78,7 +78,7 @@ contract YVaultMarket is MoneyMarket {
     function totalValue() external view override returns (uint256) {
         uint256 sharePrice = vault.pricePerShare();
         uint256 shareBalance = vault.balanceOf(address(this));
-        return shareBalance.wmul(sharePrice);
+        return shareBalance.decmul(sharePrice);
     }
 
     function totalValue(uint256 currentIncomeIndex)
@@ -88,7 +88,7 @@ contract YVaultMarket is MoneyMarket {
         returns (uint256)
     {
         uint256 shareBalance = vault.balanceOf(address(this));
-        return shareBalance.wmul(currentIncomeIndex);
+        return shareBalance.decmul(currentIncomeIndex);
     }
 
     function incomeIndex() external view override returns (uint256 index) {

@@ -9,13 +9,13 @@ import {
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import {Vesting02} from "./Vesting02.sol";
 import {FundingMultitoken} from "../tokens/FundingMultitoken.sol";
-import {DSMath} from "../libs/math.sol";
+import {DecMath} from "../libs/DecMath.sol";
 import {DInterest} from "../DInterest.sol";
 import {MPHToken} from "./MPHToken.sol";
 
 contract MPHMinter is AccessControlUpgradeable {
     using AddressUpgradeable for address;
-    using DSMath for uint256;
+    using DecMath for uint256;
 
     uint256 internal constant PRECISION = 10**18;
     bytes32 public constant WHITELISTER_ROLE = keccak256("WHITELISTER_ROLE");
@@ -172,11 +172,11 @@ contract MPHMinter is AccessControlUpgradeable {
         if (amount > 0) {
             mph.ownerMint(account, amount);
         }
-        uint256 devReward = amount.wmul(devRewardMultiplier);
+        uint256 devReward = amount.decmul(devRewardMultiplier);
         if (devReward > 0) {
             mph.ownerMint(devWallet, devReward);
         }
-        uint256 govReward = amount.wmul(govRewardMultiplier);
+        uint256 govReward = amount.decmul(govRewardMultiplier);
         if (govReward > 0) {
             mph.ownerMint(govTreasury, govReward);
         }
@@ -191,7 +191,7 @@ contract MPHMinter is AccessControlUpgradeable {
             return;
         }
         uint256 mintMPHAmount =
-            interestAmount.wmul(poolFunderRewardMultiplier[msg.sender]);
+            interestAmount.decmul(poolFunderRewardMultiplier[msg.sender]);
         if (mintMPHAmount == 0) {
             return;
         }
@@ -205,11 +205,11 @@ contract MPHMinter is AccessControlUpgradeable {
             mintMPHAmount
         );
 
-        uint256 devReward = mintMPHAmount.wmul(devRewardMultiplier);
+        uint256 devReward = mintMPHAmount.decmul(devRewardMultiplier);
         if (devReward > 0) {
             mph.ownerMint(devWallet, devReward);
         }
-        uint256 govReward = mintMPHAmount.wmul(govRewardMultiplier);
+        uint256 govReward = mintMPHAmount.decmul(govRewardMultiplier);
         if (govReward > 0) {
             mph.ownerMint(govTreasury, govReward);
         }
@@ -240,12 +240,12 @@ contract MPHMinter is AccessControlUpgradeable {
         if (!early) {
             funderReward = maturationTimestamp > fundingCreationTimestamp
                 ? depositAmount *
-                    (maturationTimestamp - fundingCreationTimestamp).wmul(
+                    (maturationTimestamp - fundingCreationTimestamp).decmul(
                         poolFunderRewardMultiplier[pool]
                     )
                 : 0;
-            devReward = funderReward.wmul(devRewardMultiplier);
-            govReward = funderReward.wmul(govRewardMultiplier);
+            devReward = funderReward.decmul(devRewardMultiplier);
+            govReward = funderReward.decmul(govRewardMultiplier);
         } else {
             return 0;
         }

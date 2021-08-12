@@ -22,7 +22,7 @@ import {NFT} from "./tokens/NFT.sol";
 import {FundingMultitoken} from "./tokens/FundingMultitoken.sol";
 import {MPHMinter} from "./rewards/MPHMinter.sol";
 import {IInterestOracle} from "./models/interest-oracle/IInterestOracle.sol";
-import {DSMath} from "./libs/math.sol";
+import {DecMath} from "./libs/DecMath.sol";
 import {Rescuable} from "./libs/Rescuable.sol";
 import {Sponsorable} from "./libs/Sponsorable.sol";
 import {console} from "hardhat/console.sol";
@@ -42,7 +42,7 @@ contract DInterest is
 {
     using SafeERC20 for ERC20;
     using AddressUpgradeable for address;
-    using DSMath for uint256;
+    using DecMath for uint256;
 
     // Constants
     uint256 internal constant PRECISION = 10**18;
@@ -590,8 +590,8 @@ contract DInterest is
         deposits.push(
             Deposit({
                 virtualTokenTotalSupply: depositAmount + interestAmount,
-                interestRate: interestAmount.wdiv(depositAmount),
-                feeRate: feeAmount.wdiv(depositAmount),
+                interestRate: interestAmount.decdiv(depositAmount),
+                feeRate: feeAmount.decdiv(depositAmount),
                 maturationTimestamp: maturationTimestamp,
                 fundingID: 0,
                 averageRecordedIncomeIndex: moneyMarket.incomeIndex()
@@ -683,7 +683,9 @@ contract DInterest is
         // Update deposit struct
         uint256 interestRate = depositEntry.interestRate;
         uint256 currentDepositAmount =
-            depositEntry.virtualTokenTotalSupply.wdiv(interestRate + PRECISION);
+            depositEntry.virtualTokenTotalSupply.decdiv(
+                interestRate + PRECISION
+            );
         depositEntry.virtualTokenTotalSupply += depositAmount + interestAmount;
         depositEntry.interestRate =
             (PRECISION * interestAmount + currentDepositAmount * interestRate) /
@@ -837,7 +839,7 @@ contract DInterest is
         uint256 interestRate = depositEntry.interestRate;
         uint256 feeRate = depositEntry.feeRate;
         uint256 depositAmount =
-            virtualTokenAmount.wdiv(interestRate + PRECISION);
+            virtualTokenAmount.decdiv(interestRate + PRECISION);
         {
             uint256 interestAmount =
                 early ? 0 : virtualTokenAmount - depositAmount;
@@ -854,13 +856,13 @@ contract DInterest is
             feeAmount = earlyWithdrawFee;
             withdrawAmount -= earlyWithdrawFee;
         } else {
-            feeAmount = depositAmount.wmul(feeRate);
+            feeAmount = depositAmount.decmul(feeRate);
         }
 
         // Update global values
         totalDeposit -= depositAmount;
         totalInterestOwed -= virtualTokenAmount - depositAmount;
-        totalFeeOwed -= depositAmount.wmul(feeRate);
+        totalFeeOwed -= depositAmount.decmul(feeRate);
 
         // If deposit was funded, compute funding interest payout
         uint64 fundingID = depositEntry.fundingID;
@@ -880,7 +882,7 @@ contract DInterest is
                         depositEntry.virtualTokenTotalSupply
                     );
                 uint256 totalPrincipalDecrease =
-                    virtualTokenAmount + depositAmount.wmul(feeRate);
+                    virtualTokenAmount + depositAmount.decmul(feeRate);
                 if (
                     totalPrincipal <=
                     totalPrincipalDecrease + recordedFundedPrincipalAmount
@@ -910,7 +912,7 @@ contract DInterest is
         // Update vest
         {
             uint256 depositAmountBeforeWithdrawal =
-                _getDeposit(depositID).virtualTokenTotalSupply.wdiv(
+                _getDeposit(depositID).virtualTokenTotalSupply.decdiv(
                     interestRate + PRECISION
                 );
             mphMinter.updateVestForDeposit(
@@ -1319,13 +1321,13 @@ contract DInterest is
             refundAmount =
                 (((recordedFundedPrincipalAmount -
                     currentFundedPrincipalAmount) * PRECISION)
-                    .wmul(moneyMarketInterestRatePerSecond) *
+                    .decmul(moneyMarketInterestRatePerSecond) *
                     (depositEntry.maturationTimestamp - block.timestamp)) /
                 PRECISION;
             uint256 maxRefundAmount =
                 (recordedFundedPrincipalAmount - currentFundedPrincipalAmount)
-                    .wdiv(PRECISION + interestRate + feeRate)
-                    .wmul(interestRate + feeRate);
+                    .decdiv(PRECISION + interestRate + feeRate)
+                    .decmul(interestRate + feeRate);
             refundAmount = refundAmount <= maxRefundAmount
                 ? refundAmount
                 : maxRefundAmount;
@@ -1379,7 +1381,7 @@ contract DInterest is
         Deposit storage depositEntry = _getDeposit(depositID);
         uint256 depositInterestRate = depositEntry.interestRate;
         return
-            virtualTokenAmount.wdiv(depositInterestRate + PRECISION).wmul(
+            virtualTokenAmount.decdiv(depositInterestRate + PRECISION).decmul(
                 depositInterestRate + depositEntry.feeRate + PRECISION
             );
     }
@@ -1443,9 +1445,11 @@ contract DInterest is
         Deposit storage depositEntry = _getDeposit(depositID);
         uint256 depositTokenTotalSupply = depositEntry.virtualTokenTotalSupply;
         uint256 depositAmount =
-            depositTokenTotalSupply.wdiv(depositEntry.interestRate + PRECISION);
+            depositTokenTotalSupply.decdiv(
+                depositEntry.interestRate + PRECISION
+            );
         uint256 interestAmount = depositTokenTotalSupply - depositAmount;
-        uint256 feeAmount = depositAmount.wmul(depositEntry.feeRate);
+        uint256 feeAmount = depositAmount.decmul(depositEntry.feeRate);
         uint256 currentDepositValue =
             (depositAmount * currentMoneyMarketIncomeIndex) /
                 depositEntry.averageRecordedIncomeIndex;
@@ -1542,17 +1546,17 @@ contract DInterest is
             depositStorage.virtualTokenTotalSupply;
         require(newFeeRate < feeRate, "BAD_VAL");
         uint256 depositAmount =
-            virtualTokenTotalSupply.wdiv(interestRate + PRECISION);
+            virtualTokenTotalSupply.decdiv(interestRate + PRECISION);
 
         // update fee rate
         depositStorage.feeRate = newFeeRate;
 
         // update interest rate
         // fee reduction is allocated to interest
-        uint256 reducedFeeAmount = depositAmount.wmul(feeRate - newFeeRate);
+        uint256 reducedFeeAmount = depositAmount.decmul(feeRate - newFeeRate);
         depositStorage.interestRate =
             interestRate +
-            reducedFeeAmount.wdiv(depositAmount);
+            reducedFeeAmount.decdiv(depositAmount);
 
         // update global amounts
         totalInterestOwed += reducedFeeAmount;

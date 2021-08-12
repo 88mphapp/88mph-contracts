@@ -7,12 +7,12 @@ import {
     AddressUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import {MoneyMarket} from "../MoneyMarket.sol";
-import {DSMath} from "../../libs/math.sol";
+import {DecMath} from "../../libs/DecMath.sol";
 import {ICERC20} from "./imports/ICERC20.sol";
 import {IComptroller} from "./imports/IComptroller.sol";
 
 contract CompoundERC20Market is MoneyMarket {
-    using DSMath for uint256;
+    using DecMath for uint256;
     using SafeERC20 for ERC20;
     using AddressUpgradeable for address;
 
@@ -94,7 +94,7 @@ contract CompoundERC20Market is MoneyMarket {
         uint256 cTokenBalance = cToken.balanceOf(address(this));
         // Amount of stablecoin units that 1 unit of cToken can be exchanged for, scaled by 10^18
         uint256 cTokenPrice = cToken.exchangeRateCurrent();
-        return cTokenBalance.wmul(cTokenPrice);
+        return cTokenBalance.decmul(cTokenPrice);
     }
 
     function totalValue(uint256 currentIncomeIndex)
@@ -104,7 +104,7 @@ contract CompoundERC20Market is MoneyMarket {
         returns (uint256)
     {
         uint256 cTokenBalance = cToken.balanceOf(address(this));
-        return cTokenBalance.wmul(currentIncomeIndex);
+        return cTokenBalance.decmul(currentIncomeIndex);
     }
 
     function incomeIndex() external override returns (uint256 index) {

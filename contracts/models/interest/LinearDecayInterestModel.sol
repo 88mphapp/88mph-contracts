@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.3;
 
-import {DSMath} from "../../libs/math.sol";
+import {DecMath} from "../../libs/DecMath.sol";
 import {IInterestModel} from "./IInterestModel.sol";
 
 contract LinearDecayInterestModel is IInterestModel {
-    using DSMath for uint256;
+    using DecMath for uint256;
 
     uint256 public constant PRECISION = 10**18;
     uint256 public multiplierIntercept;
@@ -39,8 +39,8 @@ contract LinearDecayInterestModel is IInterestModel {
         // interestAmount = depositAmount * moneyMarketInterestRatePerSecond * IRMultiplier * depositPeriodInSeconds
         interestAmount =
             ((depositAmount * PRECISION)
-                .wmul(moneyMarketInterestRatePerSecond)
-                .wmul(getIRMultiplier(depositPeriodInSeconds)) *
+                .decmul(moneyMarketInterestRatePerSecond)
+                .decmul(getIRMultiplier(depositPeriodInSeconds)) *
                 depositPeriodInSeconds) /
             PRECISION;
     }

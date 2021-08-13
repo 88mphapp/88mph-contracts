@@ -11,29 +11,31 @@ module.exports = async ({
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
 
+  const vesting02Deployment = await get("Vesting02");
+
   const deployResult = await deploy("MPHMinter", {
     from: deployer,
     proxy: {
       owner: config.govTimelock,
-      proxyContract: "OptimizedTransparentProxy"
+      proxyContract: "OptimizedTransparentProxy",
+      execute: {
+        init: {
+          methodName: "initialize",
+          args: [
+            config.mph,
+            config.govTreasury,
+            config.devWallet,
+            vesting02Deployment.address,
+            BigNumber(config.devRewardMultiplier).toFixed(),
+            BigNumber(config.govRewardMultiplier).toFixed()
+          ]
+        }
+      }
     }
   });
   if (deployResult.newlyDeployed) {
-    const vesting02Deployment = await get("Vesting02");
-
     const MPHMinter = artifacts.require("MPHMinter");
     const contract = await MPHMinter.at(deployResult.address);
-    await contract.initialize(
-      config.mph,
-      config.govTreasury,
-      config.devWallet,
-      vesting02Deployment.address,
-      BigNumber(config.devRewardMultiplier).toFixed(),
-      BigNumber(config.govRewardMultiplier).toFixed(),
-      {
-        from: deployer
-      }
-    );
     log(`MPHMinter deployed at ${deployResult.address}`);
 
     // give roles to gov treasury

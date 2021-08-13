@@ -31,28 +31,30 @@ module.exports = async ({
     contract: "DInterestWithDepositFee",
     proxy: {
       owner: config.govTimelock,
-      proxyContract: "OptimizedTransparentProxy"
+      proxyContract: "OptimizedTransparentProxy",
+      execute: {
+        init: {
+          methodName: "initialize",
+          args: [
+            BigNumber(poolConfig.MaxDepositPeriod).toFixed(),
+            BigNumber(poolConfig.MinDepositAmount).toFixed(),
+            BigNumber(poolConfig.DepositFee).toFixed(),
+            moneyMarketDeployment.address,
+            poolConfig.stablecoin,
+            feeModelDeployment.address,
+            interestModelDeployment.address,
+            interestOracleDeployment.address,
+            depositNFTDeployment.address,
+            fundingMultitokenDeployment.address,
+            mphMinterDeployment.address
+          ]
+        }
+      }
     }
   });
   if (deployResult.newlyDeployed) {
     const DInterest = artifacts.require("DInterestWithDepositFee");
     const contract = await DInterest.at(deployResult.address);
-    await contract.initialize(
-      BigNumber(poolConfig.MaxDepositPeriod).toFixed(),
-      BigNumber(poolConfig.MinDepositAmount).toFixed(),
-      BigNumber(poolConfig.DepositFee).toFixed(),
-      moneyMarketDeployment.address,
-      poolConfig.stablecoin,
-      feeModelDeployment.address,
-      interestModelDeployment.address,
-      interestOracleDeployment.address,
-      depositNFTDeployment.address,
-      fundingMultitokenDeployment.address,
-      mphMinterDeployment.address,
-      {
-        from: deployer
-      }
-    );
     log(`${poolConfig.name} deployed at ${deployResult.address}`);
 
     // Transfer the ownership of the money market to the DInterest pool

@@ -15,7 +15,9 @@ contract("DInterest", accounts => {
 
   // Constants
   const INIT_INTEREST_RATE = 0.1; // 10% APY
-  const INIT_INTEREST_RATE_PER_SECOND = 0.1 / Base.YEAR_IN_SEC; // 10% APY
+  const INIT_INTEREST_RATE_PER_SECOND = Math.log2(
+    Math.pow(INIT_INTEREST_RATE + 1, 1 / Base.YEAR_IN_SEC)
+  );
 
   for (const moduleInfo of Base.moneyMarketModuleList) {
     const moneyMarketModule = moduleInfo.moduleGenerator();
@@ -1913,7 +1915,7 @@ contract("DInterest", accounts => {
         });
 
         it("one day deposit", async () => {
-          const depositAmount = 10 * Base.STABLECOIN_PRECISION;
+          const depositAmount = 1000 * Base.STABLECOIN_PRECISION;
           const depositTime = 24 * 60 * 60;
           const expectedInterestAmount = Base.calcInterestAmount(
             depositAmount,
@@ -2000,7 +2002,7 @@ contract("DInterest", accounts => {
       });
 
       describe("surplus", () => {
-        const depositAmount = 10 * Base.STABLECOIN_PRECISION;
+        const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
         it("single deposit", async () => {
           // acc0 deposits for 1 year
@@ -2149,22 +2151,28 @@ contract("DInterest", accounts => {
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
             surplusObj.isNegative ? -1 : 1
           );
-          const expectedSurplus = Base.calcInterestAmount(
-            depositAmount,
-            INIT_INTEREST_RATE_PER_SECOND,
-            Base.YEAR_IN_SEC,
-            false
-          )
-            .plus(
+          // the expected surplus is the amount of variable-rate interest earned
+          // minus the fixed-rate interest promised to the depositors
+          const updatedInterestRate = BigNumber(
+            await baseContracts.interestOracle.query.call()
+          ).div(Base.PRECISION);
+          const expectedSurplus = BigNumber(
+            depositAmount * INIT_INTEREST_RATE * 0.2
+          ).minus(
+            Base.calcInterestAmount(
+              depositAmount,
+              INIT_INTEREST_RATE_PER_SECOND,
+              Base.YEAR_IN_SEC,
+              false
+            ).plus(
               Base.calcInterestAmount(
                 depositAmount,
-                INIT_INTEREST_RATE_PER_SECOND,
+                updatedInterestRate,
                 0.5 * Base.YEAR_IN_SEC,
                 false
               )
             )
-            .minus(depositAmount * INIT_INTEREST_RATE * 0.2)
-            .times(-1);
+          );
           Base.assertEpsilonEq(
             surplusAmount,
             expectedSurplus,
@@ -2180,29 +2188,31 @@ contract("DInterest", accounts => {
             const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
               surplusObj.isNegative ? -1 : 1
             );
-            const expectedSurplus = Base.calcInterestAmount(
-              depositAmount,
-              INIT_INTEREST_RATE_PER_SECOND,
-              Base.YEAR_IN_SEC,
-              false
+            const expectedSurplus = BigNumber(
+              depositAmount * INIT_INTEREST_RATE * 0.2
             )
               .plus(
-                Base.calcInterestAmount(
-                  depositAmount,
-                  INIT_INTEREST_RATE_PER_SECOND,
-                  0.5 * Base.YEAR_IN_SEC,
-                  false
-                )
-              )
-              .minus(depositAmount * INIT_INTEREST_RATE * 0.2)
-              .minus(
                 depositAmount *
                   INIT_INTEREST_RATE *
                   (1 + 0.2 * INIT_INTEREST_RATE) *
                   0.5
               )
-              .minus(depositAmount * INIT_INTEREST_RATE * 0.5)
-              .times(-1);
+              .plus(depositAmount * INIT_INTEREST_RATE * 0.5)
+              .minus(
+                Base.calcInterestAmount(
+                  depositAmount,
+                  INIT_INTEREST_RATE_PER_SECOND,
+                  Base.YEAR_IN_SEC,
+                  false
+                ).plus(
+                  Base.calcInterestAmount(
+                    depositAmount,
+                    updatedInterestRate,
+                    0.5 * Base.YEAR_IN_SEC,
+                    false
+                  )
+                )
+              );
             Base.assertEpsilonEq(
               surplusAmount,
               expectedSurplus,

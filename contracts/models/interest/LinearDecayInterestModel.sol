@@ -37,11 +37,11 @@ contract LinearDecayInterestModel is IInterestModel {
         uint256 /*surplusAmount*/
     ) external view override returns (uint256 interestAmount) {
         // interestAmount = depositAmount * moneyMarketInterestRatePerSecond * IRMultiplier * depositPeriodInSeconds
-        interestAmount =
-            ((depositAmount * PRECISION)
-                .mul((moneyMarketInterestRatePerSecond))
-                .mul(getIRMultiplier(depositPeriodInSeconds)) *
-                depositPeriodInSeconds) /
-            PRECISION;
+        interestAmount = depositAmount
+            .mul(
+            (moneyMarketInterestRatePerSecond * depositPeriodInSeconds).exp2() -
+                PRECISION
+        )
+            .mul(getIRMultiplier(depositPeriodInSeconds));
     }
 }

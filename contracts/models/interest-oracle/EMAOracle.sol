@@ -4,9 +4,10 @@ pragma solidity 0.8.4;
 import {
     Initializable
 } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {PRBMathUD60x18} from "prb-math/contracts/PRBMathSD60x18.sol";
+import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 import {IInterestOracle} from "./IInterestOracle.sol";
 import {MoneyMarket} from "../../moneymarkets/MoneyMarket.sol";
+import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 
 contract EMAOracle is IInterestOracle, Initializable {
     using PRBMathUD60x18 for uint256;
@@ -74,9 +75,11 @@ contract EMAOracle is IInterestOracle, Initializable {
             // in the underlying yield protocol
             newIncomeIndex = _lastIncomeIndex;
         }
+        // incomingValue = log2(newIncomeIndex / _lastIncomeIndex) * (1 / timeElapsed)
         uint256 incomingValue =
-            (newIncomeIndex - _lastIncomeIndex).div(_lastIncomeIndex) /
-                timeElapsed;
+            newIncomeIndex.div(_lastIncomeIndex).log2().mul(
+                PRBMathUD60x18.SCALE / timeElapsed
+            );
 
         updated = true;
         value =

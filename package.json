@@ -8,7 +8,7 @@
     "compile": "npx hardhat compile",
     "prettier": "npx prettier --write '**/*.js' 'contracts/**/*.sol' '**/*.json' '**/*.md'",
     "prepare": "husky install",
-    "docgen": "npx solidity-docgen --solc-module solc-0.8.3"
+    "docgen": "npx solidity-docgen --solc-module solc-0.8.4"
   },
   "keywords": [
     "ethereum",
@@ -36,7 +36,7 @@
     "mocha": "^8.1.3",
     "prettier": "^1.19.1",
     "prettier-plugin-solidity": "^1.0.0-beta.10",
-    "solc-0.8.3": "npm:solc@^0.8.3",
+    "solc-0.8.4": "npm:solc@^0.8.4",
     "solidity-coverage": "^0.7.16",
     "solidity-docgen": "^0.5.13",
     "web3": "^1.5.1"

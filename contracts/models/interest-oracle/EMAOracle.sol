@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
 import {
     Initializable
 } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {DecMath} from "../../libs/DecMath.sol";
+import {PRBMathUD60x18} from "prb-math/contracts/PRBMathSD60x18.sol";
 import {IInterestOracle} from "./IInterestOracle.sol";
 import {MoneyMarket} from "../../moneymarkets/MoneyMarket.sol";
 
 contract EMAOracle is IInterestOracle, Initializable {
-    using DecMath for uint256;
+    using PRBMathUD60x18 for uint256;
 
     uint256 internal constant PRECISION = 10**18;
 
@@ -75,7 +75,7 @@ contract EMAOracle is IInterestOracle, Initializable {
             newIncomeIndex = _lastIncomeIndex;
         }
         uint256 incomingValue =
-            (newIncomeIndex - _lastIncomeIndex).decdiv(_lastIncomeIndex) /
+            (newIncomeIndex - _lastIncomeIndex).div(_lastIncomeIndex) /
                 timeElapsed;
 
         updated = true;

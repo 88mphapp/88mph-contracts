@@ -1316,12 +1316,13 @@ contract DInterest is
             uint256 feeRate = depositEntry.feeRate;
             (, uint256 moneyMarketInterestRatePerSecond) =
                 interestOracle.updateAndQuery();
-            refundAmount =
-                (((recordedFundedPrincipalAmount -
-                    currentFundedPrincipalAmount) * PRECISION)
-                    .mul(moneyMarketInterestRatePerSecond) *
-                    (depositEntry.maturationTimestamp - block.timestamp)) /
-                PRECISION;
+            refundAmount = (recordedFundedPrincipalAmount -
+                currentFundedPrincipalAmount)
+                .mul(
+                (moneyMarketInterestRatePerSecond *
+                    (depositEntry.maturationTimestamp - block.timestamp))
+                    .exp2() - PRECISION
+            );
             uint256 maxRefundAmount =
                 (recordedFundedPrincipalAmount - currentFundedPrincipalAmount)
                     .div(PRECISION + interestRate + feeRate)

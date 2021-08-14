@@ -52,7 +52,7 @@ contract HarvestMarket is MoneyMarket {
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
         // Approve `amount` stablecoin to vault
-        stablecoin.safeApprove(address(vault), amount);
+        stablecoin.safeIncreaseAllowance(address(vault), amount);
 
         // Deposit `amount` stablecoin to vault
         vault.deposit(amount);

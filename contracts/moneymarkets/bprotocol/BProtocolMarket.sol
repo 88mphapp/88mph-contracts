@@ -54,7 +54,7 @@ contract BProtocolMarket is MoneyMarket {
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
         // Deposit `amount` stablecoin into bToken
-        stablecoin.safeApprove(address(bToken), amount);
+        stablecoin.safeIncreaseAllowance(address(bToken), amount);
         require(
             bToken.mint(amount) == ERRCODE_OK,
             "BProtocolMarket: Failed to mint bTokens"

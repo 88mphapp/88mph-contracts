@@ -52,7 +52,10 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
                 );
 
             // create deposit
-            poolContract.stablecoin().safeApprove(pool, outputTokenAmount);
+            poolContract.stablecoin().safeIncreaseAllowance(
+                pool,
+                outputTokenAmount
+            );
             (depositID, ) = poolContract.deposit(
                 outputTokenAmount,
                 maturationTimestamp
@@ -99,7 +102,7 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
             );
 
         // create funding
-        stablecoin.safeApprove(pool, outputTokenAmount);
+        stablecoin.safeIncreaseAllowance(pool, outputTokenAmount);
         uint64 fundingID = poolContract.fund(depositID, outputTokenAmount);
 
         // transfer funding multitoken to msg.sender
@@ -165,7 +168,10 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
         );
 
         // zap inputToken into curve
-        inputTokenContract.safeApprove(address(zapper), inputTokenAmount);
+        inputTokenContract.safeIncreaseAllowance(
+            address(zapper),
+            inputTokenAmount
+        );
         outputTokenAmount = zapper.ZapIn(
             address(this),
             inputToken,

@@ -41,16 +41,17 @@ library SafeERC20 {
     }
 
     /**
-        @dev Modified from openzeppelin. Instead of reverting when the allowance is non-zero and value
-        is non-zero, we first set the allowance to 0 and then call approve(spender, value).
+        @dev Modified from openzeppelin. Instead of reverting when the allowance is non-zero,
+        we first set the allowance to 0 and then call approve(spender, currentAllowance + value).
         This provides support for non-standard tokens such as USDT that revert in this scenario. 
      */
-    function safeApprove(
+    function safeIncreaseAllowance(
         IERC20 token,
         address spender,
         uint256 value
     ) internal {
-        if ((token.allowance(address(this), spender)) > 0) {
+        uint256 currentAllowance = token.allowance(address(this), spender);
+        if (currentAllowance > 0) {
             _callOptionalReturn(
                 token,
                 abi.encodeWithSelector(token.approve.selector, spender, 0)
@@ -58,7 +59,11 @@ library SafeERC20 {
         }
         _callOptionalReturn(
             token,
-            abi.encodeWithSelector(token.approve.selector, spender, value)
+            abi.encodeWithSelector(
+                token.approve.selector,
+                spender,
+                currentAllowance + value
+            )
         );
     }
 

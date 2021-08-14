@@ -60,7 +60,7 @@ contract AaveMarket is MoneyMarket {
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
         // Approve `amount` stablecoin to lendingPool
-        stablecoin.safeApprove(address(lendingPool), amount);
+        stablecoin.safeIncreaseAllowance(address(lendingPool), amount);
 
         // Deposit `amount` stablecoin to lendingPool
         lendingPool.deposit(

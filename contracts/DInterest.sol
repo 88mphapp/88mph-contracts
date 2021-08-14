@@ -638,7 +638,10 @@ contract DInterest is
             stablecoin.safeTransferFrom(sender, address(this), depositAmount);
 
             // Lend `depositAmount` stablecoin to money market
-            stablecoin.safeApprove(address(moneyMarket), depositAmount);
+            stablecoin.safeIncreaseAllowance(
+                address(moneyMarket),
+                depositAmount
+            );
             moneyMarket.deposit(depositAmount);
         }
     }
@@ -739,7 +742,7 @@ contract DInterest is
         stablecoin.safeTransferFrom(sender, address(this), depositAmount);
 
         // Lend `depositAmount` stablecoin to money market
-        stablecoin.safeApprove(address(moneyMarket), depositAmount);
+        stablecoin.safeIncreaseAllowance(address(moneyMarket), depositAmount);
         moneyMarket.deposit(depositAmount);
     }
 
@@ -1011,7 +1014,7 @@ contract DInterest is
 
         // Distribute `fundingInterestAmount` stablecoins to funders
         if (fundingInterestAmount > 0) {
-            stablecoin.safeApprove(
+            stablecoin.safeIncreaseAllowance(
                 address(fundingMultitoken),
                 fundingInterestAmount
             );
@@ -1143,7 +1146,7 @@ contract DInterest is
         stablecoin.safeTransferFrom(sender, address(this), fundAmount);
 
         // Deposit `fundAmount` stablecoins into moneyMarket
-        stablecoin.safeApprove(address(moneyMarket), fundAmount);
+        stablecoin.safeIncreaseAllowance(address(moneyMarket), fundAmount);
         moneyMarket.deposit(fundAmount);
     }
 
@@ -1191,7 +1194,7 @@ contract DInterest is
             ) {
                 interestAmount = moneyMarket.withdraw(interestAmount);
                 if (interestAmount > 0) {
-                    stablecoin.safeApprove(
+                    stablecoin.safeIncreaseAllowance(
                         address(fundingMultitoken),
                         interestAmount
                     );

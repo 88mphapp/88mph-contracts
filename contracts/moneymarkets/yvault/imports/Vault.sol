@@ -5,7 +5,11 @@ pragma solidity 0.8.3;
 interface Vault {
     function deposit(uint256 amount) external;
 
-    function withdraw(uint256 shareAmount) external;
+    function withdraw(
+        uint256 shareAmount,
+        address recipient,
+        uint256 maxLoss
+    ) external returns (uint256);
 
     function pricePerShare() external view returns (uint256);
 

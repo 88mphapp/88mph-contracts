@@ -220,12 +220,7 @@ contract ERC20Wrapper is Initializable, IERC20 {
         address recipient,
         uint256 amount
     ) internal virtual {
-        parentMultitoken.wrapperTransfer(
-            msg.sender,
-            recipient,
-            tokenID,
-            amount
-        );
+        parentMultitoken.wrapperTransfer(sender, recipient, tokenID, amount);
         emit Transfer(sender, recipient, amount);
     }
 

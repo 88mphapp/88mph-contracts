@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {DecMath} from "../libs/DecMath.sol";
+import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 
 contract ATokenMock is ERC20 {
-    using DecMath for uint256;
+    using PRBMathUD60x18 for uint256;
 
     uint256 internal constant YEAR = 31556952; // Number of seconds in one Gregorian calendar year (365.2425 days)
 

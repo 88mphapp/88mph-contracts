@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {DecMath} from "../libs/DecMath.sol";
+import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 
 contract VaultMock is ERC20 {
-    using DecMath for uint256;
+    using PRBMathUD60x18 for uint256;
 
     ERC20 public underlying;
 
@@ -15,7 +15,7 @@ contract VaultMock is ERC20 {
 
     function deposit(uint256 tokenAmount) public {
         uint256 sharePrice = getPricePerFullShare();
-        _mint(msg.sender, tokenAmount.decdiv(sharePrice));
+        _mint(msg.sender, tokenAmount.div(sharePrice));
 
         underlying.transferFrom(msg.sender, address(this), tokenAmount);
     }
@@ -25,7 +25,7 @@ contract VaultMock is ERC20 {
         returns (uint256 underlyingAmount)
     {
         uint256 sharePrice = getPricePerFullShare();
-        underlyingAmount = sharesAmount.decmul(sharePrice);
+        underlyingAmount = sharesAmount.mul(sharePrice);
         _burn(msg.sender, sharesAmount);
 
         underlying.transfer(msg.sender, underlyingAmount);
@@ -36,7 +36,7 @@ contract VaultMock is ERC20 {
         returns (uint256 underlyingAmount)
     {
         uint256 sharePrice = getPricePerFullShare();
-        underlyingAmount = sharesAmount.decmul(sharePrice);
+        underlyingAmount = sharesAmount.mul(sharePrice);
         _burn(msg.sender, sharesAmount);
 
         underlying.transfer(recipient, underlyingAmount);
@@ -47,7 +47,7 @@ contract VaultMock is ERC20 {
         if (_totalSupply == 0) {
             return 10**18;
         }
-        return underlying.balanceOf(address(this)).decdiv(_totalSupply);
+        return underlying.balanceOf(address(this)).div(_totalSupply);
     }
 
     function pricePerShare() external view returns (uint256) {

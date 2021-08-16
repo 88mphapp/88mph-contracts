@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
-import {DecMath} from "./libs/DecMath.sol";
+import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 import {DInterest} from "./DInterest.sol";
 
 /**
     @dev A variant of DInterest that supports money markets with deposit fees
  */
 contract DInterestWithDepositFee is DInterest {
-    using DecMath for uint256;
+    using PRBMathUD60x18 for uint256;
 
     uint256 public DepositFee; // The deposit fee charged by the money market
 
@@ -128,7 +128,7 @@ contract DInterestWithDepositFee is DInterest {
         virtual
         returns (uint256)
     {
-        return amount.decmul(PRECISION - DepositFee);
+        return amount.mul(PRECISION - DepositFee);
     }
 
     /**
@@ -142,7 +142,7 @@ contract DInterestWithDepositFee is DInterest {
         virtual
         returns (uint256)
     {
-        return amount.decdiv(PRECISION - DepositFee);
+        return amount.div(PRECISION - DepositFee);
     }
 
     /**

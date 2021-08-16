@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
 import {SafeERC20} from "../../libs/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -7,11 +7,11 @@ import {
     AddressUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import {MoneyMarket} from "../MoneyMarket.sol";
-import {DecMath} from "../../libs/DecMath.sol";
+import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 import {ICrERC20} from "./imports/ICrERC20.sol";
 
 contract CreamERC20Market is MoneyMarket {
-    using DecMath for uint256;
+    using PRBMathUD60x18 for uint256;
     using SafeERC20 for ERC20;
     using AddressUpgradeable for address;
 
@@ -79,7 +79,7 @@ contract CreamERC20Market is MoneyMarket {
         uint256 cTokenBalance = cToken.balanceOf(address(this));
         // Amount of stablecoin units that 1 unit of cToken can be exchanged for, scaled by 10^18
         uint256 cTokenPrice = cToken.exchangeRateCurrent();
-        return cTokenBalance.decmul(cTokenPrice);
+        return cTokenBalance.mul(cTokenPrice);
     }
 
     function totalValue(uint256 currentIncomeIndex)
@@ -89,7 +89,7 @@ contract CreamERC20Market is MoneyMarket {
         returns (uint256)
     {
         uint256 cTokenBalance = cToken.balanceOf(address(this));
-        return cTokenBalance.decmul(currentIncomeIndex);
+        return cTokenBalance.mul(currentIncomeIndex);
     }
 
     function incomeIndex() external override returns (uint256 index) {

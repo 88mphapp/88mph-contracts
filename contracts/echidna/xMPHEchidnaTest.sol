@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
 import {MPHToken} from "../rewards/MPHToken.sol";
 import {xMPH} from "../rewards/xMPH.sol";
-import {DecMath} from "../libs/DecMath.sol";
+import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 import {Asserts} from "./Asserts.sol";
 
 contract xMPHEchidnaTest is Asserts {
-    using DecMath for uint256;
+    using PRBMathUD60x18 for uint256;
 
     uint256 private constant REWARD_UNLOCK_PERIOD = 14 days;
 
@@ -54,7 +54,7 @@ contract xMPHEchidnaTest is Asserts {
         AssertEpsilonEqual(beforePricePerFullShare, afterPricePerFullShare);
         Assert(
             afterShareBalance - beforeShareBalance ==
-                _mphAmount.decdiv(beforePricePerFullShare)
+                _mphAmount.div(beforePricePerFullShare)
         );
         Assert(afterShareBalance - beforeShareBalance == shareAmount);
     }
@@ -72,7 +72,7 @@ contract xMPHEchidnaTest is Asserts {
 
         Assert(
             afterMPHBalance - beforeMPHBalance ==
-                _shareAmount.decmul(beforePricePerFullShare)
+                _shareAmount.mul(beforePricePerFullShare)
         );
         Assert(afterMPHBalance - beforeMPHBalance == mphAmount);
         AssertEpsilonEqual(beforePricePerFullShare, afterPricePerFullShare);

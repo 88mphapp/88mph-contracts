@@ -22,7 +22,6 @@ import {MPHMinter} from "./rewards/MPHMinter.sol";
 import {IInterestOracle} from "./models/interest-oracle/IInterestOracle.sol";
 import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 import {Rescuable} from "./libs/Rescuable.sol";
-import {Sponsorable} from "./libs/Sponsorable.sol";
 import {console} from "hardhat/console.sol";
 
 /**
@@ -35,8 +34,7 @@ contract DInterest is
     ReentrancyGuardUpgradeable,
     BoringOwnable,
     Rescuable,
-    MulticallUpgradeable,
-    Sponsorable
+    MulticallUpgradeable
 {
     using SafeERC20 for ERC20;
     using AddressUpgradeable for address;
@@ -395,112 +393,6 @@ contract DInterest is
         returns (uint256 interestAmount)
     {
         return _payInterestToFunders(fundingID, moneyMarket().incomeIndex());
-    }
-
-    /**
-        Sponsored action functions
-     */
-
-    function sponsoredDeposit(
-        uint256 depositAmount,
-        uint64 maturationTimestamp,
-        uint256 minimumInterestAmount,
-        Sponsorship calldata sponsorship
-    )
-        external
-        nonReentrant
-        sponsored(
-            sponsorship,
-            this.sponsoredDeposit.selector,
-            abi.encode(
-                depositAmount,
-                maturationTimestamp,
-                minimumInterestAmount
-            )
-        )
-        returns (uint64 depositID, uint256 interestAmount)
-    {
-        return
-            _deposit(
-                sponsorship.sender,
-                depositAmount,
-                maturationTimestamp,
-                false,
-                minimumInterestAmount
-            );
-    }
-
-    function sponsoredTopupDeposit(
-        uint64 depositID,
-        uint256 depositAmount,
-        uint256 minimumInterestAmount,
-        Sponsorship calldata sponsorship
-    )
-        external
-        nonReentrant
-        sponsored(
-            sponsorship,
-            this.sponsoredTopupDeposit.selector,
-            abi.encode(depositID, depositAmount, minimumInterestAmount)
-        )
-        returns (uint256 interestAmount)
-    {
-        return
-            _topupDeposit(
-                sponsorship.sender,
-                depositID,
-                depositAmount,
-                minimumInterestAmount
-            );
-    }
-
-    function sponsoredRolloverDeposit(
-        uint64 depositID,
-        uint64 maturationTimestamp,
-        uint256 minimumInterestAmount,
-        Sponsorship calldata sponsorship
-    )
-        external
-        nonReentrant
-        sponsored(
-            sponsorship,
-            this.sponsoredRolloverDeposit.selector,
-            abi.encode(depositID, maturationTimestamp, minimumInterestAmount)
-        )
-        returns (uint256 newDepositID, uint256 interestAmount)
-    {
-        return
-            _rolloverDeposit(
-                sponsorship.sender,
-                depositID,
-                maturationTimestamp,
-                minimumInterestAmount
-            );
-    }
-
-    function sponsoredWithdraw(
-        uint64 depositID,
-        uint256 virtualTokenAmount,
-        bool early,
-        Sponsorship calldata sponsorship
-    )
-        external
-        nonReentrant
-        sponsored(
-            sponsorship,
-            this.sponsoredWithdraw.selector,
-            abi.encode(depositID, virtualTokenAmount, early)
-        )
-        returns (uint256 withdrawnStablecoinAmount)
-    {
-        return
-            _withdraw(
-                sponsorship.sender,
-                depositID,
-                virtualTokenAmount,
-                early,
-                false
-            );
     }
 
     /**

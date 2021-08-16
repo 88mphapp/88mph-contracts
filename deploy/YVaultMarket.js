@@ -18,20 +18,20 @@ module.exports = async ({
     contract: "YVaultMarket",
     proxy: {
       owner: config.govTimelock,
-      proxyContract: "OptimizedTransparentProxy"
+      proxyContract: "OptimizedTransparentProxy",
+      execute: {
+        init: {
+          methodName: "initialize",
+          args: [
+            poolConfig.moneyMarketParams.vault,
+            config.govTreasury,
+            poolConfig.stablecoin
+          ]
+        }
+      }
     }
   });
   if (deployResult.newlyDeployed) {
-    const MoneyMarket = artifacts.require("YVaultMarket");
-    const moneyMarketContract = await MoneyMarket.at(deployResult.address);
-    await moneyMarketContract.initialize(
-      poolConfig.moneyMarketParams.vault,
-      config.govTreasury,
-      poolConfig.stablecoin,
-      {
-        from: deployer
-      }
-    );
     log(`${name} deployed at ${deployResult.address}`);
   }
 };

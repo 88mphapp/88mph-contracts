@@ -100,7 +100,15 @@ contract BProtocolMarket is MoneyMarket {
     }
 
     /**
-        @dev See {Rescuable._authorizeRescue}
+        @dev IMPORTANT MUST READ
+        This function is for restricting unauthorized accounts from taking funds
+        and ensuring only tokens not used by the MoneyMarket can be rescued.
+        IF YOU DON'T GET IT RIGHT YOU WILL LOSE PEOPLE'S MONEY
+        MAKE SURE YOU DO ALL OF THE FOLLOWING
+        1) You MUST override it in a MoneyMarket implementation.
+        2) You MUST make `super._authorizeRescue(token, target);` the first line of your overriding function.
+        3) You MUST revert during a call to this function if a token used by the MoneyMarket is being rescued.
+        4) You SHOULD look at how existing MoneyMarkets do it as an example.
      */
     function _authorizeRescue(address token, address target)
         internal

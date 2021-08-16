@@ -43,7 +43,7 @@ contract CreamERC20Market is MoneyMarket {
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
         // Deposit `amount` stablecoin into cToken
-        stablecoin.safeApprove(address(cToken), amount);
+        stablecoin.safeIncreaseAllowance(address(cToken), amount);
         require(
             cToken.mint(amount) == ERRCODE_OK,
             "CreamERC20Market: Failed to mint cTokens"

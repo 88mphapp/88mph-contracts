@@ -718,7 +718,10 @@ contract DInterest is
 
             // Lend `depositAmount` stablecoin to money market
             MoneyMarket _moneyMarket = moneyMarket();
-            stablecoin.safeApprove(address(_moneyMarket), depositAmount);
+            stablecoin.safeIncreaseAllowance(
+                address(_moneyMarket),
+                depositAmount
+            );
             _moneyMarket.deposit(depositAmount);
         }
     }
@@ -824,7 +827,7 @@ contract DInterest is
 
         // Lend `depositAmount` stablecoin to money market
         MoneyMarket _moneyMarket = moneyMarket();
-        stablecoin.safeApprove(address(_moneyMarket), depositAmount);
+        stablecoin.safeIncreaseAllowance(address(_moneyMarket), depositAmount);
         _moneyMarket.deposit(depositAmount);
     }
 
@@ -1098,7 +1101,7 @@ contract DInterest is
 
         // Distribute `fundingInterestAmount` stablecoins to funders
         if (fundingInterestAmount > 0) {
-            stablecoin.safeApprove(
+            stablecoin.safeIncreaseAllowance(
                 address(fundingMultitoken),
                 fundingInterestAmount
             );
@@ -1229,9 +1232,9 @@ contract DInterest is
         // Transfer `fundAmount` stablecoins from sender
         stablecoin.safeTransferFrom(sender, address(this), fundAmount);
 
-        // Deposit `fundAmount` stablecoins into
+        // Deposit `fundAmount` stablecoins into moneyMarket
         MoneyMarket _moneyMarket = moneyMarket();
-        stablecoin.safeApprove(address(_moneyMarket), fundAmount);
+        stablecoin.safeIncreaseAllowance(address(_moneyMarket), fundAmount);
         _moneyMarket.deposit(fundAmount);
     }
 
@@ -1279,7 +1282,7 @@ contract DInterest is
             ) {
                 interestAmount = moneyMarket().withdraw(interestAmount);
                 if (interestAmount > 0) {
-                    stablecoin.safeApprove(
+                    stablecoin.safeIncreaseAllowance(
                         address(fundingMultitoken),
                         interestAmount
                     );

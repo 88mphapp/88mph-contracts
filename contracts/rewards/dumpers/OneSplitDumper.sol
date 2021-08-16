@@ -44,7 +44,7 @@ contract OneSplitDumper is AdminControlled {
         // dump token for rewardToken
         IERC20 token = IERC20(tokenAddress);
         uint256 tokenBalance = token.balanceOf(address(this));
-        token.safeApprove(address(oneSplit), tokenBalance);
+        token.safeIncreaseAllowance(address(oneSplit), tokenBalance);
 
         uint256 rewardTokenBalanceBefore = rewardToken.balanceOf(address(this));
         oneSplit.swap(
@@ -64,7 +64,7 @@ contract OneSplitDumper is AdminControlled {
 
     function notify() external onlyAdmin {
         uint256 balance = rewardToken.balanceOf(address(this));
-        rewardToken.safeApprove(address(xMPHToken), balance);
+        rewardToken.safeIncreaseAllowance(address(xMPHToken), balance);
         xMPHToken.distributeReward(balance);
     }
 }

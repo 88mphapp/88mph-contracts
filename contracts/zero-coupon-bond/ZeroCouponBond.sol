@@ -63,7 +63,7 @@ contract ZeroCouponBond is
             address(this),
             _initialDepositAmount
         );
-        stablecoin.safeApprove(address(pool), type(uint256).max);
+        stablecoin.safeIncreaseAllowance(address(pool), type(uint256).max);
         uint256 interestAmount;
         (depositID, interestAmount) = pool.deposit(
             _initialDepositAmount,

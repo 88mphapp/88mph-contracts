@@ -286,7 +286,7 @@ contract Factory {
             _fundingMultitoken,
             _mphMinter
         );
-        clone.transferOwnership(msg.sender);
+        clone.transferOwnership(msg.sender, true, false);
 
         emit CreateClone("DInterest", template, salt, address(clone));
         return clone;
@@ -326,7 +326,7 @@ contract Factory {
             params._fundingMultitoken,
             params._mphMinter
         );
-        clone.transferOwnership(msg.sender);
+        clone.transferOwnership(msg.sender, true, false);
 
         emit CreateClone(
             "DInterestWithDepositFee",

@@ -129,7 +129,7 @@ module.exports = async ({
     log(`Renounce FundingMultitoken METADATA_ROLE of ${deployer}`);
 
     // Transfer DInterest ownership to gov
-    await contract.transferOwnership(config.govTreasury, {
+    await contract.transferOwnership(config.govTreasury, true, false, {
       from: deployer
     });
     log(`Transfer ${poolConfig.name} ownership to ${config.govTreasury}`);

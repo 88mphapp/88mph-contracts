@@ -9,9 +9,7 @@ import {
 import {
     AddressUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-import {
-    OwnableUpgradeable
-} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {BoringOwnable} from "./libs/BoringOwnable.sol";
 import {
     MulticallUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
@@ -35,7 +33,7 @@ import {console} from "hardhat/console.sol";
  */
 contract DInterest is
     ReentrancyGuardUpgradeable,
-    OwnableUpgradeable,
+    BoringOwnable,
     Rescuable,
     MulticallUpgradeable,
     Sponsorable
@@ -1399,9 +1397,7 @@ contract DInterest is
     function _authorizeRescue(
         address, /*token*/
         address /*target*/
-    ) internal view override {
-        require(msg.sender == owner(), "NOT_OWNER");
-    }
+    ) internal view override onlyOwner {}
 
     /**
         @dev See {surplus}

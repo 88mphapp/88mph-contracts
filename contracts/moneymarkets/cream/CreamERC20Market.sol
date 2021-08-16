@@ -75,28 +75,6 @@ contract CreamERC20Market is MoneyMarket {
 
     function claimRewards() external override {}
 
-    function totalValue() external override returns (uint256) {
-        uint256 cTokenBalance = cToken.balanceOf(address(this));
-        // Amount of stablecoin units that 1 unit of cToken can be exchanged for, scaled by 10^18
-        uint256 cTokenPrice = cToken.exchangeRateCurrent();
-        return cTokenBalance.mul(cTokenPrice);
-    }
-
-    function totalValue(uint256 currentIncomeIndex)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        uint256 cTokenBalance = cToken.balanceOf(address(this));
-        return cTokenBalance.mul(currentIncomeIndex);
-    }
-
-    function incomeIndex() external override returns (uint256 index) {
-        index = cToken.exchangeRateCurrent();
-        require(index > 0, "CreamERC20Market: BAD_INDEX");
-    }
-
     function setRewards(address newValue) external override onlyOwner {}
 
     /**
@@ -109,6 +87,21 @@ contract CreamERC20Market is MoneyMarket {
     {
         super._authorizeRescue(token, target);
         require(token != address(cToken), "CreamERC20Market: no steal");
+    }
+
+    function _totalValue(uint256 currentIncomeIndex)
+        internal
+        view
+        override
+        returns (uint256)
+    {
+        uint256 cTokenBalance = cToken.balanceOf(address(this));
+        return cTokenBalance.mul(currentIncomeIndex);
+    }
+
+    function _incomeIndex() internal override returns (uint256 index) {
+        index = cToken.exchangeRateCurrent();
+        require(index > 0, "CreamERC20Market: BAD_INDEX");
     }
 
     uint256[48] private __gap;

@@ -34,15 +34,30 @@ abstract contract MoneyMarket is
         virtual
         returns (uint256 actualAmountWithdrawn);
 
-    function totalValue() external virtual returns (uint256); // The total value locked in the money market, in terms of the underlying stablecoin
+    /**
+        @notice The total value locked in the money market, in terms of the underlying stablecoin
+     */
+    function totalValue() external returns (uint256) {
+        return _totalValue(_incomeIndex());
+    }
 
+    /**
+        @notice The total value locked in the money market, in terms of the underlying stablecoin
+     */
     function totalValue(uint256 currentIncomeIndex)
         external
         view
-        virtual
-        returns (uint256); // The total value locked in the money market, in terms of the underlying stablecoin
+        returns (uint256)
+    {
+        return _totalValue(currentIncomeIndex);
+    }
 
-    function incomeIndex() external virtual returns (uint256); // Used for calculating the interest generated (e.g. cDai's price for the Compound market)
+    /**
+        @notice Used for calculating the interest generated (e.g. cDai's price for the Compound market)
+     */
+    function incomeIndex() external returns (uint256 index) {
+        return _incomeIndex();
+    }
 
     function stablecoin() external view virtual returns (ERC20);
 
@@ -59,6 +74,14 @@ abstract contract MoneyMarket is
     ) internal view virtual override {
         require(hasRole(RESCUER_ROLE, msg.sender), "MoneyMarket: not rescuer");
     }
+
+    function _totalValue(uint256 currentIncomeIndex)
+        internal
+        view
+        virtual
+        returns (uint256);
+
+    function _incomeIndex() internal virtual returns (uint256 index);
 
     event ESetParamAddress(
         address indexed sender,

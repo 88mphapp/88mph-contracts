@@ -99,22 +99,6 @@ contract AaveMarket is MoneyMarket {
         aaveMining.claimRewards(assets, type(uint256).max, rewards);
     }
 
-    function totalValue() external view override returns (uint256) {
-        return aToken.balanceOf(address(this));
-    }
-
-    function totalValue(
-        uint256 /*currentIncomeIndex*/
-    ) external view override returns (uint256) {
-        return aToken.balanceOf(address(this));
-    }
-
-    function incomeIndex() external view override returns (uint256 index) {
-        ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
-        index = lendingPool.getReserveNormalizedIncome(address(stablecoin));
-        require(index > 0, "AaveMarket: BAD_INDEX");
-    }
-
     /**
         Param setters
      */
@@ -134,6 +118,18 @@ contract AaveMarket is MoneyMarket {
     {
         super._authorizeRescue(token, target);
         require(token != address(aToken), "AaveMarket: no steal");
+    }
+
+    function _totalValue(
+        uint256 /*currentIncomeIndex*/
+    ) internal view override returns (uint256) {
+        return aToken.balanceOf(address(this));
+    }
+
+    function _incomeIndex() internal view override returns (uint256 index) {
+        ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
+        index = lendingPool.getReserveNormalizedIncome(address(stablecoin));
+        require(index > 0, "AaveMarket: BAD_INDEX");
     }
 
     uint256[45] private __gap;

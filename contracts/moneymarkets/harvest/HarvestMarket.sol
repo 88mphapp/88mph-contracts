@@ -95,31 +95,6 @@ contract HarvestMarket is MoneyMarket {
         rewardToken.safeTransfer(rewards, rewardToken.balanceOf(address(this)));
     }
 
-    function totalValue() external view override returns (uint256) {
-        uint256 sharePrice = vault.getPricePerFullShare();
-        uint256 shareBalance =
-            vault.balanceOf(address(this)) +
-                stakingPool.balanceOf(address(this));
-        return shareBalance.mul(sharePrice);
-    }
-
-    function totalValue(uint256 currentIncomeIndex)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        uint256 shareBalance =
-            vault.balanceOf(address(this)) +
-                stakingPool.balanceOf(address(this));
-        return shareBalance.mul(currentIncomeIndex);
-    }
-
-    function incomeIndex() external view override returns (uint256 index) {
-        index = vault.getPricePerFullShare();
-        require(index > 0, "HarvestMarket: BAD_INDEX");
-    }
-
     /**
         Param setters
      */
@@ -139,6 +114,25 @@ contract HarvestMarket is MoneyMarket {
     {
         super._authorizeRescue(token, target);
         require(token != address(stakingPool), "HarvestMarket: no steal");
+    }
+
+    function _totalValue(uint256 currentIncomeIndex)
+        internal
+        view
+        override
+        returns (uint256)
+    {
+        // not including vault token balance
+        // because it should be 0 during normal operation
+        // if tokens are sent to contract by mistake
+        // they will be rescued
+        uint256 shareBalance = stakingPool.balanceOf(address(this));
+        return shareBalance.mul(currentIncomeIndex);
+    }
+
+    function _incomeIndex() internal view override returns (uint256 index) {
+        index = vault.getPricePerFullShare();
+        require(index > 0, "HarvestMarket: BAD_INDEX");
     }
 
     uint256[46] private __gap;

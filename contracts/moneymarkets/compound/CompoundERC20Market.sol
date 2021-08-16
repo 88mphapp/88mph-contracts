@@ -85,9 +85,13 @@ contract CompoundERC20Market is MoneyMarket {
     }
 
     function claimRewards() external override {
-        comptroller.claimComp(address(this));
         ERC20 comp = ERC20(comptroller.getCompAddress());
-        comp.safeTransfer(rewards, comp.balanceOf(address(this)));
+        uint256 beforeBalance = comp.balanceOf(address(this));
+        comptroller.claimComp(address(this));
+        comp.safeTransfer(
+            rewards,
+            comp.balanceOf(address(this)) - beforeBalance
+        );
     }
 
     /**

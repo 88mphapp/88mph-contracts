@@ -85,9 +85,13 @@ contract BProtocolMarket is MoneyMarket {
     }
 
     function claimRewards() external override {
-        bComptroller.claimComp(address(this));
         ERC20 comp = ERC20(bComptroller.registry().comp());
-        comp.safeTransfer(rewards, comp.balanceOf(address(this)));
+        uint256 beforeBalance = comp.balanceOf(address(this));
+        bComptroller.claimComp(address(this));
+        comp.safeTransfer(
+            rewards,
+            comp.balanceOf(address(this)) - beforeBalance
+        );
     }
 
     /**

@@ -61,7 +61,8 @@ contract DInterestWithDepositFee is DInterest {
         address sender,
         uint256 depositAmount,
         uint64 maturationTimestamp,
-        bool rollover
+        bool rollover,
+        uint256 minimumInterestAmount
     )
         internal
         virtual
@@ -71,7 +72,8 @@ contract DInterestWithDepositFee is DInterest {
         (depositID, interestAmount) = _depositRecordData(
             sender,
             _applyDepositFee(depositAmount),
-            maturationTimestamp
+            maturationTimestamp,
+            minimumInterestAmount
         );
         _depositTransferFunds(sender, depositAmount, rollover);
     }
@@ -82,12 +84,14 @@ contract DInterestWithDepositFee is DInterest {
     function _topupDeposit(
         address sender,
         uint64 depositID,
-        uint256 depositAmount
+        uint256 depositAmount,
+        uint256 minimumInterestAmount
     ) internal virtual override returns (uint256 interestAmount) {
         interestAmount = _topupDepositRecordData(
             sender,
             depositID,
-            _applyDepositFee(depositAmount)
+            _applyDepositFee(depositAmount),
+            minimumInterestAmount
         );
         _topupDepositTransferFunds(sender, depositAmount);
     }

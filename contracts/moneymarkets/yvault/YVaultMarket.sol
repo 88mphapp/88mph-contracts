@@ -63,7 +63,12 @@ contract YVaultMarket is MoneyMarket {
         uint256 sharePrice = vault.pricePerShare();
         uint256 amountInShares = amountInUnderlying.div(sharePrice);
         if (amountInShares > 0) {
-            return vault.withdraw(amountInShares, msg.sender);
+            // maxLoss = 0
+            actualAmountWithdrawn = vault.withdraw(
+                amountInShares,
+                msg.sender,
+                0
+            );
         }
     }
 

@@ -31,10 +31,11 @@ contract VaultMock is ERC20 {
         underlying.transfer(msg.sender, underlyingAmount);
     }
 
-    function withdraw(uint256 sharesAmount, address recipient)
-        public
-        returns (uint256 underlyingAmount)
-    {
+    function withdraw(
+        uint256 sharesAmount,
+        address recipient,
+        uint256 maxLoss
+    ) public returns (uint256 underlyingAmount) {
         uint256 sharePrice = getPricePerFullShare();
         underlyingAmount = sharesAmount.mul(sharePrice);
         _burn(msg.sender, sharesAmount);

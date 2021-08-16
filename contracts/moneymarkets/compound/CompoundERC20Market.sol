@@ -116,7 +116,7 @@ contract CompoundERC20Market is MoneyMarket {
         Param setters
      */
     function setRewards(address newValue) external override onlyOwner {
-        require(newValue.isContract(), "CompoundERC20Market: not contract");
+        require(newValue != address(0), "CompoundERC20Market: 0 address");
         rewards = newValue;
         emit ESetParamAddress(msg.sender, "rewards", newValue);
     }

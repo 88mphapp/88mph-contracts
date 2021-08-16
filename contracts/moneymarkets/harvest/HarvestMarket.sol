@@ -124,7 +124,7 @@ contract HarvestMarket is MoneyMarket {
         Param setters
      */
     function setRewards(address newValue) external override onlyOwner {
-        require(newValue.isContract(), "HarvestMarket: not contract");
+        require(newValue != address(0), "HarvestMarket: 0 address");
         rewards = newValue;
         emit ESetParamAddress(msg.sender, "rewards", newValue);
     }

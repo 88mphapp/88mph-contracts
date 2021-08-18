@@ -1066,73 +1066,86 @@ contract DInterest is
         uint256 fundAmount
     ) internal virtual returns (uint64 fundingID, uint256 actualFundAmount) {
         Deposit storage depositEntry = _getDeposit(depositID);
+        fundingID = depositEntry.fundingID;
         uint256 incomeIndex = moneyMarket().incomeIndex();
 
-        (bool isNegative, uint256 surplusMagnitude) = _surplus(incomeIndex);
-        require(isNegative, "NO_DEBT");
-
-        (isNegative, surplusMagnitude) = _rawSurplusOfDeposit(
-            depositID,
-            incomeIndex
-        );
-        require(isNegative, "NO_DEBT");
-        if (fundAmount > surplusMagnitude) {
-            fundAmount = surplusMagnitude;
-        }
-
         // Create funding struct if one doesn't exist
-        uint256 totalPrincipal =
-            _depositVirtualTokenToPrincipal(
-                depositID,
-                depositEntry.virtualTokenTotalSupply
-            );
         uint256 totalPrincipalToFund;
-        fundingID = depositEntry.fundingID;
         uint256 mintTokenAmount;
-        if (fundingID == 0 || _getFunding(fundingID).principalPerToken == 0) {
-            // The first funder, create struct
-            require(block.timestamp <= type(uint64).max, "OVERFLOW");
-            fundingList.push(
-                Funding({
-                    depositID: depositID,
-                    lastInterestPayoutTimestamp: uint64(block.timestamp),
-                    recordedMoneyMarketIncomeIndex: incomeIndex,
-                    principalPerToken: ULTRA_PRECISION
-                })
-            );
-            require(fundingList.length <= type(uint64).max, "OVERFLOW");
-            fundingID = uint64(fundingList.length);
-            depositEntry.fundingID = fundingID;
-            totalPrincipalToFund =
-                (totalPrincipal * fundAmount) /
-                surplusMagnitude;
-            mintTokenAmount = totalPrincipalToFund;
-        } else {
-            // Not the first funder
-            // Trigger interest payment for existing funders
-            _payInterestToFunders(fundingID, incomeIndex);
+        {
+            uint256 virtualTokenTotalSupply =
+                depositEntry.virtualTokenTotalSupply;
+            uint256 totalPrincipal =
+                _depositVirtualTokenToPrincipal(
+                    depositID,
+                    virtualTokenTotalSupply
+                );
+            uint256 depositAmount =
+                virtualTokenTotalSupply.div(
+                    depositEntry.interestRate + PRECISION
+                );
+            if (
+                fundingID == 0 || _getFunding(fundingID).principalPerToken == 0
+            ) {
+                // The first funder, create struct
+                require(block.timestamp <= type(uint64).max, "OVERFLOW");
+                fundingList.push(
+                    Funding({
+                        depositID: depositID,
+                        lastInterestPayoutTimestamp: uint64(block.timestamp),
+                        recordedMoneyMarketIncomeIndex: incomeIndex,
+                        principalPerToken: ULTRA_PRECISION
+                    })
+                );
+                require(fundingList.length <= type(uint64).max, "OVERFLOW");
+                fundingID = uint64(fundingList.length);
+                depositEntry.fundingID = fundingID;
 
-            // Compute amount of principal to fund
-            uint256 principalPerToken =
-                _getFunding(fundingID).principalPerToken;
-            uint256 unfundedPrincipalAmount =
-                totalPrincipal -
-                    (fundingMultitoken.totalSupply(fundingID) *
-                        principalPerToken) /
-                    ULTRA_PRECISION;
-            surplusMagnitude =
-                (surplusMagnitude * unfundedPrincipalAmount) /
-                totalPrincipal;
-            if (fundAmount > surplusMagnitude) {
-                fundAmount = surplusMagnitude;
+                // Bound fundAmount upwards by the fixed rate yield amount
+                uint256 bound =
+                    calculateInterestAmount(
+                        depositAmount,
+                        depositEntry.maturationTimestamp - block.timestamp
+                    );
+                if (fundAmount > bound) {
+                    fundAmount = bound;
+                }
+
+                totalPrincipalToFund = (totalPrincipal * fundAmount) / bound;
+                mintTokenAmount = totalPrincipalToFund;
+            } else {
+                // Not the first funder
+                // Trigger interest payment for existing funders
+                _payInterestToFunders(fundingID, incomeIndex);
+
+                // Compute amount of principal to fund
+                uint256 principalPerToken =
+                    _getFunding(fundingID).principalPerToken;
+                uint256 unfundedPrincipalAmount =
+                    totalPrincipal -
+                        (fundingMultitoken.totalSupply(fundingID) *
+                            principalPerToken) /
+                        ULTRA_PRECISION;
+
+                // Bound fundAmount upwards by the fixed rate yield amount
+                uint256 bound =
+                    calculateInterestAmount(
+                        (depositAmount * unfundedPrincipalAmount) /
+                            totalPrincipal,
+                        depositEntry.maturationTimestamp - block.timestamp
+                    );
+                if (fundAmount > bound) {
+                    fundAmount = bound;
+                }
+                totalPrincipalToFund =
+                    (unfundedPrincipalAmount * fundAmount) /
+                    bound;
+                mintTokenAmount =
+                    (totalPrincipalToFund * ULTRA_PRECISION) /
+                    principalPerToken;
             }
-            totalPrincipalToFund =
-                (unfundedPrincipalAmount * fundAmount) /
-                surplusMagnitude;
-            mintTokenAmount =
-                (totalPrincipalToFund * ULTRA_PRECISION) /
-                principalPerToken;
         }
+
         // Mint funding multitoken
         fundingMultitoken.mint(sender, fundingID, mintTokenAmount);
 

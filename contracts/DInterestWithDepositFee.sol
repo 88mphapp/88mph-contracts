@@ -59,7 +59,8 @@ contract DInterestWithDepositFee is DInterest {
         uint256 depositAmount,
         uint64 maturationTimestamp,
         bool rollover,
-        uint256 minimumInterestAmount
+        uint256 minimumInterestAmount,
+        string memory uri
     )
         internal
         virtual
@@ -70,7 +71,8 @@ contract DInterestWithDepositFee is DInterest {
             sender,
             _applyDepositFee(depositAmount),
             maturationTimestamp,
-            minimumInterestAmount
+            minimumInterestAmount,
+            uri
         );
         _depositTransferFunds(sender, depositAmount, rollover);
     }

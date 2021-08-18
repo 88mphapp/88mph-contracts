@@ -232,7 +232,14 @@ contract DInterest is
         returns (uint64 depositID, uint256 interestAmount)
     {
         return
-            _deposit(msg.sender, depositAmount, maturationTimestamp, false, 0);
+            _deposit(
+                msg.sender,
+                depositAmount,
+                maturationTimestamp,
+                false,
+                0,
+                ""
+            );
     }
 
     /**
@@ -241,13 +248,15 @@ contract DInterest is
         @param depositAmount The amount of deposit, in stablecoin
         @param maturationTimestamp The Unix timestamp of maturation, in seconds
         @param minimumInterestAmount If the interest amount is less than this, revert
+        @param uri The metadata URI for the minted NFT
         @return depositID The ID of the created deposit
         @return interestAmount The amount of fixed-rate interest
      */
     function deposit(
         uint256 depositAmount,
         uint64 maturationTimestamp,
-        uint256 minimumInterestAmount
+        uint256 minimumInterestAmount,
+        string calldata uri
     ) external nonReentrant returns (uint64 depositID, uint256 interestAmount) {
         return
             _deposit(
@@ -255,7 +264,8 @@ contract DInterest is
                 depositAmount,
                 maturationTimestamp,
                 false,
-                minimumInterestAmount
+                minimumInterestAmount,
+                uri
             );
     }
 
@@ -308,7 +318,8 @@ contract DInterest is
         nonReentrant
         returns (uint256 newDepositID, uint256 interestAmount)
     {
-        return _rolloverDeposit(msg.sender, depositID, maturationTimestamp, 0);
+        return
+            _rolloverDeposit(msg.sender, depositID, maturationTimestamp, 0, "");
     }
 
     /**
@@ -317,12 +328,14 @@ contract DInterest is
         @param depositID The deposit to roll over
         @param maturationTimestamp The Unix timestamp of the new deposit, in seconds
         @param minimumInterestAmount If the interest amount is less than this, revert
+        @param uri The metadata URI of the NFT
         @return newDepositID The ID of the new deposit
      */
     function rolloverDeposit(
         uint64 depositID,
         uint64 maturationTimestamp,
-        uint256 minimumInterestAmount
+        uint256 minimumInterestAmount,
+        string calldata uri
     )
         external
         nonReentrant
@@ -333,7 +346,8 @@ contract DInterest is
                 msg.sender,
                 depositID,
                 maturationTimestamp,
-                minimumInterestAmount
+                minimumInterestAmount,
+                uri
             );
     }
 
@@ -523,13 +537,15 @@ contract DInterest is
         uint256 depositAmount,
         uint64 maturationTimestamp,
         bool rollover,
-        uint256 minimumInterestAmount
+        uint256 minimumInterestAmount,
+        string memory uri
     ) internal virtual returns (uint64 depositID, uint256 interestAmount) {
         (depositID, interestAmount) = _depositRecordData(
             sender,
             depositAmount,
             maturationTimestamp,
-            minimumInterestAmount
+            minimumInterestAmount,
+            uri
         );
         _depositTransferFunds(sender, depositAmount, rollover);
     }
@@ -538,7 +554,8 @@ contract DInterest is
         address sender,
         uint256 depositAmount,
         uint64 maturationTimestamp,
-        uint256 minimumInterestAmount
+        uint256 minimumInterestAmount,
+        string memory uri
     ) internal virtual returns (uint64 depositID, uint256 interestAmount) {
         // Ensure input is valid
         require(depositAmount >= MinDepositAmount, "BAD_AMOUNT");
@@ -583,7 +600,11 @@ contract DInterest is
         totalFeeOwed += feeAmount;
 
         // Mint depositNFT
-        depositNFT.mint(sender, depositID);
+        if (bytes(uri).length == 0) {
+            depositNFT.mint(sender, depositID);
+        } else {
+            depositNFT.mint(sender, depositID, uri);
+        }
 
         // Emit event
         emit EDeposit(
@@ -736,7 +757,8 @@ contract DInterest is
         address sender,
         uint64 depositID,
         uint64 maturationTimestamp,
-        uint256 minimumInterestAmount
+        uint256 minimumInterestAmount,
+        string memory uri
     ) internal virtual returns (uint64 newDepositID, uint256 interestAmount) {
         // withdraw from existing deposit
         uint256 withdrawnStablecoinAmount =
@@ -748,7 +770,8 @@ contract DInterest is
             withdrawnStablecoinAmount,
             maturationTimestamp,
             true,
-            minimumInterestAmount
+            minimumInterestAmount,
+            uri
         );
 
         emit ERolloverDeposit(sender, depositID, newDepositID);

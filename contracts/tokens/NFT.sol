@@ -32,6 +32,15 @@ contract NFT is ERC721URIStorageUpgradeable, OwnableUpgradeable {
         _safeMint(to, tokenId);
     }
 
+    function mint(
+        address to,
+        uint256 tokenId,
+        string calldata uri
+    ) external onlyOwner {
+        _safeMint(to, tokenId);
+        _setTokenURI(tokenId, uri);
+    }
+
     function burn(uint256 tokenId) external onlyOwner {
         _burn(tokenId);
     }

@@ -40,7 +40,6 @@ module.exports = async ({
             BigNumber(poolConfig.MinDepositAmount).toFixed(),
             BigNumber(poolConfig.DepositFee).toFixed(),
             moneyMarketDeployment.address,
-            poolConfig.stablecoin,
             feeModelDeployment.address,
             interestModelDeployment.address,
             interestOracleDeployment.address,

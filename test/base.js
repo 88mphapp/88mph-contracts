@@ -710,7 +710,6 @@ const setupTest = (module.exports.setupTest = async (
       DEFAULT_SALT,
       MaxDepositPeriod,
       MinDepositAmount,
-      stablecoin.address,
       feeModel.address,
       interestModel.address,
       interestOracle.address,

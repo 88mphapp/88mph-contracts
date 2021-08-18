@@ -16,7 +16,6 @@ contract DInterestWithDepositFee is DInterest {
         @param _MaxDepositPeriod The maximum deposit period, in seconds
         @param _MinDepositAmount The minimum deposit amount, in stablecoins
         @param _DepositFee The fee charged by the underlying money market
-        @param _stablecoin Address of the stablecoin used to store funds
         @param _feeModel Address of the FeeModel contract that determines how fees are charged
         @param _interestModel Address of the InterestModel contract that determines how much interest to offer
         @param _interestOracle Address of the InterestOracle contract that provides the average interest rate
@@ -28,7 +27,6 @@ contract DInterestWithDepositFee is DInterest {
         uint64 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
         uint256 _DepositFee,
-        address _stablecoin,
         address _feeModel,
         address _interestModel,
         address _interestOracle,
@@ -39,7 +37,6 @@ contract DInterestWithDepositFee is DInterest {
         __DInterest_init(
             _MaxDepositPeriod,
             _MinDepositAmount,
-            _stablecoin,
             _feeModel,
             _interestModel,
             _interestOracle,

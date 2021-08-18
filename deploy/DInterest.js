@@ -40,7 +40,6 @@ module.exports = async ({
     await contract.initialize(
       BigNumber(poolConfig.MaxDepositPeriod).toFixed(),
       BigNumber(poolConfig.MinDepositAmount).toFixed(),
-      poolConfig.stablecoin,
       feeModelDeployment.address,
       interestModelDeployment.address,
       interestOracleDeployment.address,

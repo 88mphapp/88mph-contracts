@@ -100,7 +100,6 @@ contract DInterest is
     uint256 public totalFundedPrincipalAmount;
 
     // External smart contracts
-    ERC20 public stablecoin;
     IFeeModel public feeModel;
     IInterestModel public interestModel;
     IInterestOracle public interestOracle;
@@ -167,7 +166,6 @@ contract DInterest is
     function __DInterest_init(
         uint64 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
-        address _stablecoin,
         address _feeModel,
         address _interestModel,
         address _interestOracle,
@@ -178,7 +176,6 @@ contract DInterest is
         __ReentrancyGuard_init();
         __Ownable_init();
 
-        stablecoin = ERC20(_stablecoin);
         feeModel = IFeeModel(_feeModel);
         interestModel = IInterestModel(_interestModel);
         interestOracle = IInterestOracle(_interestOracle);
@@ -192,7 +189,6 @@ contract DInterest is
     /**
         @param _MaxDepositPeriod The maximum deposit period, in seconds
         @param _MinDepositAmount The minimum deposit amount, in stablecoins
-        @param _stablecoin Address of the stablecoin used to store funds
         @param _feeModel Address of the FeeModel contract that determines how fees are charged
         @param _interestModel Address of the InterestModel contract that determines how much interest to offer
         @param _interestOracle Address of the InterestOracle contract that provides the average interest rate
@@ -203,7 +199,6 @@ contract DInterest is
     function initialize(
         uint64 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
-        address _stablecoin,
         address _feeModel,
         address _interestModel,
         address _interestOracle,
@@ -214,7 +209,6 @@ contract DInterest is
         __DInterest_init(
             _MaxDepositPeriod,
             _MinDepositAmount,
-            _stablecoin,
             _feeModel,
             _interestModel,
             _interestOracle,
@@ -549,6 +543,14 @@ contract DInterest is
     }
 
     /**
+        @notice Returns the stablecoin ERC20 token contract
+        @return The stablecoin
+     */
+    function stablecoin() public view returns (ERC20) {
+        return moneyMarket().stablecoin();
+    }
+
+    /**
         Internal action functions
      */
 
@@ -638,12 +640,14 @@ contract DInterest is
         // Only transfer funds from sender if it's not a rollover
         // because if it is the funds are already in the contract
         if (!rollover) {
+            ERC20 _stablecoin = stablecoin();
+
             // Transfer `depositAmount` stablecoin to DInterest
-            stablecoin.safeTransferFrom(sender, address(this), depositAmount);
+            _stablecoin.safeTransferFrom(sender, address(this), depositAmount);
 
             // Lend `depositAmount` stablecoin to money market
             MoneyMarket _moneyMarket = moneyMarket();
-            stablecoin.safeApprove(address(_moneyMarket), depositAmount);
+            _stablecoin.safeApprove(address(_moneyMarket), depositAmount);
             _moneyMarket.deposit(depositAmount);
         }
     }
@@ -740,12 +744,14 @@ contract DInterest is
         internal
         virtual
     {
+        ERC20 _stablecoin = stablecoin();
+
         // Transfer `depositAmount` stablecoin to DInterest
-        stablecoin.safeTransferFrom(sender, address(this), depositAmount);
+        _stablecoin.safeTransferFrom(sender, address(this), depositAmount);
 
         // Lend `depositAmount` stablecoin to money market
         MoneyMarket _moneyMarket = moneyMarket();
-        stablecoin.safeApprove(address(_moneyMarket), depositAmount);
+        _stablecoin.safeApprove(address(_moneyMarket), depositAmount);
         _moneyMarket.deposit(depositAmount);
     }
 
@@ -944,6 +950,8 @@ contract DInterest is
         uint256 refundAmount,
         bool rollover
     ) internal virtual returns (uint256 withdrawnStablecoinAmount) {
+        ERC20 _stablecoin = stablecoin();
+
         // Withdraw funds from money market
         // Withdraws principal together with funding interest to save gas
         if (rollover) {
@@ -1006,24 +1014,24 @@ contract DInterest is
             }
 
             if (withdrawnStablecoinAmount > 0) {
-                stablecoin.safeTransfer(sender, withdrawnStablecoinAmount);
+                _stablecoin.safeTransfer(sender, withdrawnStablecoinAmount);
             }
         }
 
         // Send `feeAmount` stablecoin to feeModel beneficiary
         if (feeAmount > 0) {
-            stablecoin.safeTransfer(feeModel.beneficiary(), feeAmount);
+            _stablecoin.safeTransfer(feeModel.beneficiary(), feeAmount);
         }
 
         // Distribute `fundingInterestAmount` stablecoins to funders
         if (fundingInterestAmount > 0) {
-            stablecoin.safeApprove(
+            _stablecoin.safeApprove(
                 address(fundingMultitoken),
                 fundingInterestAmount
             );
             fundingMultitoken.distributeDividends(
                 fundingID,
-                address(stablecoin),
+                address(_stablecoin),
                 fundingInterestAmount
             );
             // Mint funder rewards
@@ -1145,12 +1153,14 @@ contract DInterest is
         internal
         virtual
     {
+        ERC20 _stablecoin = stablecoin();
+
         // Transfer `fundAmount` stablecoins from sender
-        stablecoin.safeTransferFrom(sender, address(this), fundAmount);
+        _stablecoin.safeTransferFrom(sender, address(this), fundAmount);
 
         // Deposit `fundAmount` stablecoins into
         MoneyMarket _moneyMarket = moneyMarket();
-        stablecoin.safeApprove(address(_moneyMarket), fundAmount);
+        _stablecoin.safeApprove(address(_moneyMarket), fundAmount);
         _moneyMarket.deposit(fundAmount);
     }
 
@@ -1191,20 +1201,21 @@ contract DInterest is
 
         // Distribute interest to funders
         if (interestAmount > 0) {
-            uint256 stablecoinPrecision = 10**uint256(stablecoin.decimals());
+            ERC20 _stablecoin = stablecoin();
+            uint256 stablecoinPrecision = 10**uint256(_stablecoin.decimals());
             if (
                 interestAmount >
                 stablecoinPrecision / FUNDER_PAYOUT_THRESHOLD_DIVISOR
             ) {
                 interestAmount = moneyMarket().withdraw(interestAmount);
                 if (interestAmount > 0) {
-                    stablecoin.safeApprove(
+                    _stablecoin.safeApprove(
                         address(fundingMultitoken),
                         interestAmount
                     );
                     fundingMultitoken.distributeDividends(
                         fundingID,
-                        address(stablecoin),
+                        address(_stablecoin),
                         interestAmount
                     );
 
@@ -1490,7 +1501,6 @@ contract DInterest is
     function setInterestOracle(address newValue) external onlyOwner {
         require(newValue.isContract(), "NOT_CONTRACT");
         interestOracle = IInterestOracle(newValue);
-        require(moneyMarket().stablecoin() == stablecoin, "BAD_ORACLE");
         emit ESetParamAddress(msg.sender, "interestOracle", newValue);
     }
 
@@ -1538,7 +1548,7 @@ contract DInterest is
         (bool isNegative, uint256 surplusMagnitude) = surplus();
         if (!isNegative) {
             surplusMagnitude = moneyMarket().withdraw(surplusMagnitude);
-            stablecoin.safeTransfer(recipient, surplusMagnitude);
+            stablecoin().safeTransfer(recipient, surplusMagnitude);
         }
     }
 

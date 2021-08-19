@@ -14,8 +14,9 @@ contract("E2E-MPHRewards", accounts => {
 
   // Constants
   const INIT_INTEREST_RATE = 0.1; // 10% APY
-  const INIT_INTEREST_RATE_PER_SECOND = Math.log2(
-    Math.pow(INIT_INTEREST_RATE + 1, 1 / Base.YEAR_IN_SEC)
+  const INIT_INTEREST_RATE_PER_SECOND = Math.pow(
+    INIT_INTEREST_RATE + 1,
+    1 / Base.YEAR_IN_SEC
   );
   const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 

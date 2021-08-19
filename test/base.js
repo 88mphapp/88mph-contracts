@@ -697,9 +697,7 @@ const setupTest = (module.exports.setupTest = async (
     const interestOracleReceipt = await factory.createEMAOracle(
       interestOracleTemplate.address,
       DEFAULT_SALT,
-      num2str(
-        Math.log2(Math.pow(INIT_INTEREST_RATE + 1, 1 / YEAR_IN_SEC)) * PRECISION
-      ),
+      num2str(Math.pow(INIT_INTEREST_RATE + 1, 1 / YEAR_IN_SEC) * PRECISION),
       EMAUpdateInterval,
       EMASmoothingFactor,
       EMAAverageWindowInIntervals,

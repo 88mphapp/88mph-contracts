@@ -75,9 +75,9 @@ contract EMAOracle is IInterestOracle, Initializable {
             // in the underlying yield protocol
             newIncomeIndex = _lastIncomeIndex;
         }
-        // incomingValue = log2(newIncomeIndex / _lastIncomeIndex) * (1 / timeElapsed)
+        // incomingValue = (newIncomeIndex / _lastIncomeIndex) ** (1 / timeElapsed)
         uint256 incomingValue =
-            newIncomeIndex.div(_lastIncomeIndex).log2().mul(
+            newIncomeIndex.div(_lastIncomeIndex).pow(
                 PRBMathUD60x18.SCALE / timeElapsed
             );
 

@@ -3,6 +3,7 @@ pragma solidity 0.8.4;
 
 import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 import {IInterestModel} from "./IInterestModel.sol";
+import "hardhat/console.sol";
 
 contract LinearDecayInterestModel is IInterestModel {
     using PRBMathUD60x18 for uint256;
@@ -36,10 +37,10 @@ contract LinearDecayInterestModel is IInterestModel {
         bool, /*surplusIsNegative*/
         uint256 /*surplusAmount*/
     ) external view override returns (uint256 interestAmount) {
-        // interestAmount = depositAmount * (2 ** (moneyMarketInterestRatePerSecond * depositPeriodInSeconds) - 1) * IRMultiplier
+        // interestAmount = depositAmount * (moneyMarketInterestRatePerSecond ** depositPeriodInSeconds - 1) * IRMultiplier
         interestAmount = depositAmount
             .mul(
-            (moneyMarketInterestRatePerSecond * depositPeriodInSeconds).exp2() -
+            moneyMarketInterestRatePerSecond.pow(depositPeriodInSeconds) -
                 PRECISION
         )
             .mul(getIRMultiplier(depositPeriodInSeconds));

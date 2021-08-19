@@ -2269,7 +2269,8 @@ contract("DInterest", accounts => {
           );
 
           // check surplus
-          const surplusObj = await baseContracts.dInterestPool.rawSurplusOfDeposit.call(
+          const surplusObj = await baseContracts.lens.rawSurplusOfDeposit.call(
+            baseContracts.dInterestPool.address,
             1
           );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
@@ -2292,7 +2293,8 @@ contract("DInterest", accounts => {
 
           // check surplus
           {
-            const surplusObj = await baseContracts.dInterestPool.rawSurplusOfDeposit.call(
+            const surplusObj = await baseContracts.lens.rawSurplusOfDeposit.call(
+              baseContracts.dInterestPool.address,
               1
             );
             const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
@@ -2329,7 +2331,8 @@ contract("DInterest", accounts => {
           });
 
           // check surplus
-          const surplusObj = await baseContracts.dInterestPool.rawSurplusOfDeposit.call(
+          const surplusObj = await baseContracts.lens.rawSurplusOfDeposit.call(
+            baseContracts.dInterestPool.address,
             1
           );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
@@ -2362,7 +2365,8 @@ contract("DInterest", accounts => {
           );
 
           // check surplus
-          const surplusObj = await baseContracts.dInterestPool.rawSurplusOfDeposit.call(
+          const surplusObj = await baseContracts.lens.rawSurplusOfDeposit.call(
+            baseContracts.dInterestPool.address,
             1
           );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(

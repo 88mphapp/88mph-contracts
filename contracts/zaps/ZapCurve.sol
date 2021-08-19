@@ -103,7 +103,8 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
 
         // create funding
         stablecoin.safeIncreaseAllowance(pool, outputTokenAmount);
-        uint64 fundingID = poolContract.fund(depositID, outputTokenAmount);
+        (uint64 fundingID, , , ) =
+            poolContract.fund(depositID, outputTokenAmount);
 
         // transfer funding multitoken to msg.sender
         fundingMultitoken.safeTransferFrom(

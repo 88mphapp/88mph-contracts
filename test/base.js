@@ -729,6 +729,7 @@ const setupTest = (module.exports.setupTest = async (
       dInterestPool.methods["topupDeposit(uint64,uint256)"];
     dInterestPool.rolloverDeposit =
       dInterestPool.methods["rolloverDeposit(uint64,uint64)"];
+    dInterestPool.fund = dInterestPool.methods["fund(uint64,uint256)"];
 
     // Set MPH minting multiplier for DInterest pool
     await mphMinter.grantRole(WHITELISTED_POOL_ROLE, dInterestPool.address, {

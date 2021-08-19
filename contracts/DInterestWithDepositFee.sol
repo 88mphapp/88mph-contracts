@@ -101,13 +101,29 @@ contract DInterestWithDepositFee is DInterest {
     function _fund(
         address sender,
         uint64 depositID,
-        uint256 fundAmount
-    ) internal virtual override returns (uint64 fundingID) {
-        uint256 actualFundAmount;
-        (fundingID, actualFundAmount) = _fundRecordData(
+        uint256 fundAmount,
+        uint256 minPrincipalFunded
+    )
+        internal
+        virtual
+        override
+        returns (
+            uint64 fundingID,
+            uint256 fundingMultitokensMinted,
+            uint256 actualFundAmount,
+            uint256 principalFunded
+        )
+    {
+        (
+            fundingID,
+            fundingMultitokensMinted,
+            actualFundAmount,
+            principalFunded
+        ) = _fundRecordData(
             sender,
             depositID,
-            _applyDepositFee(fundAmount)
+            _applyDepositFee(fundAmount),
+            minPrincipalFunded
         );
         _fundTransferFunds(sender, _unapplyDepositFee(fundAmount));
     }

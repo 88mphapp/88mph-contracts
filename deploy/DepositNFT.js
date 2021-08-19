@@ -31,7 +31,7 @@ module.exports = async ({
     );
     const txReceipt = deployReceipt.receipt;
     const NFTAddress = txReceipt.logs[0].args.clone;
-    const NFT = artifacts.require("NFT");
+    const NFT = artifacts.require("NFTWithSVG");
     const NFTContract = await NFT.at(NFTAddress);
     await save(nftName, {
       abi: NFTContract.abi,

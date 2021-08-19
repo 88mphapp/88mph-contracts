@@ -10,7 +10,7 @@ module.exports = async ({
 
   const deployResult = await deploy("NFTTemplate", {
     from: deployer,
-    contract: "NFT"
+    contract: "NFTWithSVG"
   });
   if (deployResult.newlyDeployed) {
     log(`NFTTemplate deployed at ${deployResult.address}`);

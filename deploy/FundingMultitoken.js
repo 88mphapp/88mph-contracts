@@ -2,9 +2,9 @@ const config = require("../deploy-configs/get-network-config");
 const poolConfig = require("../deploy-configs/get-pool-config");
 const BigNumber = require("bignumber.js");
 
-const name = `${poolConfig.nftNamePrefix}Floating Rate Bond`;
-const baseName = `${poolConfig.nftNamePrefix}Floating Rate Bond `;
-const baseSymbol = `${poolConfig.nftSymbolPrefix}Floating-Rate-Bond-`;
+const name = `${poolConfig.nftNamePrefix}Yield Token`;
+const baseName = `${poolConfig.nftNamePrefix}Yield Token `;
+const baseSymbol = `${poolConfig.nftSymbolPrefix}Yield-Token-`;
 
 module.exports = async ({ getNamedAccounts, deployments, artifacts }) => {
   const { log, get, deploy } = deployments;
@@ -13,7 +13,7 @@ module.exports = async ({ getNamedAccounts, deployments, artifacts }) => {
   const dividendTokens = [poolConfig.stablecoin, config.mph];
   const ERC20 = artifacts.require("ERC20");
   const stablecoinContract = await ERC20.at(poolConfig.stablecoin);
-  const stablecoinDecimals = await stablecoinContract.decimals.call();
+  const stablecoinDecimals = 6; //await stablecoinContract.decimals.call();
   const erc20WrapperTemplateDeployment = await get("ERC20WrapperTemplate");
 
   const deployResult = await deploy(name, {

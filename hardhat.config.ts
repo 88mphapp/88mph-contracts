@@ -64,10 +64,10 @@ const config: HardhatUserConfig = {
         url:
           "https://eth-mainnet.alchemyapi.io/v2/pvGDp1uf8J7QZ7MXpLhYs_SnMnsE0TY5"
       },*/
-      /*forking: {
+      forking: {
         url:
           "https://eth-rinkeby.alchemyapi.io/v2/2LxgvUYd5FzgiXVoAWlq-KyM4v-E7KJ4"
-      },*/
+      },
       allowUnlimitedContractSize: true
     },
     rinkeby: {

@@ -1,13 +1,7 @@
 const BigNumber = require("bignumber.js");
 const config = require("../deploy-configs/get-network-config");
 
-module.exports = async ({
-  web3,
-  getNamedAccounts,
-  deployments,
-  getChainId,
-  artifacts
-}) => {
+module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
 
@@ -63,7 +57,7 @@ module.exports = async ({
     log(`Set MPHMinter in Vesting02 to ${deployResult.address}`);
 
     // transfer Vesting02 ownership to gov treasury
-    await vesting02Contract.transferOwnership(config.govTreasury, {
+    await vesting02Contract.transferOwnership(config.govTreasury, true, false, {
       from: deployer
     });
     log(`Transfer Vesting02 ownership to ${config.govTreasury}`);

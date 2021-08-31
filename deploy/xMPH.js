@@ -1,12 +1,6 @@
 const config = require("../deploy-configs/get-network-config");
 
-module.exports = async ({
-  web3,
-  getNamedAccounts,
-  deployments,
-  getChainId,
-  artifacts
-}) => {
+module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
@@ -37,6 +31,12 @@ module.exports = async ({
       from: deployer
     });
     log(`Give xMPH DEFAULT_ADMIN_ROLE to ${config.govTreasury}`);
+
+    // renounce xMPH admin role
+    await contract.renounceRole(DEFAULT_ADMIN_ROLE, deployer, {
+      from: deployer
+    });
+    log(`Renounce xMPH DEFAULT_ADMIN_ROLE of ${deployer}`);
   }
 };
 module.exports.tags = ["xMPH"];

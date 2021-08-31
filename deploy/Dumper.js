@@ -46,12 +46,6 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
       from: deployer
     });
     log(`Grant xMPH DISTRIBUTOR_ROLE to ${deployResult.address}`);
-
-    // renounce xMPH admin role
-    await contract.renounceRole(DEFAULT_ADMIN_ROLE, deployer, {
-      from: deployer
-    });
-    log(`Renounce xMPH DEFAULT_ADMIN_ROLE of ${deployer}`);
   }
 };
 module.exports.tags = ["Dumper", "MPHRewards"];

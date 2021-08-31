@@ -1,3 +1,4 @@
+const config = require("../deploy-configs/get-network-config");
 const poolConfig = require("../deploy-configs/get-pool-config");
 
 const nftName = `${poolConfig.nftNamePrefix}Deposit`;

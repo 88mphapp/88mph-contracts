@@ -9,8 +9,6 @@
   "MaxDepositPeriod": 31556952,
   "MinDepositAmount": 0.01e6,
   "stablecoin": "0x4dbcdf9b62e891a7cec5a2568c3f4faf9e8abe2b",
-  "multiplierIntercept": 0.5e18,
-  "multiplierSlope": 7922184626,
   "EMAInitial": 59.18e8,
   "EMAUpdateInverval": 86400,
   "EMASmoothingFactor": 2e18,

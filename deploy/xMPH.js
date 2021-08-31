@@ -7,20 +7,14 @@ module.exports = async ({
   getChainId,
   artifacts
 }) => {
-  const { deploy, log, get } = deployments;
+  const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
   const deployResult = await deploy("xMPH", {
     from: deployer,
     proxy: {
       owner: config.govTimelock,
-      proxyContract: "OptimizedTransparentProxy",
-      execute: {
-        init: {
-          methodName: "initialize",
-          args: [config.mph, config.xMPHRewardUnlockPeriod, config.govTreasury]
-        }
-      }
+      proxyContract: "OptimizedTransparentProxy"
     }
   });
   if (deployResult.newlyDeployed) {
@@ -29,6 +23,11 @@ module.exports = async ({
     const MPHToken = artifacts.require("MPHToken");
     const mphContract = await MPHToken.at(config.mph);
     await mphContract.approve(deployResult.address, 1e9);
+    await contract.initialize(
+      config.mph,
+      config.xMPHRewardUnlockPeriod,
+      config.govTreasury
+    );
     log(`xMPH deployed at ${deployResult.address}`);
 
     // transfer xMPH ownership to gov treasury

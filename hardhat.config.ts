@@ -41,7 +41,7 @@ const config: HardhatUserConfig = {
   },
   namedAccounts: {
     deployer: {
-      default: 2
+      default: 1
     }
   },
   paths: {
@@ -55,20 +55,22 @@ const config: HardhatUserConfig = {
       from: secret.account,
       accounts: {
         mnemonic: secret.mnemonic
-      },
-      gas: "auto",
-      gasPrice: 84.0000001e9
+      }
     },
     hardhat: {
-      /*forking: {
-        url:
-          "https://eth-mainnet.alchemyapi.io/v2/pvGDp1uf8J7QZ7MXpLhYs_SnMnsE0TY5"
-      },*/
       forking: {
         url:
-          "https://eth-rinkeby.alchemyapi.io/v2/2LxgvUYd5FzgiXVoAWlq-KyM4v-E7KJ4"
+          "https://eth-mainnet.alchemyapi.io/v2/pvGDp1uf8J7QZ7MXpLhYs_SnMnsE0TY5"
       },
-      allowUnlimitedContractSize: true
+      /*forking: {
+        url:
+          "https://eth-rinkeby.alchemyapi.io/v2/2LxgvUYd5FzgiXVoAWlq-KyM4v-E7KJ4"
+      },*/
+      allowUnlimitedContractSize: true,
+      from: secret.account,
+      accounts: {
+        mnemonic: secret.mnemonic
+      }
     },
     rinkeby: {
       url:

@@ -58,7 +58,7 @@ const config: HardhatUserConfig = {
       }
     },
     hardhat: {
-      forking: {
+      /*forking: {
         url:
           "https://eth-mainnet.alchemyapi.io/v2/pvGDp1uf8J7QZ7MXpLhYs_SnMnsE0TY5"
       },
@@ -66,11 +66,7 @@ const config: HardhatUserConfig = {
         url:
           "https://eth-rinkeby.alchemyapi.io/v2/2LxgvUYd5FzgiXVoAWlq-KyM4v-E7KJ4"
       },*/
-      allowUnlimitedContractSize: true,
-      from: secret.account,
-      accounts: {
-        mnemonic: secret.mnemonic
-      }
+      allowUnlimitedContractSize: true
     },
     rinkeby: {
       url:

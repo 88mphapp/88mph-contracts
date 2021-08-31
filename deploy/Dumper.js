@@ -1,12 +1,6 @@
 const config = require("../deploy-configs/get-network-config");
 
-module.exports = async ({
-  web3,
-  getNamedAccounts,
-  deployments,
-  getChainId,
-  artifacts
-}) => {
+module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
 
@@ -15,7 +9,16 @@ module.exports = async ({
   const deployResult = await deploy("Dumper", {
     from: deployer,
     contract: "Dumper",
-    args: [config.oneSplitAddress, xMPHDeployment.address]
+    proxy: {
+      owner: config.govTimelock,
+      proxyContract: "OptimizedTransparentProxy",
+      execute: {
+        init: {
+          methodName: "initialize",
+          args: [config.oneSplitAddress, xMPHDeployment.address]
+        }
+      }
+    }
   });
   if (deployResult.newlyDeployed) {
     log(`Dumper deployed at ${deployResult.address}`);

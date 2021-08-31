@@ -14,7 +14,11 @@ contract OneSplitDumper is AdminControlled {
     xMPH public xMPHToken;
     IERC20 public rewardToken;
 
-    constructor(address _oneSplit, address _xMPHToken) {
+    function __OneSplitDumper_init(address _oneSplit, address _xMPHToken)
+        internal
+        initializer
+    {
+        __AdminControlled_init();
         oneSplit = OneSplitAudit(_oneSplit);
         xMPHToken = xMPH(_xMPHToken);
         rewardToken = IERC20(address(xMPHToken.mph()));

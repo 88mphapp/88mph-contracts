@@ -18,5 +18,6 @@
   "moneyMarketParams": {
     "vault": "0x9aA8F427A17d6B0d91B6262989EdC7D45d6aEdf8",
     "stakingPool": "0xA3Cf8D1CEe996253FAD1F8e3d68BDCba7B3A3Db5"
-  }
+  },
+  "fundingMultitokenMetadataURI": ""
 }

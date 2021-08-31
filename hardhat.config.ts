@@ -1,14 +1,19 @@
-require("@nomiclabs/hardhat-truffle5");
-require("@nomiclabs/hardhat-web3");
-require("solidity-coverage");
-require("hardhat-deploy");
-require("hardhat-gas-reporter");
-require("@nomiclabs/hardhat-solhint");
-require("hardhat-spdx-license-identifier");
-require("hardhat-docgen");
-require("@nomiclabs/hardhat-etherscan");
-require("@openzeppelin/hardhat-upgrades");
-require("hardhat-contract-sizer");
+import "@nomiclabs/hardhat-truffle5";
+import "@nomiclabs/hardhat-web3";
+import "solidity-coverage";
+import "hardhat-deploy";
+import "hardhat-gas-reporter";
+import "@nomiclabs/hardhat-solhint";
+import "hardhat-spdx-license-identifier";
+import "hardhat-docgen";
+import "@nomiclabs/hardhat-etherscan";
+import "@openzeppelin/hardhat-upgrades";
+import "hardhat-contract-sizer";
+import "@typechain/hardhat";
+import "@nomiclabs/hardhat-ethers";
+import "@nomiclabs/hardhat-waffle";
+
+import { HardhatUserConfig } from "hardhat/config";
 
 let secret;
 
@@ -21,7 +26,7 @@ try {
   };
 }
 
-module.exports = {
+const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.4",
     settings: {
@@ -59,6 +64,10 @@ module.exports = {
         url:
           "https://eth-mainnet.alchemyapi.io/v2/pvGDp1uf8J7QZ7MXpLhYs_SnMnsE0TY5"
       },*/
+      forking: {
+        url:
+          "https://eth-rinkeby.alchemyapi.io/v2/2LxgvUYd5FzgiXVoAWlq-KyM4v-E7KJ4"
+      },
       allowUnlimitedContractSize: true
     },
     rinkeby: {
@@ -90,5 +99,10 @@ module.exports = {
   gasReporter: {
     currency: "USD",
     coinmarketcap: "b0c64afd-6aca-4201-8779-db8dc03e9793"
+  },
+  typechain: {
+    target: "ethers-v5"
   }
 };
+
+export default config;

@@ -22,7 +22,7 @@ module.exports = async ({
   );
   const depositNFTDeployment = await get(`${poolConfig.nftNamePrefix}Deposit`);
   const fundingMultitokenDeployment = await get(
-    `${poolConfig.nftNamePrefix}Floating Rate Bond`
+    `${poolConfig.nftNamePrefix}Yield Token`
   );
   const mphMinterDeployment = await get("MPHMinter");
 
@@ -38,7 +38,6 @@ module.exports = async ({
           args: [
             BigNumber(poolConfig.MaxDepositPeriod).toFixed(),
             BigNumber(poolConfig.MinDepositAmount).toFixed(),
-            moneyMarketDeployment.address,
             feeModelDeployment.address,
             interestModelDeployment.address,
             interestOracleDeployment.address,
@@ -148,7 +147,7 @@ module.exports.dependencies = [
   poolConfig.interestModel,
   `${poolConfig.name}--${poolConfig.interestOracle}`,
   `${poolConfig.nftNamePrefix}Deposit`,
-  `${poolConfig.nftNamePrefix}Floating Rate Bond`,
+  `${poolConfig.nftNamePrefix}Yield Token`,
   "MPHRewards",
   "DInterestLens",
   "MPHMinterLegacy"

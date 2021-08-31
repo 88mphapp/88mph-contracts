@@ -4,7 +4,7 @@ pragma solidity 0.8.4;
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {FundingMultitoken} from "./tokens/FundingMultitoken.sol";
-import {NFT} from "./tokens/NFT.sol";
+import {NFTWithSVG} from "./tokens/NFTWithSVG.sol";
 import {ZeroCouponBond} from "./zero-coupon-bond/ZeroCouponBond.sol";
 import {EMAOracle} from "./models/interest-oracle/EMAOracle.sol";
 import {AaveMarket} from "./moneymarkets/aave/AaveMarket.sol";
@@ -33,14 +33,14 @@ contract Factory {
         bytes32 salt,
         string calldata _tokenName,
         string calldata _tokenSymbol
-    ) external returns (NFT) {
-        NFT clone = NFT(template.cloneDeterministic(salt));
+    ) external returns (NFTWithSVG) {
+        NFTWithSVG clone = NFTWithSVG(template.cloneDeterministic(salt));
 
         // initialize
         clone.initialize(_tokenName, _tokenSymbol);
         clone.transferOwnership(msg.sender);
 
-        emit CreateClone("NFT", template, salt, address(clone));
+        emit CreateClone("NFTWithSVG", template, salt, address(clone));
         return clone;
     }
 

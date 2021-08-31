@@ -15,5 +15,6 @@
   "EMAAverageWindowInIntervals": 30,
   "moneyMarketParams": {
     "aToken": "0x028171bCA77440897B824Ca71D1c56caC55b68A3"
-  }
+  },
+  "fundingMultitokenMetadataURI": ""
 }

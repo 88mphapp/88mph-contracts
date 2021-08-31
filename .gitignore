@@ -14,3 +14,4 @@ crytic-export
 echidna-corpus
 .DS_Store
 docs
+typechain

@@ -98,28 +98,7 @@ library NFTDescriptor {
         returns (string memory svg)
     {
         NFTSVG.SVGParams memory svgParams =
-            NFTSVG.SVGParams({
-                tokenId: params.tokenId,
-                owner: addressToString(params.owner),
-                name: params.name,
-                symbol: params.symbol,
-                color0: toColorHex(
-                    uint256(
-                        keccak256(
-                            abi.encodePacked(params.owner, params.tokenId)
-                        )
-                    ),
-                    140
-                ),
-                color1: toColorHex(
-                    uint256(
-                        keccak256(
-                            abi.encodePacked(params.owner, params.tokenId)
-                        )
-                    ),
-                    0
-                )
-            });
+            NFTSVG.SVGParams({tokenId: params.tokenId, name: params.name});
 
         return NFTSVG.generateSVG(svgParams);
     }

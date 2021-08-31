@@ -13,7 +13,7 @@ module.exports = async ({ getNamedAccounts, deployments, artifacts }) => {
   const dividendTokens = [poolConfig.stablecoin, config.mph];
   const ERC20 = artifacts.require("ERC20");
   const stablecoinContract = await ERC20.at(poolConfig.stablecoin);
-  const stablecoinDecimals = 6; //await stablecoinContract.decimals.call();
+  const stablecoinDecimals = await stablecoinContract.decimals.call();
   const erc20WrapperTemplateDeployment = await get("ERC20WrapperTemplate");
 
   const deployResult = await deploy(name, {

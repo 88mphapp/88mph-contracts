@@ -1,10 +1,4 @@
-module.exports = async ({
-  web3,
-  getNamedAccounts,
-  deployments,
-  getChainId,
-  artifacts
-}) => {
+module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 

@@ -2,13 +2,7 @@ const BigNumber = require("bignumber.js");
 const poolConfig = require("../deploy-configs/get-pool-config");
 const config = require("../deploy-configs/get-network-config");
 
-module.exports = async ({
-  web3,
-  getNamedAccounts,
-  deployments,
-  getChainId,
-  artifacts
-}) => {
+module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
 

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {FundingMultitoken} from "./tokens/FundingMultitoken.sol";
-import {NFT} from "./tokens/NFT.sol";
+import {NFTWithSVG} from "./tokens/NFTWithSVG.sol";
 import {ZeroCouponBond} from "./zero-coupon-bond/ZeroCouponBond.sol";
 import {EMAOracle} from "./models/interest-oracle/EMAOracle.sol";
 import {AaveMarket} from "./moneymarkets/aave/AaveMarket.sol";
@@ -33,14 +33,14 @@ contract Factory {
         bytes32 salt,
         string calldata _tokenName,
         string calldata _tokenSymbol
-    ) external returns (NFT) {
-        NFT clone = NFT(template.cloneDeterministic(salt));
+    ) external returns (NFTWithSVG) {
+        NFTWithSVG clone = NFTWithSVG(template.cloneDeterministic(salt));
 
         // initialize
         clone.initialize(_tokenName, _tokenSymbol);
         clone.transferOwnership(msg.sender);
 
-        emit CreateClone("NFT", template, salt, address(clone));
+        emit CreateClone("NFTWithSVG", template, salt, address(clone));
         return clone;
     }
 
@@ -264,8 +264,6 @@ contract Factory {
         bytes32 salt,
         uint64 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
-        address _moneyMarket,
-        address _stablecoin,
         address _feeModel,
         address _interestModel,
         address _interestOracle,
@@ -279,8 +277,6 @@ contract Factory {
         clone.initialize(
             _MaxDepositPeriod,
             _MinDepositAmount,
-            _moneyMarket,
-            _stablecoin,
             _feeModel,
             _interestModel,
             _interestOracle,
@@ -288,7 +284,7 @@ contract Factory {
             _fundingMultitoken,
             _mphMinter
         );
-        clone.transferOwnership(msg.sender);
+        clone.transferOwnership(msg.sender, true, false);
 
         emit CreateClone("DInterest", template, salt, address(clone));
         return clone;
@@ -298,8 +294,6 @@ contract Factory {
         uint64 _MaxDepositPeriod;
         uint256 _MinDepositAmount;
         uint256 _DepositFee;
-        address _moneyMarket;
-        address _stablecoin;
         address _feeModel;
         address _interestModel;
         address _interestOracle;
@@ -321,8 +315,6 @@ contract Factory {
             params._MaxDepositPeriod,
             params._MinDepositAmount,
             params._DepositFee,
-            params._moneyMarket,
-            params._stablecoin,
             params._feeModel,
             params._interestModel,
             params._interestOracle,
@@ -330,7 +322,7 @@ contract Factory {
             params._fundingMultitoken,
             params._mphMinter
         );
-        clone.transferOwnership(msg.sender);
+        clone.transferOwnership(msg.sender, true, false);
 
         emit CreateClone(
             "DInterestWithDepositFee",

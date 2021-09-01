@@ -1,13 +1,7 @@
 const config = require("../deploy-configs/get-network-config");
 
-module.exports = async ({
-  web3,
-  getNamedAccounts,
-  deployments,
-  getChainId,
-  artifacts
-}) => {
-  const { deploy, log, get } = deployments;
+module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
+  const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
   const deployResult = await deploy("xMPH", {
@@ -26,10 +20,7 @@ module.exports = async ({
     await contract.initialize(
       config.mph,
       config.xMPHRewardUnlockPeriod,
-      config.govTreasury,
-      {
-        from: deployer
-      }
+      config.govTreasury
     );
     log(`xMPH deployed at ${deployResult.address}`);
 

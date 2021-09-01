@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
 import {
     ERC721URIStorageUpgradeable
@@ -30,6 +30,15 @@ contract NFT is ERC721URIStorageUpgradeable, OwnableUpgradeable {
 
     function mint(address to, uint256 tokenId) external onlyOwner {
         _safeMint(to, tokenId);
+    }
+
+    function mint(
+        address to,
+        uint256 tokenId,
+        string calldata uri
+    ) external onlyOwner {
+        _safeMint(to, tokenId);
+        _setTokenURI(tokenId, uri);
     }
 
     function burn(uint256 tokenId) external onlyOwner {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -141,11 +141,8 @@ abstract contract Sponsorable {
 
         IERC20 token = IERC20(sponsorFeeToken);
 
-        // transfer tokens from sender
-        token.safeTransferFrom(sender, address(this), sponsorFeeAmount);
-
-        // transfer tokens to sponsor
-        token.safeTransfer(sponsor, sponsorFeeAmount);
+        // transfer tokens from sender to sponsor
+        token.safeTransferFrom(sender, sponsor, sponsorFeeAmount);
     }
 
     uint256[49] private __gap;

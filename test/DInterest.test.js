@@ -15,7 +15,9 @@ contract("DInterest", accounts => {
 
   // Constants
   const INIT_INTEREST_RATE = 0.1; // 10% APY
-  const INIT_INTEREST_RATE_PER_SECOND = 0.1 / Base.YEAR_IN_SEC; // 10% APY
+  const INIT_INTEREST_RATE_PER_SECOND = Math.log2(
+    Math.pow(INIT_INTEREST_RATE + 1, 1 / Base.YEAR_IN_SEC)
+  );
 
   for (const moduleInfo of Base.moneyMarketModuleList) {
     const moneyMarketModule = moduleInfo.moduleGenerator();
@@ -1077,25 +1079,27 @@ contract("DInterest", accounts => {
             // wait 0.2 year
             await moneyMarketModule.timePass(0.2);
 
+            const updatedInterestRate = BigNumber(
+              (await baseContracts.interestOracle.updateAndQuery.call()).value
+            ).div(Base.PRECISION);
+
             // acc1 funds 50%
-            const deficitAmount = BigNumber(
-              (
-                await baseContracts.lens.surplusOfDeposit.call(
-                  baseContracts.dInterestPool.address,
-                  1
-                )
-              ).surplusAmount
+            const bound = Base.calcInterestAmount(
+              depositAmount,
+              updatedInterestRate,
+              0.8 * Base.YEAR_IN_SEC,
+              false
             );
             await baseContracts.dInterestPool.fund(
               1,
-              Base.num2str(deficitAmount.times(0.5)),
+              Base.num2str(bound.times(0.5)),
               { from: acc1 }
             );
 
-            // acc1 funds 20%
+            // acc2 funds 20%
             await baseContracts.dInterestPool.fund(
               1,
-              Base.num2str(deficitAmount.times(0.2)),
+              Base.num2str(bound.times(0.2)),
               { from: acc2 }
             );
 
@@ -1175,17 +1179,15 @@ contract("DInterest", accounts => {
             );
 
             // acc1 funds 10%
-            const deficitAmount = BigNumber(
-              (
-                await baseContracts.lens.surplusOfDeposit.call(
-                  baseContracts.dInterestPool.address,
-                  1
-                )
-              ).surplusAmount
+            const bound = Base.calcInterestAmount(
+              depositAmount,
+              INIT_INTEREST_RATE_PER_SECOND,
+              Base.YEAR_IN_SEC,
+              false
             );
             await baseContracts.dInterestPool.fund(
               1,
-              Base.num2str(deficitAmount.times(0.1)),
+              Base.num2str(bound.times(0.1)),
               { from: acc1 }
             );
 
@@ -1254,17 +1256,15 @@ contract("DInterest", accounts => {
             );
 
             // acc1 funds 90%
-            const deficitAmount = BigNumber(
-              (
-                await baseContracts.lens.surplusOfDeposit.call(
-                  baseContracts.dInterestPool.address,
-                  1
-                )
-              ).surplusAmount
+            const bound = Base.calcInterestAmount(
+              depositAmount,
+              INIT_INTEREST_RATE_PER_SECOND,
+              Base.YEAR_IN_SEC,
+              false
             );
             await baseContracts.dInterestPool.fund(
               1,
-              Base.num2str(deficitAmount.times(0.9)),
+              Base.num2str(bound.times(0.9)),
               { from: acc1 }
             );
 
@@ -1306,7 +1306,7 @@ contract("DInterest", accounts => {
               const estimatedLostInterest = totalPrincipal
                 .times(INIT_INTEREST_RATE)
                 .times(0.9 + 0.5 - 1);
-              const maxRefundAmount = deficitAmount.times(0.4);
+              const maxRefundAmount = bound.times(0.4);
               const expectedRefundAmount = BigNumber.min(
                 estimatedLostInterest,
                 maxRefundAmount
@@ -1366,17 +1366,15 @@ contract("DInterest", accounts => {
 
             // acc1 funds 10%
             {
-              const deficitAmount = BigNumber(
-                (
-                  await baseContracts.lens.surplusOfDeposit.call(
-                    baseContracts.dInterestPool.address,
-                    1
-                  )
-                ).surplusAmount
+              const bound = Base.calcInterestAmount(
+                depositAmount,
+                INIT_INTEREST_RATE_PER_SECOND,
+                Base.YEAR_IN_SEC,
+                false
               );
               await baseContracts.dInterestPool.fund(
                 1,
-                Base.num2str(deficitAmount.times(0.1)),
+                Base.num2str(bound.times(0.1)),
                 { from: acc1 }
               );
             }
@@ -1386,17 +1384,18 @@ contract("DInterest", accounts => {
 
             // acc2 funds 70%
             {
-              const deficitAmount = BigNumber(
-                (
-                  await baseContracts.lens.surplusOfDeposit.call(
-                    baseContracts.dInterestPool.address,
-                    1
-                  )
-                ).surplusAmount
+              const updatedInterestRate = BigNumber(
+                (await baseContracts.interestOracle.updateAndQuery.call()).value
+              ).div(Base.PRECISION);
+              const bound = Base.calcInterestAmount(
+                depositAmount,
+                updatedInterestRate,
+                0.8 * Base.YEAR_IN_SEC,
+                false
               );
               await baseContracts.dInterestPool.fund(
                 1,
-                Base.num2str(deficitAmount.times(0.7).div(0.9)),
+                Base.num2str(bound.times(0.7)),
                 { from: acc2 }
               );
             }
@@ -1482,17 +1481,15 @@ contract("DInterest", accounts => {
             );
 
             // acc1 funds 90%
-            const deficitAmount = BigNumber(
-              (
-                await baseContracts.lens.surplusOfDeposit.call(
-                  baseContracts.dInterestPool.address,
-                  1
-                )
-              ).surplusAmount
+            const bound = Base.calcInterestAmount(
+              depositAmount,
+              INIT_INTEREST_RATE_PER_SECOND,
+              Base.YEAR_IN_SEC,
+              false
             );
             await baseContracts.dInterestPool.fund(
               1,
-              Base.num2str(deficitAmount.times(0.9)),
+              Base.num2str(bound.times(0.9)),
               { from: acc1 }
             );
 
@@ -1538,7 +1535,7 @@ contract("DInterest", accounts => {
                 .times(INIT_INTEREST_RATE)
                 .times(0.9)
                 .times(0.9);
-              const maxRefundAmount = deficitAmount.times(0.9);
+              const maxRefundAmount = bound.times(0.9);
               const expectedRefundAmount = BigNumber.min(
                 estimatedLostInterest,
                 maxRefundAmount
@@ -1563,20 +1560,21 @@ contract("DInterest", accounts => {
                 from: acc0
               }
             );
+            const topupInterestRate = BigNumber(
+              (await baseContracts.interestOracle.updateAndQuery.call()).value
+            ).div(Base.PRECISION);
 
             // acc1 funds 60%
             {
-              const deficitAmount = BigNumber(
-                (
-                  await baseContracts.lens.surplusOfDeposit.call(
-                    baseContracts.dInterestPool.address,
-                    1
-                  )
-                ).surplusAmount
+              const bound = Base.calcInterestAmount(
+                depositAmount,
+                topupInterestRate,
+                0.9 * Base.YEAR_IN_SEC,
+                false
               );
               await baseContracts.dInterestPool.fund(
                 1,
-                Base.num2str(deficitAmount.times(0.6)),
+                Base.num2str(bound.times(0.6)),
                 { from: acc1 }
               );
             }
@@ -1606,7 +1604,7 @@ contract("DInterest", accounts => {
             ).minus(acc1BeforeBalance);
             const newTotalPrincipal = Base.calcInterestAmount(
               depositAmount,
-              INIT_INTEREST_RATE_PER_SECOND,
+              topupInterestRate,
               0.9 * Base.YEAR_IN_SEC,
               false
             ).plus(depositAmount);
@@ -1634,17 +1632,15 @@ contract("DInterest", accounts => {
             );
 
             // acc1 funds 90%
-            const deficitAmount = BigNumber(
-              (
-                await baseContracts.lens.surplusOfDeposit.call(
-                  baseContracts.dInterestPool.address,
-                  1
-                )
-              ).surplusAmount
+            const bound = Base.calcInterestAmount(
+              depositAmount,
+              INIT_INTEREST_RATE_PER_SECOND,
+              Base.YEAR_IN_SEC,
+              false
             );
             await baseContracts.dInterestPool.fund(
               1,
-              Base.num2str(deficitAmount.times(0.9)),
+              Base.num2str(bound.times(0.9)),
               { from: acc1 }
             );
 
@@ -1686,7 +1682,7 @@ contract("DInterest", accounts => {
               const estimatedLostInterest = totalPrincipal
                 .times(INIT_INTEREST_RATE)
                 .times(0.89);
-              const maxRefundAmount = deficitAmount.times(0.89);
+              const maxRefundAmount = bound.times(0.89);
               const expectedRefundAmount = BigNumber.min(
                 estimatedLostInterest,
                 maxRefundAmount
@@ -1750,17 +1746,15 @@ contract("DInterest", accounts => {
 
             // acc1 funds 90%
             {
-              const deficitAmount = BigNumber(
-                (
-                  await baseContracts.lens.surplusOfDeposit.call(
-                    baseContracts.dInterestPool.address,
-                    1
-                  )
-                ).surplusAmount
+              const bound = Base.calcInterestAmount(
+                depositAmount,
+                INIT_INTEREST_RATE_PER_SECOND,
+                Base.YEAR_IN_SEC,
+                false
               );
               await baseContracts.dInterestPool.fund(
                 1,
-                Base.num2str(deficitAmount.times(0.9)),
+                Base.num2str(bound.times(0.9)),
                 { from: acc1 }
               );
             }
@@ -1913,7 +1907,7 @@ contract("DInterest", accounts => {
         });
 
         it("one day deposit", async () => {
-          const depositAmount = 10 * Base.STABLECOIN_PRECISION;
+          const depositAmount = 1000 * Base.STABLECOIN_PRECISION;
           const depositTime = 24 * 60 * 60;
           const expectedInterestAmount = Base.calcInterestAmount(
             depositAmount,
@@ -2000,7 +1994,7 @@ contract("DInterest", accounts => {
       });
 
       describe("surplus", () => {
-        const depositAmount = 10 * Base.STABLECOIN_PRECISION;
+        const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
         it("single deposit", async () => {
           // acc0 deposits for 1 year
@@ -2149,22 +2143,28 @@ contract("DInterest", accounts => {
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
             surplusObj.isNegative ? -1 : 1
           );
-          const expectedSurplus = Base.calcInterestAmount(
-            depositAmount,
-            INIT_INTEREST_RATE_PER_SECOND,
-            Base.YEAR_IN_SEC,
-            false
-          )
-            .plus(
+          // the expected surplus is the amount of variable-rate interest earned
+          // minus the fixed-rate interest promised to the depositors
+          const updatedInterestRate = BigNumber(
+            (await baseContracts.interestOracle.updateAndQuery.call()).value
+          ).div(Base.PRECISION);
+          const expectedSurplus = BigNumber(
+            depositAmount * INIT_INTEREST_RATE * 0.2
+          ).minus(
+            Base.calcInterestAmount(
+              depositAmount,
+              INIT_INTEREST_RATE_PER_SECOND,
+              Base.YEAR_IN_SEC,
+              false
+            ).plus(
               Base.calcInterestAmount(
                 depositAmount,
-                INIT_INTEREST_RATE_PER_SECOND,
+                updatedInterestRate,
                 0.5 * Base.YEAR_IN_SEC,
                 false
               )
             )
-            .minus(depositAmount * INIT_INTEREST_RATE * 0.2)
-            .times(-1);
+          );
           Base.assertEpsilonEq(
             surplusAmount,
             expectedSurplus,
@@ -2180,29 +2180,31 @@ contract("DInterest", accounts => {
             const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
               surplusObj.isNegative ? -1 : 1
             );
-            const expectedSurplus = Base.calcInterestAmount(
-              depositAmount,
-              INIT_INTEREST_RATE_PER_SECOND,
-              Base.YEAR_IN_SEC,
-              false
+            const expectedSurplus = BigNumber(
+              depositAmount * INIT_INTEREST_RATE * 0.2
             )
               .plus(
-                Base.calcInterestAmount(
-                  depositAmount,
-                  INIT_INTEREST_RATE_PER_SECOND,
-                  0.5 * Base.YEAR_IN_SEC,
-                  false
-                )
-              )
-              .minus(depositAmount * INIT_INTEREST_RATE * 0.2)
-              .minus(
                 depositAmount *
                   INIT_INTEREST_RATE *
                   (1 + 0.2 * INIT_INTEREST_RATE) *
                   0.5
               )
-              .minus(depositAmount * INIT_INTEREST_RATE * 0.5)
-              .times(-1);
+              .plus(depositAmount * INIT_INTEREST_RATE * 0.5)
+              .minus(
+                Base.calcInterestAmount(
+                  depositAmount,
+                  INIT_INTEREST_RATE_PER_SECOND,
+                  Base.YEAR_IN_SEC,
+                  false
+                ).plus(
+                  Base.calcInterestAmount(
+                    depositAmount,
+                    updatedInterestRate,
+                    0.5 * Base.YEAR_IN_SEC,
+                    false
+                  )
+                )
+              );
             Base.assertEpsilonEq(
               surplusAmount,
               expectedSurplus,
@@ -2267,7 +2269,8 @@ contract("DInterest", accounts => {
           );
 
           // check surplus
-          const surplusObj = await baseContracts.dInterestPool.rawSurplusOfDeposit.call(
+          const surplusObj = await baseContracts.lens.rawSurplusOfDeposit.call(
+            baseContracts.dInterestPool.address,
             1
           );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
@@ -2290,7 +2293,8 @@ contract("DInterest", accounts => {
 
           // check surplus
           {
-            const surplusObj = await baseContracts.dInterestPool.rawSurplusOfDeposit.call(
+            const surplusObj = await baseContracts.lens.rawSurplusOfDeposit.call(
+              baseContracts.dInterestPool.address,
               1
             );
             const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
@@ -2327,7 +2331,8 @@ contract("DInterest", accounts => {
           });
 
           // check surplus
-          const surplusObj = await baseContracts.dInterestPool.rawSurplusOfDeposit.call(
+          const surplusObj = await baseContracts.lens.rawSurplusOfDeposit.call(
+            baseContracts.dInterestPool.address,
             1
           );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
@@ -2360,7 +2365,8 @@ contract("DInterest", accounts => {
           );
 
           // check surplus
-          const surplusObj = await baseContracts.dInterestPool.rawSurplusOfDeposit.call(
+          const surplusObj = await baseContracts.lens.rawSurplusOfDeposit.call(
+            baseContracts.dInterestPool.address,
             1
           );
           const surplusAmount = BigNumber(surplusObj.surplusAmount).times(
@@ -2542,17 +2548,15 @@ contract("DInterest", accounts => {
           );
 
           // Fund 30% deficit using acc2
-          const deficitAmount = BigNumber(
-            (
-              await baseContracts.lens.surplusOfDeposit.call(
-                baseContracts.dInterestPool.address,
-                1
-              )
-            ).surplusAmount
+          const bound = Base.calcInterestAmount(
+            depositAmount,
+            INIT_INTEREST_RATE_PER_SECOND,
+            Base.YEAR_IN_SEC,
+            false
           );
           await baseContracts.dInterestPool.fund(
             1,
-            Base.num2str(deficitAmount.times(0.3)),
+            Base.num2str(bound.times(0.3)),
             {
               from: acc2
             }

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
-import {DecMath} from "../../libs/DecMath.sol";
+import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 import {IInterestModel} from "./IInterestModel.sol";
 
 contract LinearDecayInterestModel is IInterestModel {
-    using DecMath for uint256;
+    using PRBMathUD60x18 for uint256;
 
     uint256 public constant PRECISION = 10**18;
     uint256 public multiplierIntercept;
@@ -36,12 +36,12 @@ contract LinearDecayInterestModel is IInterestModel {
         bool, /*surplusIsNegative*/
         uint256 /*surplusAmount*/
     ) external view override returns (uint256 interestAmount) {
-        // interestAmount = depositAmount * moneyMarketInterestRatePerSecond * IRMultiplier * depositPeriodInSeconds
-        interestAmount =
-            ((depositAmount * PRECISION)
-                .decmul(moneyMarketInterestRatePerSecond)
-                .decmul(getIRMultiplier(depositPeriodInSeconds)) *
-                depositPeriodInSeconds) /
-            PRECISION;
+        // interestAmount = depositAmount * (2 ** (moneyMarketInterestRatePerSecond * depositPeriodInSeconds) - 1) * IRMultiplier
+        interestAmount = depositAmount
+            .mul(
+            (moneyMarketInterestRatePerSecond * depositPeriodInSeconds).exp2() -
+                PRECISION
+        )
+            .mul(getIRMultiplier(depositPeriodInSeconds));
     }
 }

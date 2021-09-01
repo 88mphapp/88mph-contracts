@@ -150,8 +150,7 @@ const calcInterestAmount = (module.exports.calcInterestAmount = (
 ) => {
   const IRMultiplier = getIRMultiplier(depositPeriodInSeconds);
   const interestBeforeFee = BigNumber(depositAmount)
-    .times(depositPeriodInSeconds)
-    .times(interestRatePerSecond)
+    .times(Math.pow(2, interestRatePerSecond * depositPeriodInSeconds) - 1)
     .times(IRMultiplier);
   return applyFee
     ? interestBeforeFee.minus(calcFeeAmount(interestBeforeFee))
@@ -184,12 +183,17 @@ const epsilonEq = (module.exports.epsilonEq = (curr, prev, ep) => {
   );
 });
 
-const assertEpsilonEq = (module.exports.assertEpsilonEq = (a, b, message) => {
+const assertEpsilonEq = (module.exports.assertEpsilonEq = (
+  a,
+  b,
+  message,
+  ep
+) => {
   assert(
-    epsilonEq(a, b),
+    epsilonEq(a, b, ep),
     `assertEpsilonEq error, a=${BigNumber(a).toString()}, b=${BigNumber(
       b
-    ).toString()}, message=${message}`
+    ).toString()}, message=${message}, ep=${ep}`
   );
 });
 
@@ -693,7 +697,9 @@ const setupTest = (module.exports.setupTest = async (
     const interestOracleReceipt = await factory.createEMAOracle(
       interestOracleTemplate.address,
       DEFAULT_SALT,
-      num2str((INIT_INTEREST_RATE * PRECISION) / YEAR_IN_SEC),
+      num2str(
+        Math.log2(Math.pow(INIT_INTEREST_RATE + 1, 1 / YEAR_IN_SEC)) * PRECISION
+      ),
       EMAUpdateInterval,
       EMASmoothingFactor,
       EMAAverageWindowInIntervals,
@@ -710,8 +716,6 @@ const setupTest = (module.exports.setupTest = async (
       DEFAULT_SALT,
       MaxDepositPeriod,
       MinDepositAmount,
-      market.address,
-      stablecoin.address,
       feeModel.address,
       interestModel.address,
       interestOracle.address,
@@ -720,6 +724,12 @@ const setupTest = (module.exports.setupTest = async (
       mphMinter.address
     );
     dInterestPool = await factoryReceiptToContract(dInterestReceipt, DInterest);
+    dInterestPool.deposit = dInterestPool.methods["deposit(uint256,uint64)"];
+    dInterestPool.topupDeposit =
+      dInterestPool.methods["topupDeposit(uint64,uint256)"];
+    dInterestPool.rolloverDeposit =
+      dInterestPool.methods["rolloverDeposit(uint64,uint64)"];
+    dInterestPool.fund = dInterestPool.methods["fund(uint64,uint256)"];
 
     // Set MPH minting multiplier for DInterest pool
     await mphMinter.grantRole(WHITELISTED_POOL_ROLE, dInterestPool.address, {

@@ -7,7 +7,7 @@ const ZeroCouponBond = artifacts.require("ZeroCouponBond");
 const assertRevertMessage = (errMessage, expectedErrMessage) => {
   return assert(
     errMessage.startsWith(
-      "VM Exception while processing transaction: revert " + expectedErrMessage
+      `VM Exception while processing transaction: reverted with reason string '${expectedErrMessage}'`
     ),
     `Expected "${expectedErrMessage} revert reason but got "${errMessage}"`
   );
@@ -27,7 +27,9 @@ contract("ZeroCouponBond", accounts => {
 
   // Constants
   const INIT_INTEREST_RATE = 0.1; // 10% APY
-  const INIT_INTEREST_RATE_PER_SECOND = 0.1 / Base.YEAR_IN_SEC; // 10% APY
+  const INIT_INTEREST_RATE_PER_SECOND = Math.log2(
+    Math.pow(INIT_INTEREST_RATE + 1, 1 / Base.YEAR_IN_SEC)
+  );
 
   for (const moduleInfo of Base.moneyMarketModuleList) {
     const moneyMarketModule = moduleInfo.moduleGenerator();
@@ -86,17 +88,24 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await zeroCouponBond.mint(Base.num2str(depositAmount), {
-              from: acc1
-            });
-            // check mint amount
-            const actualZCBMinted = await zeroCouponBond.balanceOf(acc1);
-            const expectedZCBMinted = Base.calcInterestAmount(
+            const expectedInterestAmount = Base.calcInterestAmount(
               depositAmount,
               INIT_INTEREST_RATE_PER_SECOND,
               Base.YEAR_IN_SEC,
               true
-            ).plus(depositAmount);
+            );
+            await zeroCouponBond.mint(
+              Base.num2str(depositAmount),
+              Base.num2str(expectedInterestAmount),
+              {
+                from: acc1
+              }
+            );
+            // check mint amount
+            const actualZCBMinted = await zeroCouponBond.balanceOf(acc1);
+            const expectedZCBMinted = expectedInterestAmount.plus(
+              depositAmount
+            );
             Base.assertEpsilonEq(
               actualZCBMinted,
               expectedZCBMinted,
@@ -109,11 +118,22 @@ contract("ZeroCouponBond", accounts => {
           it("should not mint higher amount than balance", async () => {
             const depositAmount = 10000 * Base.STABLECOIN_PRECISION;
 
+            const expectedInterestAmount = Base.calcInterestAmount(
+              depositAmount,
+              INIT_INTEREST_RATE_PER_SECOND,
+              Base.YEAR_IN_SEC,
+              true
+            );
+
             // acc1 mint ZCB
             try {
-              await zeroCouponBond.mint(Base.num2str(depositAmount), {
-                from: acc1
-              });
+              await zeroCouponBond.mint(
+                Base.num2str(depositAmount),
+                Base.num2str(expectedInterestAmount),
+                {
+                  from: acc1
+                }
+              );
               assert.fail();
             } catch (error) {
               assertRevertMessage(
@@ -131,9 +151,19 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await zeroCouponBond.mint(Base.num2str(depositAmount), {
-              from: acc1
-            });
+            const expectedInterestAmount = Base.calcInterestAmount(
+              depositAmount,
+              INIT_INTEREST_RATE_PER_SECOND,
+              Base.YEAR_IN_SEC,
+              true
+            );
+            await zeroCouponBond.mint(
+              Base.num2str(depositAmount),
+              Base.num2str(expectedInterestAmount),
+              {
+                from: acc1
+              }
+            );
 
             // Wait 1 year
             await moneyMarketModule.timePass(1);
@@ -153,9 +183,19 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await zeroCouponBond.mint(Base.num2str(depositAmount), {
-              from: acc1
-            });
+            const expectedInterestAmount = Base.calcInterestAmount(
+              depositAmount,
+              INIT_INTEREST_RATE_PER_SECOND,
+              Base.YEAR_IN_SEC,
+              true
+            );
+            await zeroCouponBond.mint(
+              Base.num2str(depositAmount),
+              Base.num2str(expectedInterestAmount),
+              {
+                from: acc1
+              }
+            );
 
             // Wait 1 year
             await moneyMarketModule.timePass(1);
@@ -180,9 +220,19 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await zeroCouponBond.mint(Base.num2str(depositAmount), {
-              from: acc1
-            });
+            const expectedInterestAmount = Base.calcInterestAmount(
+              depositAmount,
+              INIT_INTEREST_RATE_PER_SECOND,
+              Base.YEAR_IN_SEC,
+              true
+            );
+            await zeroCouponBond.mint(
+              Base.num2str(depositAmount),
+              Base.num2str(expectedInterestAmount),
+              {
+                from: acc1
+              }
+            );
 
             // Wait 1 year
             await moneyMarketModule.timePass(1);
@@ -226,9 +276,19 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await zeroCouponBond.mint(Base.num2str(depositAmount), {
-              from: acc1
-            });
+            const expectedInterestAmount = Base.calcInterestAmount(
+              depositAmount,
+              INIT_INTEREST_RATE_PER_SECOND,
+              Base.YEAR_IN_SEC,
+              true
+            );
+            await zeroCouponBond.mint(
+              Base.num2str(depositAmount),
+              Base.num2str(expectedInterestAmount),
+              {
+                from: acc1
+              }
+            );
 
             // Wait 2 months
             await moneyMarketModule.timePass(0.2);
@@ -246,9 +306,19 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await zeroCouponBond.mint(Base.num2str(depositAmount), {
-              from: acc1
-            });
+            const expectedInterestAmount = Base.calcInterestAmount(
+              depositAmount,
+              INIT_INTEREST_RATE_PER_SECOND,
+              Base.YEAR_IN_SEC,
+              true
+            );
+            await zeroCouponBond.mint(
+              Base.num2str(depositAmount),
+              Base.num2str(expectedInterestAmount),
+              {
+                from: acc1
+              }
+            );
 
             // Wait 1 year
             await moneyMarketModule.timePass(1);
@@ -271,9 +341,19 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await zeroCouponBond.mint(Base.num2str(depositAmount), {
-              from: acc1
-            });
+            const expectedInterestAmount = Base.calcInterestAmount(
+              depositAmount,
+              INIT_INTEREST_RATE_PER_SECOND,
+              Base.YEAR_IN_SEC,
+              true
+            );
+            await zeroCouponBond.mint(
+              Base.num2str(depositAmount),
+              Base.num2str(expectedInterestAmount),
+              {
+                from: acc1
+              }
+            );
 
             // Wait 1 year
             await moneyMarketModule.timePass(1);
@@ -294,9 +374,19 @@ contract("ZeroCouponBond", accounts => {
             const depositAmount = 100 * Base.STABLECOIN_PRECISION;
 
             // acc1 mint ZCB
-            await zeroCouponBond.mint(Base.num2str(depositAmount), {
-              from: acc1
-            });
+            const expectedInterestAmount = Base.calcInterestAmount(
+              depositAmount,
+              INIT_INTEREST_RATE_PER_SECOND,
+              Base.YEAR_IN_SEC,
+              true
+            );
+            await zeroCouponBond.mint(
+              Base.num2str(depositAmount),
+              Base.num2str(expectedInterestAmount),
+              {
+                from: acc1
+              }
+            );
 
             // Wait 1 year
             await moneyMarketModule.timePass(1);

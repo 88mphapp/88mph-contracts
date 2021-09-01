@@ -1,20 +1,14 @@
-module.exports = async ({
-  web3,
-  getNamedAccounts,
-  deployments,
-  getChainId,
-  artifacts
-}) => {
+module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const deployResult = await deploy("FundingMultitokenTemplate", {
+  const deployResult = await deploy("ERC20WrapperTemplate", {
     from: deployer,
-    contract: "FundingMultitoken"
+    contract: "ERC20Wrapper"
   });
   if (deployResult.newlyDeployed) {
-    log(`FundingMultitokenTemplate deployed at ${deployResult.address}`);
+    log(`ERC20WrapperTemplate deployed at ${deployResult.address}`);
   }
 };
-module.exports.tags = ["FundingMultitokenTemplate"];
+module.exports.tags = ["ERC20WrapperTemplate"];
 module.exports.dependencies = [];

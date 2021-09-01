@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
 import {SafeERC20} from "../../libs/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -40,6 +40,7 @@ contract AaveMarket is MoneyMarket {
             _provider.isContract() &&
                 _aToken.isContract() &&
                 _aaveMining.isContract() &&
+                _rewards != address(0) &&
                 _stablecoin.isContract(),
             "AaveMarket: An input address is not a contract"
         );
@@ -60,7 +61,7 @@ contract AaveMarket is MoneyMarket {
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
         // Approve `amount` stablecoin to lendingPool
-        stablecoin.safeApprove(address(lendingPool), amount);
+        stablecoin.safeIncreaseAllowance(address(lendingPool), amount);
 
         // Deposit `amount` stablecoin to lendingPool
         lendingPool.deposit(
@@ -98,33 +99,25 @@ contract AaveMarket is MoneyMarket {
         aaveMining.claimRewards(assets, type(uint256).max, rewards);
     }
 
-    function totalValue() external view override returns (uint256) {
-        return aToken.balanceOf(address(this));
-    }
-
-    function totalValue(
-        uint256 /*currentIncomeIndex*/
-    ) external view override returns (uint256) {
-        return aToken.balanceOf(address(this));
-    }
-
-    function incomeIndex() external view override returns (uint256 index) {
-        ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
-        index = lendingPool.getReserveNormalizedIncome(address(stablecoin));
-        require(index > 0, "AaveMarket: BAD_INDEX");
-    }
-
     /**
         Param setters
      */
     function setRewards(address newValue) external override onlyOwner {
-        require(newValue.isContract(), "AaveMarket: not contract");
+        require(newValue != address(0), "AaveMarket: 0 address");
         rewards = newValue;
         emit ESetParamAddress(msg.sender, "rewards", newValue);
     }
 
     /**
-        @dev See {Rescuable._authorizeRescue}
+        @dev IMPORTANT MUST READ
+        This function is for restricting unauthorized accounts from taking funds
+        and ensuring only tokens not used by the MoneyMarket can be rescued.
+        IF YOU DON'T GET IT RIGHT YOU WILL LOSE PEOPLE'S MONEY
+        MAKE SURE YOU DO ALL OF THE FOLLOWING
+        1) You MUST override it in a MoneyMarket implementation.
+        2) You MUST make `super._authorizeRescue(token, target);` the first line of your overriding function.
+        3) You MUST revert during a call to this function if a token used by the MoneyMarket is being rescued.
+        4) You SHOULD look at how existing MoneyMarkets do it as an example.
      */
     function _authorizeRescue(address token, address target)
         internal
@@ -133,6 +126,18 @@ contract AaveMarket is MoneyMarket {
     {
         super._authorizeRescue(token, target);
         require(token != address(aToken), "AaveMarket: no steal");
+    }
+
+    function _totalValue(
+        uint256 /*currentIncomeIndex*/
+    ) internal view override returns (uint256) {
+        return aToken.balanceOf(address(this));
+    }
+
+    function _incomeIndex() internal view override returns (uint256 index) {
+        ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
+        index = lendingPool.getReserveNormalizedIncome(address(stablecoin));
+        require(index > 0, "AaveMarket: BAD_INDEX");
     }
 
     uint256[45] private __gap;

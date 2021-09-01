@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
 import {
     ERC20Upgradeable
@@ -63,7 +63,7 @@ contract ZeroCouponBond is
             address(this),
             _initialDepositAmount
         );
-        stablecoin.safeApprove(address(pool), type(uint256).max);
+        stablecoin.safeIncreaseAllowance(address(pool), type(uint256).max);
         uint256 interestAmount;
         (depositID, interestAmount) = pool.deposit(
             _initialDepositAmount,
@@ -94,7 +94,21 @@ contract ZeroCouponBond is
         nonReentrant
         returns (uint256 mintedAmount)
     {
-        return _mintInternal(msg.sender, depositAmount);
+        return _mintInternal(msg.sender, depositAmount, 0);
+    }
+
+    /**
+        @notice Mint zero coupon bonds by depositing `depositAmount` stablecoins.
+        @param depositAmount The amount to deposit for minting zero coupon bonds
+        @param minInterestAmount The minimum amount of fixed rate interest received
+        @return mintedAmount The amount of bonds minted
+     */
+    function mint(uint256 depositAmount, uint256 minInterestAmount)
+        external
+        nonReentrant
+        returns (uint256 mintedAmount)
+    {
+        return _mintInternal(msg.sender, depositAmount, minInterestAmount);
     }
 
     /**
@@ -128,6 +142,7 @@ contract ZeroCouponBond is
      */
     function sponsoredMint(
         uint256 depositAmount,
+        uint256 minInterestAmount,
         Sponsorship calldata sponsorship
     )
         external
@@ -139,7 +154,8 @@ contract ZeroCouponBond is
         )
         returns (uint256 mintedAmount)
     {
-        return _mintInternal(sponsorship.sender, depositAmount);
+        return
+            _mintInternal(sponsorship.sender, depositAmount, minInterestAmount);
     }
 
     /**
@@ -180,17 +196,18 @@ contract ZeroCouponBond is
     /**
         @dev See {mint}
      */
-    function _mintInternal(address sender, uint256 depositAmount)
-        internal
-        returns (uint256 mintedAmount)
-    {
+    function _mintInternal(
+        address sender,
+        uint256 depositAmount,
+        uint256 minInterestAmount
+    ) internal returns (uint256 mintedAmount) {
         // transfer stablecoins from `sender`
         stablecoin.safeTransferFrom(sender, address(this), depositAmount);
 
         // topup deposit
         mintedAmount =
             depositAmount +
-            pool.topupDeposit(depositID, depositAmount);
+            pool.topupDeposit(depositID, depositAmount, minInterestAmount);
 
         // mint zero coupon bonds to `msg.sender`
         _mint(sender, mintedAmount);

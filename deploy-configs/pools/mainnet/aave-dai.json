@@ -1,7 +1,7 @@
 {
-  "name": "88mph aDAI Pool",
-  "nftNamePrefix": "88mph aDAI Pool--",
-  "nftSymbolPrefix": "88mph-aDAI-",
+  "name": "88mph DAI via Aave",
+  "nftNamePrefix": "88mph DAI via Aave ",
+  "nftSymbolPrefix": "88mph-DAI-via-Aave-",
   "moneyMarket": "AaveMarket",
   "interestModel": "LinearDecayInterestModel",
   "interestOracle": "EMAOracle",
@@ -15,5 +15,6 @@
   "EMAAverageWindowInIntervals": 30,
   "moneyMarketParams": {
     "aToken": "0x028171bCA77440897B824Ca71D1c56caC55b68A3"
-  }
+  },
+  "fundingMultitokenMetadataURI": ""
 }

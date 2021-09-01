@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "../libs/SafeERC20.sol";
@@ -52,7 +52,10 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
                 );
 
             // create deposit
-            poolContract.stablecoin().safeApprove(pool, outputTokenAmount);
+            poolContract.stablecoin().safeIncreaseAllowance(
+                pool,
+                outputTokenAmount
+            );
             (depositID, ) = poolContract.deposit(
                 outputTokenAmount,
                 maturationTimestamp
@@ -99,8 +102,9 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
             );
 
         // create funding
-        stablecoin.safeApprove(pool, outputTokenAmount);
-        uint64 fundingID = poolContract.fund(depositID, outputTokenAmount);
+        stablecoin.safeIncreaseAllowance(pool, outputTokenAmount);
+        (uint64 fundingID, , , ) =
+            poolContract.fund(depositID, outputTokenAmount);
 
         // transfer funding multitoken to msg.sender
         fundingMultitoken.safeTransferFrom(
@@ -165,7 +169,10 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
         );
 
         // zap inputToken into curve
-        inputTokenContract.safeApprove(address(zapper), inputTokenAmount);
+        inputTokenContract.safeIncreaseAllowance(
+            address(zapper),
+            inputTokenAmount
+        );
         outputTokenAmount = zapper.ZapIn(
             address(this),
             inputToken,

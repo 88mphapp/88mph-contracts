@@ -1,0 +1,3 @@
+initialize: trailofbits-transactions-recorded-by-etheno.json
+maxTimeDelay: 7500
+testLimit: 1000000

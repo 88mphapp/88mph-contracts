@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
-import {DecMath} from "./libs/DecMath.sol";
+import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 import {DInterest} from "./DInterest.sol";
 
 /**
     @dev A variant of DInterest that supports money markets with deposit fees
  */
 contract DInterestWithDepositFee is DInterest {
-    using DecMath for uint256;
+    using PRBMathUD60x18 for uint256;
 
     uint256 public DepositFee; // The deposit fee charged by the money market
 
@@ -16,8 +16,6 @@ contract DInterestWithDepositFee is DInterest {
         @param _MaxDepositPeriod The maximum deposit period, in seconds
         @param _MinDepositAmount The minimum deposit amount, in stablecoins
         @param _DepositFee The fee charged by the underlying money market
-        @param _moneyMarket Address of MoneyMarket that's used for generating interest (owner must be set to this DInterest contract)
-        @param _stablecoin Address of the stablecoin used to store funds
         @param _feeModel Address of the FeeModel contract that determines how fees are charged
         @param _interestModel Address of the InterestModel contract that determines how much interest to offer
         @param _interestOracle Address of the InterestOracle contract that provides the average interest rate
@@ -29,8 +27,6 @@ contract DInterestWithDepositFee is DInterest {
         uint64 _MaxDepositPeriod,
         uint256 _MinDepositAmount,
         uint256 _DepositFee,
-        address _moneyMarket,
-        address _stablecoin,
         address _feeModel,
         address _interestModel,
         address _interestOracle,
@@ -41,8 +37,6 @@ contract DInterestWithDepositFee is DInterest {
         __DInterest_init(
             _MaxDepositPeriod,
             _MinDepositAmount,
-            _moneyMarket,
-            _stablecoin,
             _feeModel,
             _interestModel,
             _interestOracle,
@@ -64,7 +58,9 @@ contract DInterestWithDepositFee is DInterest {
         address sender,
         uint256 depositAmount,
         uint64 maturationTimestamp,
-        bool rollover
+        bool rollover,
+        uint256 minimumInterestAmount,
+        string memory uri
     )
         internal
         virtual
@@ -74,7 +70,9 @@ contract DInterestWithDepositFee is DInterest {
         (depositID, interestAmount) = _depositRecordData(
             sender,
             _applyDepositFee(depositAmount),
-            maturationTimestamp
+            maturationTimestamp,
+            minimumInterestAmount,
+            uri
         );
         _depositTransferFunds(sender, depositAmount, rollover);
     }
@@ -85,12 +83,14 @@ contract DInterestWithDepositFee is DInterest {
     function _topupDeposit(
         address sender,
         uint64 depositID,
-        uint256 depositAmount
+        uint256 depositAmount,
+        uint256 minimumInterestAmount
     ) internal virtual override returns (uint256 interestAmount) {
         interestAmount = _topupDepositRecordData(
             sender,
             depositID,
-            _applyDepositFee(depositAmount)
+            _applyDepositFee(depositAmount),
+            minimumInterestAmount
         );
         _topupDepositTransferFunds(sender, depositAmount);
     }
@@ -101,15 +101,31 @@ contract DInterestWithDepositFee is DInterest {
     function _fund(
         address sender,
         uint64 depositID,
-        uint256 fundAmount
-    ) internal virtual override returns (uint64 fundingID) {
-        uint256 actualFundAmount;
-        (fundingID, actualFundAmount) = _fundRecordData(
+        uint256 fundAmount,
+        uint256 minPrincipalFunded
+    )
+        internal
+        virtual
+        override
+        returns (
+            uint64 fundingID,
+            uint256 fundingMultitokensMinted,
+            uint256 actualFundAmount,
+            uint256 principalFunded
+        )
+    {
+        (
+            fundingID,
+            fundingMultitokensMinted,
+            actualFundAmount,
+            principalFunded
+        ) = _fundRecordData(
             sender,
             depositID,
-            _applyDepositFee(fundAmount)
+            _applyDepositFee(fundAmount),
+            minPrincipalFunded
         );
-        _fundTransferFunds(sender, _unapplyDepositFee(fundAmount));
+        _fundTransferFunds(sender, _unapplyDepositFee(actualFundAmount));
     }
 
     /**
@@ -127,7 +143,7 @@ contract DInterestWithDepositFee is DInterest {
         virtual
         returns (uint256)
     {
-        return amount.decmul(PRECISION - DepositFee);
+        return amount.mul(PRECISION - DepositFee);
     }
 
     /**
@@ -141,7 +157,7 @@ contract DInterestWithDepositFee is DInterest {
         virtual
         returns (uint256)
     {
-        return amount.decdiv(PRECISION - DepositFee);
+        return amount.div(PRECISION - DepositFee);
     }
 
     /**

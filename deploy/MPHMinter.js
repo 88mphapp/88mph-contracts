@@ -1,39 +1,35 @@
 const BigNumber = require("bignumber.js");
 const config = require("../deploy-configs/get-network-config");
 
-module.exports = async ({
-  web3,
-  getNamedAccounts,
-  deployments,
-  getChainId,
-  artifacts
-}) => {
+module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
+
+  const vesting02Deployment = await get("Vesting02");
 
   const deployResult = await deploy("MPHMinter", {
     from: deployer,
     proxy: {
       owner: config.govTimelock,
-      proxyContract: "OptimizedTransparentProxy"
+      proxyContract: "OptimizedTransparentProxy",
+      execute: {
+        init: {
+          methodName: "initialize",
+          args: [
+            config.mph,
+            config.govTreasury,
+            config.devWallet,
+            vesting02Deployment.address,
+            BigNumber(config.devRewardMultiplier).toFixed(),
+            BigNumber(config.govRewardMultiplier).toFixed()
+          ]
+        }
+      }
     }
   });
   if (deployResult.newlyDeployed) {
-    const vesting02Deployment = await get("Vesting02");
-
     const MPHMinter = artifacts.require("MPHMinter");
     const contract = await MPHMinter.at(deployResult.address);
-    await contract.initialize(
-      config.mph,
-      config.govTreasury,
-      config.devWallet,
-      vesting02Deployment.address,
-      BigNumber(config.devRewardMultiplier).toFixed(),
-      BigNumber(config.govRewardMultiplier).toFixed(),
-      {
-        from: deployer
-      }
-    );
     log(`MPHMinter deployed at ${deployResult.address}`);
 
     // give roles to gov treasury
@@ -61,7 +57,7 @@ module.exports = async ({
     log(`Set MPHMinter in Vesting02 to ${deployResult.address}`);
 
     // transfer Vesting02 ownership to gov treasury
-    await vesting02Contract.transferOwnership(config.govTreasury, {
+    await vesting02Contract.transferOwnership(config.govTreasury, true, false, {
       from: deployer
     });
     log(`Transfer Vesting02 ownership to ${config.govTreasury}`);

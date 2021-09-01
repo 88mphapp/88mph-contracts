@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {
@@ -34,15 +34,30 @@ abstract contract MoneyMarket is
         virtual
         returns (uint256 actualAmountWithdrawn);
 
-    function totalValue() external virtual returns (uint256); // The total value locked in the money market, in terms of the underlying stablecoin
+    /**
+        @notice The total value locked in the money market, in terms of the underlying stablecoin
+     */
+    function totalValue() external returns (uint256) {
+        return _totalValue(_incomeIndex());
+    }
 
+    /**
+        @notice The total value locked in the money market, in terms of the underlying stablecoin
+     */
     function totalValue(uint256 currentIncomeIndex)
         external
         view
-        virtual
-        returns (uint256); // The total value locked in the money market, in terms of the underlying stablecoin
+        returns (uint256)
+    {
+        return _totalValue(currentIncomeIndex);
+    }
 
-    function incomeIndex() external virtual returns (uint256); // Used for calculating the interest generated (e.g. cDai's price for the Compound market)
+    /**
+        @notice Used for calculating the interest generated (e.g. cDai's price for the Compound market)
+     */
+    function incomeIndex() external returns (uint256 index) {
+        return _incomeIndex();
+    }
 
     function stablecoin() external view virtual returns (ERC20);
 
@@ -51,7 +66,15 @@ abstract contract MoneyMarket is
     function setRewards(address newValue) external virtual;
 
     /**
-        @dev See {Rescuable._authorizeRescue}
+        @dev IMPORTANT MUST READ
+        This function is for restricting unauthorized accounts from taking funds
+        and ensuring only tokens not used by the MoneyMarket can be rescued.
+        IF YOU DON'T GET IT RIGHT YOU WILL LOSE PEOPLE'S MONEY
+        MAKE SURE YOU DO ALL OF THE FOLLOWING
+        1) You MUST override it in a MoneyMarket implementation.
+        2) You MUST make `super._authorizeRescue(token, target);` the first line of your overriding function.
+        3) You MUST revert during a call to this function if a token used by the MoneyMarket is being rescued.
+        4) You SHOULD look at how existing MoneyMarkets do it as an example.
      */
     function _authorizeRescue(
         address, /*token*/
@@ -59,6 +82,14 @@ abstract contract MoneyMarket is
     ) internal view virtual override {
         require(hasRole(RESCUER_ROLE, msg.sender), "MoneyMarket: not rescuer");
     }
+
+    function _totalValue(uint256 currentIncomeIndex)
+        internal
+        view
+        virtual
+        returns (uint256);
+
+    function _incomeIndex() internal virtual returns (uint256 index);
 
     event ESetParamAddress(
         address indexed sender,

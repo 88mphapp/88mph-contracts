@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
-import {DecMath} from "./libs/DecMath.sol";
+import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 import {DInterest} from "./DInterest.sol";
 
 contract DInterestLens {
-    using DecMath for uint256;
+    using PRBMathUD60x18 for uint256;
 
     uint256 internal constant PRECISION = 10**18;
     /**
@@ -47,7 +47,7 @@ contract DInterestLens {
         // Compute token amounts
         bool early = block.timestamp < depositEntry.maturationTimestamp;
         uint256 depositAmount =
-            virtualTokenAmount.decdiv(depositEntry.interestRate + PRECISION);
+            virtualTokenAmount.div(depositEntry.interestRate + PRECISION);
         uint256 interestAmount = early ? 0 : virtualTokenAmount - depositAmount;
         withdrawableAmount = depositAmount + interestAmount;
 
@@ -62,7 +62,7 @@ contract DInterestLens {
             feeAmount = earlyWithdrawFee;
             withdrawableAmount -= earlyWithdrawFee;
         } else {
-            feeAmount = depositAmount.decmul(depositEntry.feeRate);
+            feeAmount = depositAmount.mul(depositEntry.feeRate);
         }
     }
 
@@ -152,7 +152,7 @@ contract DInterestLens {
         virtual
         returns (bool isNegative, uint256 surplusAmount)
     {
-        (isNegative, surplusAmount) = pool.rawSurplusOfDeposit(depositID);
+        (isNegative, surplusAmount) = rawSurplusOfDeposit(pool, depositID);
 
         DInterest.Deposit memory depositEntry = pool.getDeposit(depositID);
         if (depositEntry.fundingID != 0) {
@@ -176,6 +176,60 @@ contract DInterestLens {
     }
 
     /**
+        @notice Computes the raw surplus of a deposit, which is the current value of the
+                deposit in the money market minus the amount owed (deposit + interest + fee).
+                The deposit's funding status is not considered here, meaning even if a deposit's
+                fixed-rate interest is fully funded, it likely will still have a non-zero surplus.
+        @param depositID The ID of the deposit
+        @return isNegative True if the surplus is negative, false otherwise
+        @return surplusAmount The absolute value of the surplus, in stablecoins
+     */
+    function rawSurplusOfDeposit(DInterest pool, uint64 depositID)
+        public
+        virtual
+        returns (bool isNegative, uint256 surplusAmount)
+    {
+        return
+            _rawSurplusOfDeposit(
+                pool,
+                depositID,
+                pool.moneyMarket().incomeIndex()
+            );
+    }
+
+    /**
+        @dev See {rawSurplusOfDeposit}
+        @param currentMoneyMarketIncomeIndex The moneyMarket's current incomeIndex
+     */
+    function _rawSurplusOfDeposit(
+        DInterest pool,
+        uint64 depositID,
+        uint256 currentMoneyMarketIncomeIndex
+    ) internal virtual returns (bool isNegative, uint256 surplusAmount) {
+        DInterest.Deposit memory depositEntry = pool.getDeposit(depositID);
+        uint256 depositAmount =
+            depositEntry.virtualTokenTotalSupply.div(
+                depositEntry.interestRate + PRECISION
+            );
+        uint256 interestAmount =
+            depositEntry.virtualTokenTotalSupply - depositAmount;
+        uint256 feeAmount = depositAmount.mul(depositEntry.feeRate);
+        uint256 currentDepositValue =
+            (depositAmount * currentMoneyMarketIncomeIndex) /
+                depositEntry.averageRecordedIncomeIndex;
+        uint256 owed = depositAmount + interestAmount + feeAmount;
+        if (currentDepositValue >= owed) {
+            // Locked value more than owed deposits, positive surplus
+            isNegative = false;
+            surplusAmount = currentDepositValue - owed;
+        } else {
+            // Locked value less than owed deposits, negative surplus
+            isNegative = true;
+            surplusAmount = owed - currentDepositValue;
+        }
+    }
+
+    /**
         @dev Converts a virtual token value into the corresponding principal value.
              Principal refers to deposit + full interest + fee.
         @param depositEntry The deposit struct
@@ -188,7 +242,7 @@ contract DInterestLens {
     ) internal pure virtual returns (uint256) {
         uint256 depositInterestRate = depositEntry.interestRate;
         return
-            virtualTokenAmount.decdiv(depositInterestRate + PRECISION).decmul(
+            virtualTokenAmount.div(depositInterestRate + PRECISION).mul(
                 depositInterestRate + depositEntry.feeRate + PRECISION
             );
     }

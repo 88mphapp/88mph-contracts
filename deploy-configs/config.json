@@ -1,5 +1,5 @@
 {
-  "network": "rinkeby",
+  "network": "mainnet",
   "pool": "compound-dai",
   "protocol": "compound"
 }

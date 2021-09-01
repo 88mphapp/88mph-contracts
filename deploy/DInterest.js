@@ -2,13 +2,7 @@ const BigNumber = require("bignumber.js");
 const poolConfig = require("../deploy-configs/get-pool-config");
 const config = require("../deploy-configs/get-network-config");
 
-module.exports = async ({
-  web3,
-  getNamedAccounts,
-  deployments,
-  getChainId,
-  artifacts
-}) => {
+module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
 
@@ -22,7 +16,7 @@ module.exports = async ({
   );
   const depositNFTDeployment = await get(`${poolConfig.nftNamePrefix}Deposit`);
   const fundingMultitokenDeployment = await get(
-    `${poolConfig.nftNamePrefix}Floating Rate Bond`
+    `${poolConfig.nftNamePrefix}Yield Token`
   );
   const mphMinterDeployment = await get("MPHMinter");
 
@@ -31,27 +25,27 @@ module.exports = async ({
     contract: "DInterest",
     proxy: {
       owner: config.govTimelock,
-      proxyContract: "OptimizedTransparentProxy"
+      proxyContract: "OptimizedTransparentProxy",
+      execute: {
+        init: {
+          methodName: "initialize",
+          args: [
+            BigNumber(poolConfig.MaxDepositPeriod).toFixed(),
+            BigNumber(poolConfig.MinDepositAmount).toFixed(),
+            feeModelDeployment.address,
+            interestModelDeployment.address,
+            interestOracleDeployment.address,
+            depositNFTDeployment.address,
+            fundingMultitokenDeployment.address,
+            mphMinterDeployment.address
+          ]
+        }
+      }
     }
   });
   if (deployResult.newlyDeployed) {
     const DInterest = artifacts.require("DInterest");
     const contract = await DInterest.at(deployResult.address);
-    await contract.initialize(
-      BigNumber(poolConfig.MaxDepositPeriod).toFixed(),
-      BigNumber(poolConfig.MinDepositAmount).toFixed(),
-      moneyMarketDeployment.address,
-      poolConfig.stablecoin,
-      feeModelDeployment.address,
-      interestModelDeployment.address,
-      interestOracleDeployment.address,
-      depositNFTDeployment.address,
-      fundingMultitokenDeployment.address,
-      mphMinterDeployment.address,
-      {
-        from: deployer
-      }
-    );
     log(`${poolConfig.name} deployed at ${deployResult.address}`);
 
     // Transfer the ownership of the money market to the DInterest pool
@@ -129,7 +123,7 @@ module.exports = async ({
     log(`Renounce FundingMultitoken METADATA_ROLE of ${deployer}`);
 
     // Transfer DInterest ownership to gov
-    await contract.transferOwnership(config.govTreasury, {
+    await contract.transferOwnership(config.govTreasury, true, false, {
       from: deployer
     });
     log(`Transfer ${poolConfig.name} ownership to ${config.govTreasury}`);
@@ -147,7 +141,7 @@ module.exports.dependencies = [
   poolConfig.interestModel,
   `${poolConfig.name}--${poolConfig.interestOracle}`,
   `${poolConfig.nftNamePrefix}Deposit`,
-  `${poolConfig.nftNamePrefix}Floating Rate Bond`,
+  `${poolConfig.nftNamePrefix}Yield Token`,
   "MPHRewards",
   "DInterestLens",
   "MPHMinterLegacy"

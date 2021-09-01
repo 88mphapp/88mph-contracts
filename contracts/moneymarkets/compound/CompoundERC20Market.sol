@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
 import {SafeERC20} from "../../libs/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -7,12 +7,12 @@ import {
     AddressUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import {MoneyMarket} from "../MoneyMarket.sol";
-import {DecMath} from "../../libs/DecMath.sol";
+import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 import {ICERC20} from "./imports/ICERC20.sol";
 import {IComptroller} from "./imports/IComptroller.sol";
 
 contract CompoundERC20Market is MoneyMarket {
-    using DecMath for uint256;
+    using PRBMathUD60x18 for uint256;
     using SafeERC20 for ERC20;
     using AddressUpgradeable for address;
 
@@ -54,7 +54,7 @@ contract CompoundERC20Market is MoneyMarket {
         stablecoin.safeTransferFrom(msg.sender, address(this), amount);
 
         // Deposit `amount` stablecoin into cToken
-        stablecoin.safeApprove(address(cToken), amount);
+        stablecoin.safeIncreaseAllowance(address(cToken), amount);
         require(
             cToken.mint(amount) == ERRCODE_OK,
             "CompoundERC20Market: Failed to mint cTokens"
@@ -85,44 +85,34 @@ contract CompoundERC20Market is MoneyMarket {
     }
 
     function claimRewards() external override {
-        comptroller.claimComp(address(this));
         ERC20 comp = ERC20(comptroller.getCompAddress());
-        comp.safeTransfer(rewards, comp.balanceOf(address(this)));
-    }
-
-    function totalValue() external override returns (uint256) {
-        uint256 cTokenBalance = cToken.balanceOf(address(this));
-        // Amount of stablecoin units that 1 unit of cToken can be exchanged for, scaled by 10^18
-        uint256 cTokenPrice = cToken.exchangeRateCurrent();
-        return cTokenBalance.decmul(cTokenPrice);
-    }
-
-    function totalValue(uint256 currentIncomeIndex)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        uint256 cTokenBalance = cToken.balanceOf(address(this));
-        return cTokenBalance.decmul(currentIncomeIndex);
-    }
-
-    function incomeIndex() external override returns (uint256 index) {
-        index = cToken.exchangeRateCurrent();
-        require(index > 0, "CompoundERC20Market: BAD_INDEX");
+        uint256 beforeBalance = comp.balanceOf(address(this));
+        comptroller.claimComp(address(this));
+        comp.safeTransfer(
+            rewards,
+            comp.balanceOf(address(this)) - beforeBalance
+        );
     }
 
     /**
         Param setters
      */
     function setRewards(address newValue) external override onlyOwner {
-        require(newValue.isContract(), "CompoundERC20Market: not contract");
+        require(newValue != address(0), "CompoundERC20Market: 0 address");
         rewards = newValue;
         emit ESetParamAddress(msg.sender, "rewards", newValue);
     }
 
     /**
-        @dev See {Rescuable._authorizeRescue}
+        @dev IMPORTANT MUST READ
+        This function is for restricting unauthorized accounts from taking funds
+        and ensuring only tokens not used by the MoneyMarket can be rescued.
+        IF YOU DON'T GET IT RIGHT YOU WILL LOSE PEOPLE'S MONEY
+        MAKE SURE YOU DO ALL OF THE FOLLOWING
+        1) You MUST override it in a MoneyMarket implementation.
+        2) You MUST make `super._authorizeRescue(token, target);` the first line of your overriding function.
+        3) You MUST revert during a call to this function if a token used by the MoneyMarket is being rescued.
+        4) You SHOULD look at how existing MoneyMarkets do it as an example.
      */
     function _authorizeRescue(address token, address target)
         internal
@@ -131,6 +121,21 @@ contract CompoundERC20Market is MoneyMarket {
     {
         super._authorizeRescue(token, target);
         require(token != address(cToken), "CompoundERC20Market: no steal");
+    }
+
+    function _totalValue(uint256 currentIncomeIndex)
+        internal
+        view
+        override
+        returns (uint256)
+    {
+        uint256 cTokenBalance = cToken.balanceOf(address(this));
+        return cTokenBalance.mul(currentIncomeIndex);
+    }
+
+    function _incomeIndex() internal override returns (uint256 index) {
+        index = cToken.exchangeRateCurrent();
+        require(index > 0, "CompoundERC20Market: BAD_INDEX");
     }
 
     uint256[46] private __gap;

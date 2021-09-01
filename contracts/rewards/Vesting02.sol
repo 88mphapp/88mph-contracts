@@ -1,24 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "../libs/SafeERC20.sol";
 import {
     ERC721URIStorageUpgradeable
 } from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
-import {
-    OwnableUpgradeable
-} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {BoringOwnable} from "../libs/BoringOwnable.sol";
 import {
     MathUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import {MPHMinter} from "./MPHMinter.sol";
 import {DInterest} from "../DInterest.sol";
-import {DecMath} from "../libs/DecMath.sol";
+import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 
-contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
+contract Vesting02 is ERC721URIStorageUpgradeable, BoringOwnable {
     using SafeERC20 for IERC20;
-    using DecMath for uint256;
+    using PRBMathUD60x18 for uint256;
 
     uint256 internal constant PRECISION = 10**18;
 
@@ -148,7 +146,7 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
             );
         vestEntry.accumulatedAmount += (currentDepositAmount *
             (currentTimestamp - vestEntry.lastUpdateTimestamp))
-            .decmul(vestEntry.vestAmountPerStablecoinPerSecond);
+            .mul(vestEntry.vestAmountPerStablecoinPerSecond);
         require(block.timestamp <= type(uint64).max, "Vesting02: OVERFLOW");
         vestEntry.lastUpdateTimestamp = uint64(block.timestamp);
         vestEntry.vestAmountPerStablecoinPerSecond =
@@ -240,13 +238,13 @@ contract Vesting02 is ERC721URIStorageUpgradeable, OwnableUpgradeable {
             return vestEntry.accumulatedAmount - vestEntry.withdrawnAmount;
         }
         uint256 depositAmount =
-            depositEntry.virtualTokenTotalSupply.decdiv(
+            depositEntry.virtualTokenTotalSupply.div(
                 PRECISION + depositEntry.interestRate
             );
         return
             vestEntry.accumulatedAmount +
             (depositAmount * (currentTimestamp - vestEntry.lastUpdateTimestamp))
-                .decmul(vestEntry.vestAmountPerStablecoinPerSecond) -
+                .mul(vestEntry.vestAmountPerStablecoinPerSecond) -
             vestEntry.withdrawnAmount;
     }
 

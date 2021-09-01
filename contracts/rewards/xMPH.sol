@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {
@@ -8,7 +8,8 @@ import {
 import {
     AccessControlUpgradeable
 } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {DecMath} from "../libs/DecMath.sol";
+import {SafeERC20} from "../libs/SafeERC20.sol";
+import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 
 /**
     @title Staked MPH
@@ -16,7 +17,8 @@ import {DecMath} from "../libs/DecMath.sol";
     @notice The MPH staking contract
  */
 contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
-    using DecMath for uint256;
+    using SafeERC20 for ERC20;
+    using PRBMathUD60x18 for uint256;
 
     uint256 internal constant PRECISION = 10**18;
     uint256 internal constant MAX_REWARD_UNLOCK_PERIOD = 365 days;
@@ -134,7 +136,7 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
         ) {
             // no rewards or rewards fully unlocked
             // entire balance is withdrawable
-            return mphBalance.decdiv(totalShares);
+            return mphBalance.div(totalShares);
         } else {
             // rewards not fully unlocked
             // deduct locked rewards from balance
@@ -143,7 +145,7 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
                 (_lastRewardAmount *
                     (_currentUnlockEndTimestamp - block.timestamp)) /
                     (_currentUnlockEndTimestamp - _lastRewardTimestamp);
-            return (mphBalance - lockedRewardAmount).decdiv(totalShares);
+            return (mphBalance - lockedRewardAmount).div(totalShares);
         }
     }
 
@@ -174,9 +176,9 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
         returns (uint256 shareAmount)
     {
         require(_mphAmount > 0, "xMPH: amount");
-        shareAmount = _mphAmount.decdiv(getPricePerFullShare());
+        shareAmount = _mphAmount.div(getPricePerFullShare());
         _mint(msg.sender, shareAmount);
-        mph.transferFrom(msg.sender, address(this), _mphAmount);
+        mph.safeTransferFrom(msg.sender, address(this), _mphAmount);
     }
 
     /**
@@ -191,9 +193,9 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
             totalSupply() >= _shareAmount + MIN_AMOUNT && _shareAmount > 0,
             "xMPH: amount"
         );
-        mphAmount = _shareAmount.decmul(getPricePerFullShare());
+        mphAmount = _shareAmount.mul(getPricePerFullShare());
         _burn(msg.sender, _shareAmount);
-        mph.transfer(msg.sender, mphAmount);
+        mph.safeTransfer(msg.sender, mphAmount);
     }
 
     /**
@@ -209,7 +211,7 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
         require(hasRole(DISTRIBUTOR_ROLE, msg.sender), "xMPH: not distributor");
 
         // transfer rewards from sender
-        mph.transferFrom(msg.sender, address(this), rewardAmount);
+        mph.safeTransferFrom(msg.sender, address(this), rewardAmount);
 
         if (block.timestamp >= currentUnlockEndTimestamp) {
             // start new reward period

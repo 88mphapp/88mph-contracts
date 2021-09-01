@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.3;
+pragma solidity 0.8.4;
 
 import {
     AccessControlUpgradeable
@@ -9,13 +9,13 @@ import {
 } from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import {Vesting02} from "./Vesting02.sol";
 import {FundingMultitoken} from "../tokens/FundingMultitoken.sol";
-import {DecMath} from "../libs/DecMath.sol";
+import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 import {DInterest} from "../DInterest.sol";
 import {MPHToken} from "./MPHToken.sol";
 
 contract MPHMinter is AccessControlUpgradeable {
     using AddressUpgradeable for address;
-    using DecMath for uint256;
+    using PRBMathUD60x18 for uint256;
 
     uint256 internal constant PRECISION = 10**18;
     bytes32 public constant WHITELISTER_ROLE = keccak256("WHITELISTER_ROLE");
@@ -172,11 +172,11 @@ contract MPHMinter is AccessControlUpgradeable {
         if (amount > 0) {
             mph.ownerMint(account, amount);
         }
-        uint256 devReward = amount.decmul(devRewardMultiplier);
+        uint256 devReward = amount.mul(devRewardMultiplier);
         if (devReward > 0) {
             mph.ownerMint(devWallet, devReward);
         }
-        uint256 govReward = amount.decmul(govRewardMultiplier);
+        uint256 govReward = amount.mul(govRewardMultiplier);
         if (govReward > 0) {
             mph.ownerMint(govTreasury, govReward);
         }
@@ -191,7 +191,7 @@ contract MPHMinter is AccessControlUpgradeable {
             return;
         }
         uint256 mintMPHAmount =
-            interestAmount.decmul(poolFunderRewardMultiplier[msg.sender]);
+            interestAmount.mul(poolFunderRewardMultiplier[msg.sender]);
         if (mintMPHAmount == 0) {
             return;
         }
@@ -205,11 +205,11 @@ contract MPHMinter is AccessControlUpgradeable {
             mintMPHAmount
         );
 
-        uint256 devReward = mintMPHAmount.decmul(devRewardMultiplier);
+        uint256 devReward = mintMPHAmount.mul(devRewardMultiplier);
         if (devReward > 0) {
             mph.ownerMint(devWallet, devReward);
         }
-        uint256 govReward = mintMPHAmount.decmul(govRewardMultiplier);
+        uint256 govReward = mintMPHAmount.mul(govRewardMultiplier);
         if (govReward > 0) {
             mph.ownerMint(govTreasury, govReward);
         }
@@ -240,12 +240,12 @@ contract MPHMinter is AccessControlUpgradeable {
         if (!early) {
             funderReward = maturationTimestamp > fundingCreationTimestamp
                 ? depositAmount *
-                    (maturationTimestamp - fundingCreationTimestamp).decmul(
+                    (maturationTimestamp - fundingCreationTimestamp).mul(
                         poolFunderRewardMultiplier[pool]
                     )
                 : 0;
-            devReward = funderReward.decmul(devRewardMultiplier);
-            govReward = funderReward.decmul(govRewardMultiplier);
+            devReward = funderReward.mul(devRewardMultiplier);
+            govReward = funderReward.mul(govRewardMultiplier);
         } else {
             return 0;
         }

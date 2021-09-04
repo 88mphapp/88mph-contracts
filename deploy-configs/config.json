@@ -1,5 +1,5 @@
 {
   "network": "mainnet",
-  "pool": "compound-dai",
+  "pool": "compound-uni",
   "protocol": "compound"
 }

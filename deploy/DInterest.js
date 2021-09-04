@@ -100,13 +100,17 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
     await fundingMultitokenContract.grantRole(
       DIVIDEND_ROLE,
       config.govTreasury,
-      { from: deployer }
+      {
+        from: deployer
+      }
     );
     log(`Grant FundingMultitoken DIVIDEND_ROLE to ${config.govTreasury}`);
     await fundingMultitokenContract.grantRole(
       METADATA_ROLE,
       config.govTreasury,
-      { from: deployer }
+      {
+        from: deployer
+      }
     );
     log(`Grant FundingMultitoken METADATA_ROLE to ${config.govTreasury}`);
     await fundingMultitokenContract.renounceRole(MINTER_BURNER_ROLE, deployer, {

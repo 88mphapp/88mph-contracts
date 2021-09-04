@@ -1,0 +1,20 @@
+{
+  "name": "88mph UNI via Compound",
+  "nftNamePrefix": "88mph UNI via Compound ",
+  "nftSymbolPrefix": "88mph-UNI-via-Compound-",
+  "moneyMarket": "CompoundERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 1e18,
+  "stablecoin": "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984",
+  "EMAInitial": 7.7653e7,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0x35a18000230da775cac24873d00ff85bccded550"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

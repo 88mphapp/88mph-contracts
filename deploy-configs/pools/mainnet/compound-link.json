@@ -1,0 +1,20 @@
+{
+  "name": "88mph LINK via Compound",
+  "nftNamePrefix": "88mph LINK via Compound ",
+  "nftSymbolPrefix": "88mph-LINK-via-Compound-",
+  "moneyMarket": "CompoundERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 1e18,
+  "stablecoin": "0x514910771af9ca656af840dff83e8264ecf986ca",
+  "EMAInitial": 2.1437e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0xface851a4921ce59e912d19329929ce6da6eb0c7"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

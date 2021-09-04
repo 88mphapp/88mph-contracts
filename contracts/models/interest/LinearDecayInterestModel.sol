@@ -8,8 +8,8 @@ contract LinearDecayInterestModel is IInterestModel {
     using PRBMathUD60x18 for uint256;
 
     uint256 public constant PRECISION = 10**18;
-    uint256 public multiplierIntercept;
-    uint256 public multiplierSlope;
+    uint256 public immutable multiplierIntercept;
+    uint256 public immutable multiplierSlope;
 
     constructor(uint256 _multiplierIntercept, uint256 _multiplierSlope) {
         multiplierIntercept = _multiplierIntercept;

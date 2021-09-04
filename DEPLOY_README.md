@@ -12,3 +12,9 @@
 ```bash
 npx buidler deploy --tags DInterest --network [networkName]
 ```
+
+## Notes
+
+### LinearDecayInterestModel
+
+The interest amount as a function of the deposit length is a quadratic function that peaks at `t_mid = interestRateMultiplierIntercept / (2 * interestRateMultiplierSlope)`. In order to ensure the interest amount monotonically increases, we must have `t_max <= t_mid`, which means `interestRateMultiplierSlope <= interestRateMultiplierIntercept / (2 * t_max)`.

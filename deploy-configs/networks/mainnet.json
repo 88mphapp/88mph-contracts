@@ -10,5 +10,5 @@
   "interestFee": 0.2e18,
   "earlyWithdrawFee": 0.005e18,
   "interestRateMultiplierIntercept": 0.75e18,
-  "interestRateMultiplierSlope": 15844369250
+  "interestRateMultiplierSlope": 11883276940
 }

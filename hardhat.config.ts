@@ -50,7 +50,7 @@ const config: HardhatUserConfig = {
   networks: {
     mainnet: {
       url:
-        "https://mainnet.infura.io/v3/9e5f0d08ad19483193cc86092b7512f2",
+        "https://eth-mainnet.alchemyapi.io/v2/pvGDp1uf8J7QZ7MXpLhYs_SnMnsE0TY5",
       chainId: 1,
       from: secret.account,
       accounts: {

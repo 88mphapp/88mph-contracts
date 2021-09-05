@@ -1,5 +1,5 @@
 {
   "network": "mainnet",
-  "pool": "aave-usdc",
+  "pool": "aave-usdt",
   "protocol": "aave"
 }

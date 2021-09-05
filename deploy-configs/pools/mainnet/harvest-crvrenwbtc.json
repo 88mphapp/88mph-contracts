@@ -1,7 +1,7 @@
 {
-  "name": "88mph CRV:RENWBTC via Harvest",
-  "nftNamePrefix": "88mph CRV:RENWBTC via Harvest ",
-  "nftSymbolPrefix": "88mph-CRV:RENWBTC-via-Harvest",
+  "name": "88mph CRVRENWBTC via Harvest",
+  "nftNamePrefix": "88mph CRVRENWBTC via Harvest ",
+  "nftSymbolPrefix": "88mph-CRVRENWBTC-via-Harvest",
   "moneyMarket": "HarvestMarket",
   "interestModel": "LinearDecayInterestModel",
   "interestOracle": "EMAOracle",

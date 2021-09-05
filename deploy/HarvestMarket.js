@@ -3,13 +3,7 @@ const poolConfig = require("../deploy-configs/get-pool-config");
 
 const name = `${poolConfig.name}--HarvestMarket`;
 
-module.exports = async ({
-  web3,
-  getNamedAccounts,
-  deployments,
-  getChainId,
-  artifacts
-}) => {
+module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
 

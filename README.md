@@ -81,4 +81,4 @@ npm run prettier
 
 Read [DEPLOY_README.md](DEPLOY_README.md)
 
-**Notes**: the rinkeby contract addresses are available here https://github.com/88mphapp/88mph-contracts/blob/v3/deployments-exported/rinkeby.json
+**Notes**: the mainnet contract addresses are available here https://github.com/88mphapp/88mph-contracts/tree/v3/deployments/mainnet and the rinkeby here https://github.com/88mphapp/88mph-contracts/tree/v3/deployments/rinkeby

@@ -24,6 +24,10 @@ contract OneSplitDumper is AdminControlled {
         rewardToken = IERC20(address(xMPHToken.mph()));
     }
 
+    function postUpgrade() external onlyAdmin {
+        rewardToken = IERC20(address(xMPHToken.mph()));
+    }
+
     function getDumpParams(address tokenAddress, uint256 parts)
         external
         view

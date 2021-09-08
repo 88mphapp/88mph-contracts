@@ -16,6 +16,10 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
         init: {
           methodName: "initialize",
           args: [config.oneSplitAddress, xMPHDeployment.address]
+        },
+        onUpgrade: {
+          methodName: "postUpgrade",
+          args: []
         }
       }
     }

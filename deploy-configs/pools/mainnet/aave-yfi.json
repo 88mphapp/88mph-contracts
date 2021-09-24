@@ -1,0 +1,20 @@
+{
+  "name": "88mph YFI via Aave",
+  "nftNamePrefix": "88mph YFI via Aave ",
+  "nftSymbolPrefix": "88mph-YFI-via-Aave-",
+  "moneyMarket": "AaveMarket",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 0.001e18,
+  "stablecoin": "0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e",
+  "EMAInitial": 1.825e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "aToken": "0x5165d24277cD063F5ac44Efd447B27025e888f37"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

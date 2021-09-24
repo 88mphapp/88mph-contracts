@@ -1,0 +1,20 @@
+{
+  "name": "88mph REN via Aave",
+  "nftNamePrefix": "88mph REN via Aave ",
+  "nftSymbolPrefix": "88mph-REN-via-Aave-",
+  "moneyMarket": "AaveMarket",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 10e18,
+  "stablecoin": "0x408e41876cCCDC0F92210600ef50372656052a38",
+  "EMAInitial": 3.189e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "aToken": "0xCC12AbE4ff81c9378D670De1b57F8e0Dd228D77a"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

@@ -1,0 +1,20 @@
+{
+  "name": "88mph GUSD via Aave",
+  "nftNamePrefix": "88mph GUSD via Aave ",
+  "nftSymbolPrefix": "88mph-GUSD-via-Aave-",
+  "moneyMarket": "AaveMarket",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 100e2,
+  "stablecoin": "0x056fd409e1d7a124bd7017459dfea2f387b6d5cd",
+  "EMAInitial": 1.1288e9,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "aToken": "0xD37EE7e4f452C6638c96536e68090De8cBcdb583"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

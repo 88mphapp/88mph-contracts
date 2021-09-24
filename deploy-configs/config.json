@@ -1,5 +1,5 @@
 {
   "network": "mainnet",
-  "pool": "harvest-crvrenwbtc",
-  "protocol": "harvest"
+  "pool": "aave-yfi",
+  "protocol": "aave"
 }

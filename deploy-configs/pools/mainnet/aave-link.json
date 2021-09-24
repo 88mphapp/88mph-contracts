@@ -1,0 +1,20 @@
+{
+  "name": "88mph LINK via Aave",
+  "nftNamePrefix": "88mph LINK via Aave ",
+  "nftSymbolPrefix": "88mph-LINK-via-Aave-",
+  "moneyMarket": "AaveMarket",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 1e18,
+  "stablecoin": "0x514910771af9ca656af840dff83e8264ecf986ca",
+  "EMAInitial": 2.2858e6,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "aToken": "0xa06bC25B5805d5F8d82847D191Cb4Af5A3e873E0"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

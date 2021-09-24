@@ -10,7 +10,7 @@
 ## Deploy DInterest pool
 
 ```bash
-npx buidler deploy --tags DInterest --network [networkName]
+scripts/deploy-mainnet.sh
 ```
 
 ## Notes

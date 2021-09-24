@@ -1,0 +1,20 @@
+{
+  "name": "88mph WBTC via Aave",
+  "nftNamePrefix": "88mph WBTC via Aave ",
+  "nftSymbolPrefix": "88mph-WBTC-via-Aave-",
+  "moneyMarket": "AaveMarket",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 0.001e8,
+  "stablecoin": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+  "EMAInitial": 1.1289e9,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "aToken": "0x9ff58f4fFB29fA2266Ab25e75e2A8b3503311656"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

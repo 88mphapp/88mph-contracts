@@ -1,0 +1,20 @@
+{
+  "name": "88mph SNX via Aave",
+  "nftNamePrefix": "88mph SNX via Aave ",
+  "nftSymbolPrefix": "88mph-SNX-via-Aave-",
+  "moneyMarket": "AaveMarket",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 1e18,
+  "stablecoin": "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F",
+  "EMAInitial": 9.0532e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "aToken": "0x35f6B052C598d933D69A4EEC4D04c73A191fE6c2"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

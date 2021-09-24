@@ -1,0 +1,20 @@
+{
+  "name": "88mph BAL via Aave",
+  "nftNamePrefix": "88mph BAL via Aave ",
+  "nftSymbolPrefix": "88mph-BAL-via-Aave-",
+  "moneyMarket": "AaveMarket",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 1e18,
+  "stablecoin": "0xba100000625a3754423978a60c9317c58a424e3d",
+  "EMAInitial": 1.3694e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "aToken": "0x272F97b7a56a387aE942350bBC7Df5700f8a4576"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

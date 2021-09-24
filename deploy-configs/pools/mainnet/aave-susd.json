@@ -1,0 +1,20 @@
+{
+  "name": "88mph sUSD via Aave",
+  "nftNamePrefix": "88mph sUSD via Aave ",
+  "nftSymbolPrefix": "88mph-sUSD-via-Aave-",
+  "moneyMarket": "AaveMarket",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 100e18,
+  "stablecoin": "0x57ab1ec28d129707052df4df418d58a2d46d5f51",
+  "EMAInitial": 3.6428e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "aToken": "0x6C5024Cd4F8A59110119C56f8933403A539555EB"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

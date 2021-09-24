@@ -1,0 +1,20 @@
+{
+  "name": "88mph WETH via Aave",
+  "nftNamePrefix": "88mph WETH via Aave ",
+  "nftSymbolPrefix": "88mph-WETH-via-Aave-",
+  "moneyMarket": "AaveMarket",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 0.01e18,
+  "stablecoin": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+  "EMAInitial": 4.5714e6,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "aToken": "0x030bA81f1c18d280636F32af80b9AAd02Cf0854e"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

@@ -1,5 +1,5 @@
 {
   "network": "mainnet",
-  "pool": "aave-yfi",
-  "protocol": "aave"
+  "pool": "compound-zrx",
+  "protocol": "compound"
 }

@@ -1,0 +1,20 @@
+{
+  "name": "88mph ZRX via Compound",
+  "nftNamePrefix": "88mph ZRX via Compound ",
+  "nftSymbolPrefix": "88mph-ZRX-via-Compound-",
+  "moneyMarket": "CompoundERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 10e18,
+  "stablecoin": "0xe41d2489571d322189246dafa5ebde1f4699f498",
+  "EMAInitial": 4.0055e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0xB3319f5D18Bc0D84dD1b4825Dcde5d5f7266d407"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

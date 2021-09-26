@@ -1,0 +1,20 @@
+{
+  "name": "88mph TUSD via Compound",
+  "nftNamePrefix": "88mph TUSD via Compound ",
+  "nftSymbolPrefix": "88mph-TUSD-via-Compound-",
+  "moneyMarket": "CompoundERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 100e18,
+  "stablecoin": "0x0000000000085d4780B73119b644AE5ecd22b376",
+  "EMAInitial": 1.3069e9,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0x12392f67bdf24fae0af363c24ac620a2f67dad86"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

@@ -1,0 +1,20 @@
+{
+  "name": "88mph WBTC via Compound",
+  "nftNamePrefix": "88mph WBTC via Compound ",
+  "nftSymbolPrefix": "88mph-WBTC-via-Compound-",
+  "moneyMarket": "CompoundERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 0.001e8,
+  "stablecoin": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+  "EMAInitial": 1.5973e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0xccf4429db6322d5c611ee964527d42e5d685dd6a"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

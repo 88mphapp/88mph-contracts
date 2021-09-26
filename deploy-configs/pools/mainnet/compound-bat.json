@@ -1,0 +1,20 @@
+{
+  "name": "88mph BAT via Compound",
+  "nftNamePrefix": "88mph BAT via Compound ",
+  "nftSymbolPrefix": "88mph-BAT-via-Compound-",
+  "moneyMarket": "CompoundERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 10e18,
+  "stablecoin": "0x0d8775f648430679a709e98d2b0cb6250d2887ef",
+  "EMAInitial": 3.189e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

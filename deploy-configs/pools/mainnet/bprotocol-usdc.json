@@ -1,0 +1,20 @@
+{
+  "name": "88mph USDC via BProtocol",
+  "nftNamePrefix": "88mph USDC via BProtocol ",
+  "nftSymbolPrefix": "88mph-USDC-via-BProtocol-",
+  "moneyMarket": "BProtocolMarket",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 100e6,
+  "stablecoin": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+  "EMAInitial": 1.3513e9,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0x39aa39c021dfbae8fac545936693ac917d5e7563"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

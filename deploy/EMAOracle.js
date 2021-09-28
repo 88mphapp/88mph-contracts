@@ -1,5 +1,6 @@
 const BigNumber = require("bignumber.js");
-const poolConfig = require("../deploy-configs/get-pool-config");
+const requireNoCache = require("./requireNoCache");
+const poolConfig = requireNoCache("../deploy-configs/get-pool-config");
 
 const name = `${poolConfig.name}--EMAOracle`;
 

@@ -1,5 +1,6 @@
-const config = require("../deploy-configs/get-network-config");
-const poolConfig = require("../deploy-configs/get-pool-config");
+const requireNoCache = require("./requireNoCache");
+const config = requireNoCache("../deploy-configs/get-network-config");
+const poolConfig = requireNoCache("../deploy-configs/get-pool-config");
 const BigNumber = require("bignumber.js");
 
 const name = `${poolConfig.nftNamePrefix}Yield Token`;

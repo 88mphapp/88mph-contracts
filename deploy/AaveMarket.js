@@ -1,16 +1,11 @@
-const config = require("../deploy-configs/get-network-config");
-const poolConfig = require("../deploy-configs/get-pool-config");
-const aaveConfig = require("../deploy-configs/get-protocol-config");
+const requireNoCache = require("./requireNoCache");
+const config = requireNoCache("../deploy-configs/get-network-config");
+const poolConfig = requireNoCache("../deploy-configs/get-pool-config");
+const aaveConfig = requireNoCache("../deploy-configs/get-protocol-config");
 
 const name = `${poolConfig.name}--AaveMarket`;
 
-module.exports = async ({
-  web3,
-  getNamedAccounts,
-  deployments,
-  getChainId,
-  artifacts
-}) => {
+module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
 

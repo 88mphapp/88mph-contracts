@@ -1,6 +1,7 @@
 const BigNumber = require("bignumber.js");
-const poolConfig = require("../deploy-configs/get-pool-config");
-const config = require("../deploy-configs/get-network-config");
+const requireNoCache = require("./requireNoCache");
+const poolConfig = requireNoCache("../deploy-configs/get-pool-config");
+const config = requireNoCache("../deploy-configs/get-network-config");
 
 module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
   const { log, get, execute, read } = deployments;

@@ -9,6 +9,8 @@
 
 ## Deploy DInterest pool
 
+Put the array of configs (in the format of `deployment-configs/config.json`) of the pools you want to deploy in `scripts/deploy-pool-list.json`, then execute the following script:
+
 ```bash
 scripts/deploy-mainnet.sh
 ```

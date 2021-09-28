@@ -1,5 +1,10 @@
-const config = require("./config.json");
+const fs = require("fs");
+const config = JSON.parse(fs.readFileSync("deploy-configs/config.json"));
 const protocolName = config.protocol;
 const networkName = config.network;
-const protocolConfig = require(`./protocols/${networkName}/${protocolName}.json`);
+const protocolConfig = JSON.parse(
+  fs.readFileSync(
+    `deploy-configs/protocols/${networkName}/${protocolName}.json`
+  )
+);
 module.exports = protocolConfig;

@@ -1,5 +1,6 @@
 const BigNumber = require("bignumber.js");
-const config = require("../deploy-configs/get-network-config");
+const requireNoCache = require("./requireNoCache");
+const config = requireNoCache("../deploy-configs/get-network-config");
 
 module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
   const { deploy, log, get } = deployments;

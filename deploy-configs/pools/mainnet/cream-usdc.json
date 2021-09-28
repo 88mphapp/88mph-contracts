@@ -1,0 +1,20 @@
+{
+  "name": "88mph USDC via Cream",
+  "nftNamePrefix": "88mph USDC via Cream ",
+  "nftSymbolPrefix": "88mph-USDC-via-Cream-",
+  "moneyMarket": "CreamERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 100e6,
+  "stablecoin": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+  "EMAInitial": 3.5184e9,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0x44fbebd2f576670a6c33f6fc0b00aa8c5753b322"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

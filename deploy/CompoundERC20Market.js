@@ -1,6 +1,7 @@
-const config = require("../deploy-configs/get-network-config");
-const poolConfig = require("../deploy-configs/get-pool-config");
-const compoundConfig = require("../deploy-configs/get-protocol-config");
+const requireNoCache = require("./requireNoCache");
+const config = requireNoCache("../deploy-configs/get-network-config");
+const poolConfig = requireNoCache("../deploy-configs/get-pool-config");
+const compoundConfig = requireNoCache("../deploy-configs/get-protocol-config");
 
 const name = `${poolConfig.name}--CompoundERC20Market`;
 

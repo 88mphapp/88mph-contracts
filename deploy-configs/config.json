@@ -1,5 +1,1 @@
-{
-  "network": "mainnet",
-  "pool": "compound-zrx",
-  "protocol": "compound"
-}
+{ "network": "mainnet", "pool": "cream-usdt", "protocol": "cream" }

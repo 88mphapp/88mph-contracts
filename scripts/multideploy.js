@@ -4,7 +4,7 @@ const { accessSync, constants } = fs;
 const requireNoCache = require("../deploy/requireNoCache");
 
 async function main() {
-  const configList = require("./deploy-pool-list.json");
+  const configList = require("./multideploy-configs.json");
 
   let i = 0;
   for (let config of configList) {
@@ -16,7 +16,6 @@ async function main() {
     const poolConfig = requireNoCache("../deploy-configs/get-pool-config");
     const poolName = poolConfig.name;
     const moneyMarketName = poolConfig.moneyMarket;
-    console.log(poolName, moneyMarketName);
 
     // copy implementation deployment
     let templatePoolName = "";
@@ -52,7 +51,7 @@ async function main() {
       `88mph DAI via Aave_Implementation.json`,
       `${templatePoolName}--${moneyMarketName}_Implementation.json`
     ];
-    const deploymentsRoot = "deployments/mainnet/";
+    const deploymentsRoot = `deployments/${config.network}/`;
     for (let i in fromFileNames) {
       const fromFileName = fromFileNames[i];
       const toFileName = toFileNames[i];
@@ -72,10 +71,10 @@ async function main() {
 
     // remove config from list in json file
     if (i == configList.length - 1) {
-      fs.writeFileSync("scripts/deploy-pool-list.json", "[]");
+      fs.writeFileSync("scripts/multideploy-configs.json", "[]");
     } else {
       fs.writeFileSync(
-        "scripts/deploy-pool-list.json",
+        "scripts/multideploy-configs.json",
         JSON.stringify(configList.slice(i + 1))
       );
     }

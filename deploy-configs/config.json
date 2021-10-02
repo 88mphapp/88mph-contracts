@@ -1,1 +1,1 @@
-{ "network": "mainnet", "pool": "cream-usdt", "protocol": "cream" }
+{ "network": "polygon", "pool": "aave-dai", "protocol": "aave" }

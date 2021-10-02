@@ -9,7 +9,9 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const dumperDeployment = await get("Dumper");
+  const rewardRecipient = config.isEthereum
+    ? (await get("Dumper")).address
+    : config.govTreasury;
 
   const deployResult = await deploy(name, {
     from: deployer,
@@ -24,7 +26,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
             aaveConfig.lendingPoolAddressesProvider,
             poolConfig.moneyMarketParams.aToken,
             aaveConfig.aaveMining,
-            dumperDeployment.address,
+            rewardRecipient,
             config.govTreasury,
             poolConfig.stablecoin
           ]
@@ -37,4 +39,4 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   }
 };
 module.exports.tags = [name];
-module.exports.dependencies = ["Dumper"];
+module.exports.dependencies = config.isEthereum ? ["Dumper"] : [];

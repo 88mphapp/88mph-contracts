@@ -44,7 +44,6 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
     log(`Renounce Dumper DEFAULT_ADMIN_ROLE of ${deployer}`);
 
     // give Dumper DISTRIBUTOR_ROLE in xMPH
-    // TODO with multisig
     const xMPH = artifacts.require("xMPH");
     const xMPHContract = await xMPH.at(xMPHDeployment.address);
     await xMPHContract.grantRole(DISTRIBUTOR_ROLE, deployResult.address, {
@@ -53,5 +52,5 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
     log(`Grant xMPH DISTRIBUTOR_ROLE to ${deployResult.address}`);
   }
 };
-module.exports.tags = ["Dumper", "MPHRewards"];
-module.exports.dependencies = ["xMPH"];
+module.exports.tags = ["Dumper"];
+module.exports.dependencies = config.isEthereum ? ["xMPH"] : [];

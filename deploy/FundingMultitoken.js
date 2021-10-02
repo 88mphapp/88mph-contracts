@@ -11,7 +11,10 @@ module.exports = async ({ getNamedAccounts, deployments, artifacts }) => {
   const { log, get, deploy } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const dividendTokens = [poolConfig.stablecoin, config.mph];
+  const dividendTokens = [poolConfig.stablecoin];
+  if (config.isEthereum) {
+    dividendTokens.push(config.mph);
+  }
   const ERC20 = artifacts.require("ERC20");
   const stablecoinContract = await ERC20.at(poolConfig.stablecoin);
   const stablecoinDecimals = await stablecoinContract.decimals.call();

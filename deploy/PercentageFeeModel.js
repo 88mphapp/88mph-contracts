@@ -9,30 +9,35 @@ module.exports = async ({
   getChainId,
   artifacts
 }) => {
-  const { deploy, log, get } = deployments;
+  const { deploy, log, get, execute, read } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const dumperDeployment = await get("Dumper");
+  const feeRecipient = config.isEthereum
+    ? (await get("Dumper")).address
+    : config.govTreasury;
 
   const deployResult = await deploy("PercentageFeeModel", {
     from: deployer,
     args: [
-      dumperDeployment.address,
+      feeRecipient,
       BigNumber(config.interestFee).toFixed(),
       BigNumber(config.earlyWithdrawFee).toFixed()
     ]
   });
   if (deployResult.newlyDeployed) {
     log(`PercentageFeeModel deployed at ${deployResult.address}`);
+  }
 
-    // Transfer FeeModel ownership to gov treasury
-    const FeeModel = artifacts.require("PercentageFeeModel");
-    const feeModelContract = await FeeModel.at(deployResult.address);
-    await feeModelContract.transferOwnership(config.govTreasury, {
-      from: deployer
-    });
+  // Transfer FeeModel ownership to gov treasury
+  if ((await read("PercentageFeeModel", "owner")) !== config.govTreasury) {
+    await execute(
+      "PercentageFeeModel",
+      { from: deployer },
+      "transferOwnership",
+      config.govTreasury
+    );
     log(`Transfer PercentageFeeModel ownership to ${config.govTreasury}`);
   }
 };
 module.exports.tags = ["PercentageFeeModel"];
-module.exports.dependencies = ["Dumper"];
+module.exports.dependencies = config.isEthereum ? ["Dumper"] : [];

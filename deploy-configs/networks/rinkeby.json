@@ -10,5 +10,6 @@
   "interestFee": 0.2e18,
   "earlyWithdrawFee": 0.005e18,
   "interestRateMultiplierIntercept": 0.5e18,
-  "interestRateMultiplierSlope": 7922184626
+  "interestRateMultiplierSlope": 7922184626,
+  "isEthereum": true
 }

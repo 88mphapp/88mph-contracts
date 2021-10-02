@@ -15,7 +15,9 @@ module.exports = async ({
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const dumperDeployment = await get("Dumper");
+  const rewardRecipient = config.isEthereum
+    ? (await get("Dumper")).address
+    : config.govTreasury;
 
   const deployResult = await deploy(name, {
     from: deployer,
@@ -29,7 +31,7 @@ module.exports = async ({
           args: [
             poolConfig.moneyMarketParams.cToken,
             bprotocolConfig.comptroller,
-            dumperDeployment.address,
+            rewardRecipient,
             config.devWallet,
             poolConfig.stablecoin
           ]
@@ -42,4 +44,4 @@ module.exports = async ({
   }
 };
 module.exports.tags = [name];
-module.exports.dependencies = ["Dumper"];
+module.exports.dependencies = config.isEthereum ? ["Dumper"] : [];

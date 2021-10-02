@@ -149,6 +149,5 @@ module.exports.dependencies = [
   poolConfig.interestModel,
   `${poolConfig.name}--${poolConfig.interestOracle}`,
   `${poolConfig.nftNamePrefix}Deposit`,
-  `${poolConfig.nftNamePrefix}Yield Token`,
-  "MPHRewards"
+  `${poolConfig.nftNamePrefix}Yield Token`
 ];

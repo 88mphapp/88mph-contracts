@@ -1,20 +1,20 @@
 {
-  "name": "88mph DAI via Aave",
-  "nftNamePrefix": "88mph DAI via Aave ",
-  "nftSymbolPrefix": "88mph-DAI-via-Aave-",
+  "name": "88mph USDC via Aave",
+  "nftNamePrefix": "88mph USDC via Aave ",
+  "nftSymbolPrefix": "88mph-USDC-via-Aave-",
   "moneyMarket": "AaveMarket",
   "interestModel": "LinearDecayInterestModel",
   "interestOracle": "EMAOracle",
   "feeModel": "PercentageFeeModel",
   "MaxDepositPeriod": 31556952,
-  "MinDepositAmount": 1e18,
-  "stablecoin": "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063",
-  "EMAInitial": 1.3513e9,
+  "MinDepositAmount": 1e6,
+  "stablecoin": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+  "EMAInitial": 1.209e9,
   "EMAUpdateInverval": 86400,
   "EMASmoothingFactor": 2e18,
   "EMAAverageWindowInIntervals": 30,
   "moneyMarketParams": {
-    "aToken": "0x27F8D03b3a2196956ED754baDc28D73be8830A6e"
+    "aToken": "0x1a13F4Ca1d028320A707D99520AbFefca3998b7F"
   },
   "fundingMultitokenMetadataURI": ""
 }

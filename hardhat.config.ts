@@ -66,10 +66,10 @@ const config: HardhatUserConfig = {
         url:
           "https://eth-rinkeby.alchemyapi.io/v2/2LxgvUYd5FzgiXVoAWlq-KyM4v-E7KJ4"
       },*/
-      forking: {
+      /*forking: {
         url:
           "https://polygon-rpc.com"
-      },
+      },*/
       allowUnlimitedContractSize: true
     },
     rinkeby: {
@@ -79,9 +79,17 @@ const config: HardhatUserConfig = {
       from: secret.account,
       accounts: {
         mnemonic: secret.mnemonic
+      }
+    },
+    polygon: {
+      url:
+        "https://polygon-rpc.com",
+      chainId: 137,
+      from: secret.account,
+      accounts: {
+        mnemonic: secret.mnemonic
       },
-      gas: "auto",
-      gasPrice: 1.0000001e9
+      gasPrice: 3.5e9
     }
   },
   spdxLicenseIdentifier: {

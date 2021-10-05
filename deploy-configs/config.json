@@ -1,1 +1,1 @@
-{ "network": "polygon", "pool": "aave-weth", "protocol": "aave" }
+{ "network": "mainnet", "pool": "aave-weth", "protocol": "aave" }

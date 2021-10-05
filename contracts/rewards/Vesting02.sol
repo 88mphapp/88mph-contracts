@@ -144,11 +144,13 @@ contract Vesting02 is ERC721URIStorageUpgradeable, BoringOwnable {
                 block.timestamp,
                 depositEntry.maturationTimestamp
             );
-        vestEntry.accumulatedAmount += (currentDepositAmount *
-            (currentTimestamp - vestEntry.lastUpdateTimestamp))
-            .mul(vestEntry.vestAmountPerStablecoinPerSecond);
-        require(block.timestamp <= type(uint64).max, "Vesting02: OVERFLOW");
-        vestEntry.lastUpdateTimestamp = uint64(block.timestamp);
+        if (currentTimestamp > vestEntry.lastUpdateTimestamp) {
+            vestEntry.accumulatedAmount += (currentDepositAmount *
+                (currentTimestamp - vestEntry.lastUpdateTimestamp))
+                .mul(vestEntry.vestAmountPerStablecoinPerSecond);
+            require(block.timestamp <= type(uint64).max, "Vesting02: OVERFLOW");
+            vestEntry.lastUpdateTimestamp = uint64(block.timestamp);
+        }
         vestEntry.vestAmountPerStablecoinPerSecond =
             (vestEntry.vestAmountPerStablecoinPerSecond *
                 currentDepositAmount +

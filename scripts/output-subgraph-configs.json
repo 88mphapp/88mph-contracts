@@ -1,0 +1,38 @@
+[
+  {
+    "network": "polygon",
+    "pool": "aave-dai",
+    "protocol": "aave",
+    "decimals": 18
+  },
+  {
+    "network": "polygon",
+    "pool": "aave-matic",
+    "protocol": "aave",
+    "decimals": 18
+  },
+  {
+    "network": "polygon",
+    "pool": "aave-usdc",
+    "protocol": "aave",
+    "decimals": 6
+  },
+  {
+    "network": "polygon",
+    "pool": "aave-usdt",
+    "protocol": "aave",
+    "decimals": 6
+  },
+  {
+    "network": "polygon",
+    "pool": "aave-wbtc",
+    "protocol": "aave",
+    "decimals": 8
+  },
+  {
+    "network": "polygon",
+    "pool": "aave-weth",
+    "protocol": "aave",
+    "decimals": 18
+  }
+]

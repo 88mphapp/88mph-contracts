@@ -1,0 +1,20 @@
+{
+  "name": "88mph WBTC via Benqi",
+  "nftNamePrefix": "88mph WBTC via Benqi ",
+  "nftSymbolPrefix": "88mph-WBTC-via-Benqi-",
+  "moneyMarket": "BenqiERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 0.00001e8,
+  "stablecoin": "0x50b7545627a5162F82A992c33b87aDc75187B218",
+  "EMAInitial": 6.6264e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0xe194c4c5aC32a3C9ffDb358d9Bfd523a0B6d1568"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

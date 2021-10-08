@@ -1,1 +1,6 @@
-{ "network": "mainnet", "pool": "aave-weth", "protocol": "aave" }
+{
+  "network": "avalanche",
+  "pool": "benqi-link",
+  "protocol": "benqi",
+  "decimals": 18
+}

@@ -1,0 +1,20 @@
+{
+  "name": "88mph WETH via Benqi",
+  "nftNamePrefix": "88mph WETH via Benqi ",
+  "nftSymbolPrefix": "88mph-WETH-via-Benqi-",
+  "moneyMarket": "BenqiERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 0.0001e18,
+  "stablecoin": "0x49D5c2BdFfac6CE2BFdB6640F4F80f226bc10bAB",
+  "EMAInitial": 9.1343e7,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0x334AD834Cd4481BB02d09615E7c11a00579A7909"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

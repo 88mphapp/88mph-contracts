@@ -1,0 +1,20 @@
+{
+  "name": "88mph USDC via Benqi",
+  "nftNamePrefix": "88mph USDC via Benqi ",
+  "nftSymbolPrefix": "88mph-USDC-via-Benqi-",
+  "moneyMarket": "BenqiERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 1e6,
+  "stablecoin": "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664",
+  "EMAInitial": 2.0997e9,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0xBEb5d47A3f720Ec0a390d04b4d41ED7d9688bC7F"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

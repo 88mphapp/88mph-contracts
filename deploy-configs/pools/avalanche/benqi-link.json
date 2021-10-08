@@ -1,0 +1,20 @@
+{
+  "name": "88mph LINK via Benqi",
+  "nftNamePrefix": "88mph LINK via Benqi ",
+  "nftSymbolPrefix": "88mph-LINK-via-Benqi-",
+  "moneyMarket": "BenqiERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 0.01e18,
+  "stablecoin": "0x5947bb275c521040051d82396192181b413227a3",
+  "EMAInitial": 5.8146e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0x4e9f683A27a6BdAD3FC2764003759277e93696e6"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

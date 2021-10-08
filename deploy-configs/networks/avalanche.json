@@ -1,0 +1,9 @@
+{
+  "govTreasury": "0xB4D5a476aD03aa4C1A6119E1b9c395bF5bab4B0e",
+  "govTimelock": "0x83e4758BEA7C6c2e2b5Ed4DE9d1cc9e94dEEaDdA",
+  "interestFee": 0.2e18,
+  "earlyWithdrawFee": 0.005e18,
+  "interestRateMultiplierIntercept": 0.75e18,
+  "interestRateMultiplierSlope": 11883276940,
+  "isEthereum": false
+}

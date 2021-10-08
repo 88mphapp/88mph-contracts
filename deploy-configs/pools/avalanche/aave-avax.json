@@ -1,0 +1,20 @@
+{
+  "name": "88mph WAVAX via Aave",
+  "nftNamePrefix": "88mph WAVAX via Aave ",
+  "nftSymbolPrefix": "88mph-WAVAX-via-Aave-",
+  "moneyMarket": "AaveMarket",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 0.001e18,
+  "stablecoin": "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
+  "EMAInitial": 6.8066e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "aToken": "0xDFE521292EcE2A4f44242efBcD66Bc594CA9714B"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

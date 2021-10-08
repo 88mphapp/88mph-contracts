@@ -42,6 +42,9 @@ async function main() {
       case "cream":
         templatePoolName = "88mph FTT via Cream";
         break;
+      case "benqi":
+        templatePoolName = "88mph DAI via Benqi";
+        break;
       default:
         throw new Error(`unknown protocol: ${protocol}`);
     }

@@ -1,0 +1,20 @@
+{
+  "name": "88mph DAI via Benqi",
+  "nftNamePrefix": "88mph DAI via Benqi ",
+  "nftSymbolPrefix": "88mph-DAI-via-Benqi-",
+  "moneyMarket": "BenqiERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 1e18,
+  "stablecoin": "0xd586E7F844cEa2F87f50152665BCbc2C279D8d70",
+  "EMAInitial": 2.8575e9,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0x835866d37AFB8CB8F8334dCCdaf66cf01832Ff5D"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

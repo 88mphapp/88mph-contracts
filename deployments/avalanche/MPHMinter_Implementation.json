@@ -1,0 +1,145 @@
+{
+  "address": "0x8F895911eA2ab46826E9Ee5308b553f157e9f3Cc",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "internalType": "uint64",
+          "name": "depositID",
+          "type": "uint64"
+        }
+      ],
+      "name": "createVestForDeposit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint64",
+          "name": "fundingID",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint256",
+          "name": "interestAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "distributeFundingRewards",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "mintVested",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "mintedAmount",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint64",
+          "name": "depositID",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint256",
+          "name": "currentDepositAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "depositAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "updateVestForDeposit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x9cdd5f8d8071b54d265f3a08b79b9bffbe940f7a86a78307764445f6fa2c2b00",
+  "receipt": {
+    "to": null,
+    "from": "0xc0FcF8403e10B65f1D18f1B81b093004B1127275",
+    "contractAddress": "0x8F895911eA2ab46826E9Ee5308b553f157e9f3Cc",
+    "transactionIndex": 1,
+    "gasUsed": "149887",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x2330f2f5e7c97c5f57f3f50d70454dc81b411d13172ae0ad3aadfb7688ad1a3e",
+    "transactionHash": "0x9cdd5f8d8071b54d265f3a08b79b9bffbe940f7a86a78307764445f6fa2c2b00",
+    "logs": [],
+    "blockNumber": 5354333,
+    "cumulativeGasUsed": "170887",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "solcInputHash": "980171f07293c62c70650167d1d37b93",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.4+commit.c7e474f2\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"depositID\",\"type\":\"uint64\"}],\"name\":\"createVestForDeposit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"fundingID\",\"type\":\"uint64\"},{\"internalType\":\"uint256\",\"name\":\"interestAmount\",\"type\":\"uint256\"}],\"name\":\"distributeFundingRewards\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"mintVested\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"mintedAmount\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"depositID\",\"type\":\"uint64\"},{\"internalType\":\"uint256\",\"name\":\"currentDepositAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"depositAmount\",\"type\":\"uint256\"}],\"name\":\"updateVestForDeposit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"Used on non-mainnet chains where MPH minting is not available\",\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/rewards/DummyMPHMinter.sol\":\"DummyMPHMinter\"},\"evmVersion\":\"istanbul\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"contracts/rewards/DummyMPHMinter.sol\":{\"content\":\"// SPDX-License-Identifier: GPL-3.0-or-later\\npragma solidity 0.8.4;\\n\\n/// @dev Used on non-mainnet chains where MPH minting is not available\\ncontract DummyMPHMinter {\\n    function createVestForDeposit(address account, uint64 depositID) external {}\\n\\n    function updateVestForDeposit(\\n        uint64 depositID,\\n        uint256 currentDepositAmount,\\n        uint256 depositAmount\\n    ) external {}\\n\\n    function mintVested(address account, uint256 amount)\\n        external\\n        returns (uint256 mintedAmount)\\n    {\\n        return 0;\\n    }\\n\\n    function distributeFundingRewards(uint64 fundingID, uint256 interestAmount)\\n        external\\n    {}\\n\\n    uint256[50] private __gap;\\n}\\n\",\"keccak256\":\"0x30579ec3e59276a36ca84da911126059b2491318e6a3b1f844e46023ef378d85\",\"license\":\"GPL-3.0-or-later\"}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b506101c0806100206000396000f3fe608060405234801561001057600080fd5b506004361061004c5760003560e01c80631a3ee6b114610051578063747942141461006557806388a42f221461008d57806393320226146100a0575b600080fd5b61006361005f36600461010b565b5050565b005b61007b6100733660046100e2565b600092915050565b60405190815260200160405180910390f35b61006361009b366004610158565b505050565b61006361005f36600461013d565b80356001600160a01b03811681146100c557600080fd5b919050565b803567ffffffffffffffff811681146100c557600080fd5b600080604083850312156100f4578182fd5b6100fd836100ae565b946020939093013593505050565b6000806040838503121561011d578182fd5b610126836100ae565b9150610134602084016100ca565b90509250929050565b6000806040838503121561014f578182fd5b6100fd836100ca565b60008060006060848603121561016c578081fd5b610175846100ca565b9560208501359550604090940135939250505056fea264697066735822122061a0b6b7878718859cdb056f4be3d5c966851c6b2aa28d2f728e462229a1152f64736f6c63430008040033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b506004361061004c5760003560e01c80631a3ee6b114610051578063747942141461006557806388a42f221461008d57806393320226146100a0575b600080fd5b61006361005f36600461010b565b5050565b005b61007b6100733660046100e2565b600092915050565b60405190815260200160405180910390f35b61006361009b366004610158565b505050565b61006361005f36600461013d565b80356001600160a01b03811681146100c557600080fd5b919050565b803567ffffffffffffffff811681146100c557600080fd5b600080604083850312156100f4578182fd5b6100fd836100ae565b946020939093013593505050565b6000806040838503121561011d578182fd5b610126836100ae565b9150610134602084016100ca565b90509250929050565b6000806040838503121561014f578182fd5b6100fd836100ca565b60008060006060848603121561016c578081fd5b610175846100ca565b9560208501359550604090940135939250505056fea264697066735822122061a0b6b7878718859cdb056f4be3d5c966851c6b2aa28d2f728e462229a1152f64736f6c63430008040033",
+  "devdoc": {
+    "details": "Used on non-mainnet chains where MPH minting is not available",
+    "kind": "dev",
+    "methods": {},
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 44,
+        "contract": "contracts/rewards/DummyMPHMinter.sol:DummyMPHMinter",
+        "label": "__gap",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_array(t_uint256)50_storage"
+      }
+    ],
+    "types": {
+      "t_array(t_uint256)50_storage": {
+        "base": "t_uint256",
+        "encoding": "inplace",
+        "label": "uint256[50]",
+        "numberOfBytes": "1600"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      }
+    }
+  }
+}

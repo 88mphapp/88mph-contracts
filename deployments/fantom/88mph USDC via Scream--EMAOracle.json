@@ -1,0 +1,242 @@
+{
+  "address": "0xc97A934135D8A2D91c1f104c2C77342a30060154",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "x",
+          "type": "uint256"
+        }
+      ],
+      "name": "PRBMathUD60x18__LogInputTooSmall",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "prod1",
+          "type": "uint256"
+        }
+      ],
+      "name": "PRBMath__MulDivFixedPointOverflow",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "prod1",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "denominator",
+          "type": "uint256"
+        }
+      ],
+      "name": "PRBMath__MulDivOverflow",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ONE_MINUS_UPDATE_MULTIPLIER",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true,
+      "signature": "0x079420a8"
+    },
+    {
+      "inputs": [],
+      "name": "UPDATE_INTERVAL",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true,
+      "signature": "0x89ac4147"
+    },
+    {
+      "inputs": [],
+      "name": "UPDATE_MULTIPLIER",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true,
+      "signature": "0x56f6a826"
+    },
+    {
+      "inputs": [],
+      "name": "emaStored",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true,
+      "signature": "0xda18778e"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_emaInitial",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_updateInterval",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_smoothingFactor",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_averageWindowInIntervals",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_moneyMarket",
+          "type": "address"
+        }
+      ],
+      "name": "initialize",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function",
+      "signature": "0xccd65296"
+    },
+    {
+      "inputs": [],
+      "name": "lastIncomeIndex",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true,
+      "signature": "0x9f1253d3"
+    },
+    {
+      "inputs": [],
+      "name": "lastUpdateTimestamp",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true,
+      "signature": "0x14bcec9f"
+    },
+    {
+      "inputs": [],
+      "name": "moneyMarket",
+      "outputs": [
+        {
+          "internalType": "contract MoneyMarket",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true,
+      "signature": "0xd6d75f51"
+    },
+    {
+      "inputs": [],
+      "name": "query",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function",
+      "constant": true,
+      "signature": "0x2c46b205"
+    },
+    {
+      "inputs": [],
+      "name": "updateAndQuery",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "updated",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function",
+      "signature": "0x85b3a931"
+    }
+  ],
+  "receipt": {
+    "logs": [
+      {
+        "address": "0x47706385Da6a5e53e3b69607E86aadC3823508EE",
+        "blockNumber": 18880250,
+        "transactionHash": "0x6a08bcb2e21c8f92b80bb065a22736251d61d04f3454289a51d03c9bbaec4d90",
+        "transactionIndex": 5,
+        "blockHash": "0x0000a8c0000000bf682dc73798682a1a8a6877d906fcc98619f6ecfe9f4573bb",
+        "logIndex": 168,
+        "removed": false,
+        "id": "log_288d85ef",
+        "event": "CreateClone",
+        "args": {
+          "0": "0xf6b12bbdcba3d81899dd38eee1b4a90c3423cf47e4fcaed36a0f50a7c8793bb4",
+          "1": "0x5a70f9E95787a105f943dd41bc0A46ec49dACB5d",
+          "2": "0x17c724cfd4000000000000000000000000000000000000000000000000000000",
+          "3": "0xc97A934135D8A2D91c1f104c2C77342a30060154",
+          "__length__": 4,
+          "contractName": "0xf6b12bbdcba3d81899dd38eee1b4a90c3423cf47e4fcaed36a0f50a7c8793bb4",
+          "template": "0x5a70f9E95787a105f943dd41bc0A46ec49dACB5d",
+          "salt": "0x17c724cfd4000000000000000000000000000000000000000000000000000000",
+          "clone": "0xc97A934135D8A2D91c1f104c2C77342a30060154"
+        }
+      }
+    ]
+  }
+}

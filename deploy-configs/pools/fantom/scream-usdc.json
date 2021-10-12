@@ -1,0 +1,20 @@
+{
+  "name": "88mph USDC via Scream",
+  "nftNamePrefix": "88mph USDC via Scream ",
+  "nftSymbolPrefix": "88mph-USDC-via-Scream-",
+  "moneyMarket": "CompoundERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 1e6,
+  "stablecoin": "0x04068da6c83afcfa0e13ba15a6696662335d5b75",
+  "EMAInitial": 5.181e9,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0xe45ac34e528907d0a0239ab5db507688070b20bf"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

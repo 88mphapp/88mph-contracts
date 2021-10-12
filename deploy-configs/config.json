@@ -1,6 +1,6 @@
 {
-  "network": "avalanche",
-  "pool": "benqi-link",
-  "protocol": "benqi",
+  "network": "fantom",
+  "pool": "geist-wftm",
+  "protocol": "geist",
   "decimals": 18
 }

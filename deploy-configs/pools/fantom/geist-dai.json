@@ -1,0 +1,20 @@
+{
+  "name": "88mph DAI via Geist",
+  "nftNamePrefix": "88mph DAI via Geist ",
+  "nftSymbolPrefix": "88mph-DAI-via-Geist-",
+  "moneyMarket": "GeistMarket",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 1e18,
+  "stablecoin": "0x8d11ec38a3eb5e956b052f67da8bdc9bef8abf3e",
+  "EMAInitial": 8.0211e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "aToken": "0x07E6332dD090D287d3489245038daF987955DCFB"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

@@ -1,0 +1,20 @@
+{
+  "name": "88mph LINK via Scream",
+  "nftNamePrefix": "88mph LINK via Scream ",
+  "nftSymbolPrefix": "88mph-LINK-via-Scream-",
+  "moneyMarket": "CompoundERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 0.01e18,
+  "stablecoin": "0xb3654dc3d10ea7645f8319668e8f54d2574fbdc8",
+  "EMAInitial": 3.5184e9,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0x2359012ebE36cCa231203D78b914284947B58aa3"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

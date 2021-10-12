@@ -1,0 +1,20 @@
+{
+  "name": "88mph WFTM via Geist",
+  "nftNamePrefix": "88mph WFTM via Geist ",
+  "nftSymbolPrefix": "88mph-WFTM-via-Geist-",
+  "moneyMarket": "GeistMarket",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 1e18,
+  "stablecoin": "0x21be370d5312f44cb42ce377bc9b8a0cef1a4c83",
+  "EMAInitial": 3.603e9,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "aToken": "0x39B3bd37208CBaDE74D0fcBDBb12D606295b430a"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

@@ -1,74 +1,86 @@
 [
   {
-    "network": "avalanche",
-    "pool": "aave-dai",
-    "protocol": "aave",
+    "network": "fantom",
+    "pool": "scream-dai",
+    "protocol": "scream",
     "decimals": 18
   },
   {
-    "network": "avalanche",
-    "pool": "aave-avax",
-    "protocol": "aave",
-    "decimals": 18
-  },
-  {
-    "network": "avalanche",
-    "pool": "aave-usdc",
-    "protocol": "aave",
+    "network": "fantom",
+    "pool": "scream-usdc",
+    "protocol": "scream",
     "decimals": 6
   },
   {
-    "network": "avalanche",
-    "pool": "aave-usdt",
-    "protocol": "aave",
+    "network": "fantom",
+    "pool": "scream-usdt",
+    "protocol": "scream",
     "decimals": 6
   },
   {
-    "network": "avalanche",
-    "pool": "aave-wbtc",
-    "protocol": "aave",
+    "network": "fantom",
+    "pool": "scream-wbtc",
+    "protocol": "scream",
     "decimals": 8
   },
   {
-    "network": "avalanche",
-    "pool": "aave-weth",
-    "protocol": "aave",
+    "network": "fantom",
+    "pool": "scream-weth",
+    "protocol": "scream",
     "decimals": 18
   },
   {
-    "network": "avalanche",
-    "pool": "benqi-dai",
-    "protocol": "benqi",
+    "network": "fantom",
+    "pool": "scream-link",
+    "protocol": "scream",
     "decimals": 18
   },
   {
-    "network": "avalanche",
-    "pool": "benqi-usdc",
-    "protocol": "benqi",
+    "network": "fantom",
+    "pool": "scream-fusd",
+    "protocol": "scream",
+    "decimals": 18
+  },
+  {
+    "network": "fantom",
+    "pool": "scream-wftm",
+    "protocol": "scream",
+    "decimals": 18
+  },
+  {
+    "network": "fantom",
+    "pool": "geist-dai",
+    "protocol": "geist",
+    "decimals": 18
+  },
+  {
+    "network": "fantom",
+    "pool": "geist-usdc",
+    "protocol": "geist",
     "decimals": 6
   },
   {
-    "network": "avalanche",
-    "pool": "benqi-usdt",
-    "protocol": "benqi",
+    "network": "fantom",
+    "pool": "geist-usdt",
+    "protocol": "geist",
     "decimals": 6
   },
   {
-    "network": "avalanche",
-    "pool": "benqi-wbtc",
-    "protocol": "benqi",
+    "network": "fantom",
+    "pool": "geist-wbtc",
+    "protocol": "geist",
     "decimals": 8
   },
   {
-    "network": "avalanche",
-    "pool": "benqi-weth",
-    "protocol": "benqi",
+    "network": "fantom",
+    "pool": "geist-weth",
+    "protocol": "geist",
     "decimals": 18
   },
   {
-    "network": "avalanche",
-    "pool": "benqi-link",
-    "protocol": "benqi",
+    "network": "fantom",
+    "pool": "geist-wftm",
+    "protocol": "geist",
     "decimals": 18
   }
 ]

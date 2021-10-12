@@ -1,0 +1,20 @@
+{
+  "name": "88mph FUSD via Scream",
+  "nftNamePrefix": "88mph FUSD via Scream ",
+  "nftSymbolPrefix": "88mph-FUSD-via-Scream-",
+  "moneyMarket": "CompoundERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 1e18,
+  "stablecoin": "0xad84341756bf337f5a0164515b1f6f993d194e1f",
+  "EMAInitial": 8.1559e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0x83fad9Bce24B605Fe149b433D62C8011070239B8"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

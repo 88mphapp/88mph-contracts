@@ -1,0 +1,20 @@
+{
+  "name": "88mph WETH via Geist",
+  "nftNamePrefix": "88mph WETH via Geist ",
+  "nftSymbolPrefix": "88mph-WETH-via-Geist-",
+  "moneyMarket": "GeistMarket",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 0.0001e18,
+  "stablecoin": "0x74b23882a30290451A17c44f4F05243b6b58C76d",
+  "EMAInitial": 6.0403e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "aToken": "0x25c130B2624CF12A4Ea30143eF50c5D68cEFA22f"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

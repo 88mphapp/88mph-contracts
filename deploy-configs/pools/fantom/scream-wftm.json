@@ -1,0 +1,20 @@
+{
+  "name": "88mph WFTM via Scream",
+  "nftNamePrefix": "88mph WFTM via Scream ",
+  "nftSymbolPrefix": "88mph-WFTM-via-Scream-",
+  "moneyMarket": "CompoundERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 0.1e18,
+  "stablecoin": "0x21be370d5312f44cb42ce377bc9b8a0cef1a4c83",
+  "EMAInitial": 7.1777e9,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0x5AA53f03197E08C4851CAD8C92c7922DA5857E5d"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

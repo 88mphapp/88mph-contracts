@@ -96,6 +96,14 @@ const config: HardhatUserConfig = {
       accounts: {
         mnemonic: secret.mnemonic
       }
+    },
+    fantom: {
+      url: "https://rpc.ftm.tools",
+      chainId: 250,
+      from: secret.account,
+      accounts: {
+        mnemonic: secret.mnemonic
+      }
     }
   },
   spdxLicenseIdentifier: {

@@ -1,0 +1,20 @@
+{
+  "name": "88mph DAI via Scream",
+  "nftNamePrefix": "88mph DAI via Scream ",
+  "nftSymbolPrefix": "88mph-DAI-via-Scream-",
+  "moneyMarket": "CompoundERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 1e18,
+  "stablecoin": "0x8d11ec38a3eb5e956b052f67da8bdc9bef8abf3e",
+  "EMAInitial": 5.9902e9,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0x8D9AED9882b4953a0c9fa920168fa1FDfA0eBE75"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

@@ -1,0 +1,20 @@
+{
+  "name": "88mph WBTC via Scream",
+  "nftNamePrefix": "88mph WBTC via Scream ",
+  "nftSymbolPrefix": "88mph-WBTC-via-Scream-",
+  "moneyMarket": "CompoundERC20Market",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 0.00001e8,
+  "stablecoin": "0x321162Cd933E2Be498Cd2267a90534A804051b11",
+  "EMAInitial": 3.0931e9,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "cToken": "0x4565dc3ef685e4775cdf920129111ddf43b9d882"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

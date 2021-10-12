@@ -1,0 +1,20 @@
+{
+  "name": "88mph USDC via Geist",
+  "nftNamePrefix": "88mph USDC via Geist ",
+  "nftSymbolPrefix": "88mph-USDC-via-Geist-",
+  "moneyMarket": "GeistMarket",
+  "interestModel": "LinearDecayInterestModel",
+  "interestOracle": "EMAOracle",
+  "feeModel": "PercentageFeeModel",
+  "MaxDepositPeriod": 31556952,
+  "MinDepositAmount": 1e6,
+  "stablecoin": "0x04068da6c83afcfa0e13ba15a6696662335d5b75",
+  "EMAInitial": 7.7965e8,
+  "EMAUpdateInverval": 86400,
+  "EMASmoothingFactor": 2e18,
+  "EMAAverageWindowInIntervals": 30,
+  "moneyMarketParams": {
+    "aToken": "0xe578C856933D8e1082740bf7661e379Aa2A30b26"
+  },
+  "fundingMultitokenMetadataURI": ""
+}

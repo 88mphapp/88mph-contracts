@@ -16,10 +16,13 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
     const xMPH = artifacts.require("xMPH");
     const contract = await xMPH.at(deployResult.address);
     const MPHToken = artifacts.require("MPHToken");
-    const mphContract = await MPHToken.at(config.mph);
+    const mphAddress = config.isEthereum
+      ? config.mph
+      : (await get("MPHToken")).address;
+    const mphContract = await MPHToken.at(mphAddress);
     await mphContract.approve(deployResult.address, 1e9);
     await contract.initialize(
-      config.mph,
+      mphAddress,
       config.xMPHRewardUnlockPeriod,
       config.govTreasury
     );
@@ -41,4 +44,4 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
   }
 };
 module.exports.tags = ["xMPH"];
-module.exports.dependencies = [];
+module.exports.dependencies = config.isEthereum ? [] : ["MPHToken"];

@@ -11,10 +11,10 @@ module.exports = async ({ getNamedAccounts, deployments, artifacts }) => {
   const { log, get, deploy } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const dividendTokens = [poolConfig.stablecoin];
-  if (config.isEthereum) {
-    dividendTokens.push(config.mph);
-  }
+  const mphAddress = config.isEthereum
+    ? config.mph
+    : (await get("MPHToken")).address;
+  const dividendTokens = [poolConfig.stablecoin, mphAddress];
   const ERC20 = artifacts.require("ERC20");
   const stablecoinContract = await ERC20.at(poolConfig.stablecoin);
   const stablecoinDecimals = await stablecoinContract.decimals.call();
@@ -49,4 +49,5 @@ module.exports = async ({ getNamedAccounts, deployments, artifacts }) => {
   }
 };
 module.exports.tags = [name, "FundingMultitoken"];
-module.exports.dependencies = ["ERC20WrapperTemplate"];
+module.exports.dependencies =
+  ["ERC20WrapperTemplate"] + (config.isEthereum ? [] : ["MPHToken"]);

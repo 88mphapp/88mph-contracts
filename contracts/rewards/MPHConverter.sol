@@ -81,6 +81,13 @@ contract MPHConverter is PausableUpgradeable, OwnableUpgradeable {
         _unpause();
     }
 
+    function setForeignTokenWhitelist(IERC20 foreignToken, bool isWhitelisted)
+        external
+        onlyOwner
+    {
+        isWhitelistedForeignToken[address(foreignToken)] = isWhitelisted;
+    }
+
     function setForeignToNativeDailyConvertLimit(
         IERC20 foreignToken,
         uint96 newLimitAmount

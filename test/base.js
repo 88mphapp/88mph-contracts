@@ -26,6 +26,9 @@ const Vesting02 = (module.exports.Vesting02 = artifacts.require("Vesting02"));
 const ERC20Wrapper = (module.exports.ERC20Wrapper = artifacts.require(
   "ERC20Wrapper"
 ));
+const MPHConverter = (module.exports.MPHConverter = artifacts.require(
+  "MPHConverter"
+));
 
 // Constants
 const PRECISION = (module.exports.PRECISION = 1e18);
@@ -63,6 +66,9 @@ const interestFee = (module.exports.interestFee = BigNumber(
 const earlyWithdrawFee = (module.exports.earlyWithdrawFee = BigNumber(
   0.005 * PRECISION
 ).toFixed());
+const dailyConvertLimit = (module.exports.dailyConvertLimit = BigNumber(
+  10000 * PRECISION
+).toFixed());
 const MINTER_BURNER_ROLE = (module.exports.MINTER_BURNER_ROLE = web3.utils.soliditySha3(
   "MINTER_BURNER_ROLE"
 ));
@@ -74,6 +80,9 @@ const WHITELISTER_ROLE = (module.exports.WHITELISTER_ROLE = web3.utils.solidityS
 ));
 const WHITELISTED_POOL_ROLE = (module.exports.WHITELISTED_POOL_ROLE = web3.utils.soliditySha3(
   "WHITELISTED_POOL_ROLE"
+));
+const CONVERTER_ROLE = (module.exports.CONVERTER_ROLE = web3.utils.soliditySha3(
+  "CONVERTER_ROLE"
 ));
 
 const epsilon = (module.exports.epsilon = 1e-4);
@@ -598,6 +607,8 @@ const setupTest = (module.exports.setupTest = async (
   let vesting02;
   let factory;
   let lens;
+  let converter;
+  let foreignMPH;
 
   // Accounts
   const acc0 = accounts[0];
@@ -634,6 +645,23 @@ const setupTest = (module.exports.setupTest = async (
   await vesting02.setMPHMinter(mphMinter.address);
   await mph.transferOwnership(mphMinter.address);
   await mphMinter.grantRole(WHITELISTER_ROLE, acc0, { from: acc0 });
+
+  // Initialize MPHConverter
+  foreignMPH = await ERC20Mock.new();
+  converter = await MPHConverter.new();
+  await converter.initialize(mphMinter.address);
+  await converter.setForeignTokenWhitelist(foreignMPH.address, true);
+  await converter.setForeignToNativeDailyConvertLimit(
+    foreignMPH.address,
+    dailyConvertLimit
+  );
+  await mphMinter.grantRole(CONVERTER_ROLE, converter.address, { from: acc0 });
+  await mph.approve(converter.address, INF, { from: acc0 });
+  await mph.approve(converter.address, INF, { from: acc1 });
+  await mph.approve(converter.address, INF, { from: acc2 });
+  await foreignMPH.approve(converter.address, INF, { from: acc0 });
+  await foreignMPH.approve(converter.address, INF, { from: acc1 });
+  await foreignMPH.approve(converter.address, INF, { from: acc2 });
 
   // Set infinite MPH approval
   await mph.approve(mphMinter.address, INF, { from: acc0 });
@@ -790,6 +818,8 @@ const setupTest = (module.exports.setupTest = async (
     vesting02,
     factory,
     lens,
+    foreignMPH,
+    converter,
     deployDInterest
   };
 });

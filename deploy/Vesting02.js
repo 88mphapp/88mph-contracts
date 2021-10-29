@@ -8,9 +8,12 @@ module.exports = async ({
   getChainId,
   artifacts
 }) => {
-  const { deploy, log } = deployments;
+  const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
 
+  const mphAddress = config.isEthereum
+    ? config.mph
+    : (await get("MPHToken")).address;
   const deployResult = await deploy("Vesting02", {
     from: deployer,
     proxy: {
@@ -19,7 +22,7 @@ module.exports = async ({
       execute: {
         init: {
           methodName: "initialize",
-          args: [config.mph, "Vested MPH", "veMPH"]
+          args: [mphAddress, "Vested MPH", "veMPH"]
         }
       }
     }
@@ -29,4 +32,4 @@ module.exports = async ({
   }
 };
 module.exports.tags = ["Vesting02"];
-module.exports.dependencies = [];
+module.exports.dependencies = config.isEthereum ? [] : ["MPHToken"];

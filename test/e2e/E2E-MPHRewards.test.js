@@ -713,6 +713,135 @@ contract("E2E-MPHRewards", accounts => {
           });
         });
       });
+
+      describe("MPHConverter", () => {
+        const amount = 10 * Base.PRECISION;
+        it("convert from foreign to native", async () => {
+          // mint foreign tokens
+          await baseContracts.foreignMPH.mint(acc0, Base.num2str(amount));
+
+          // convert to native
+          const beforeForeignMPHBalance = BigNumber(
+            await baseContracts.foreignMPH.balanceOf(acc0)
+          );
+          const beforeMPHBalance = BigNumber(
+            await baseContracts.mph.balanceOf(acc0)
+          );
+          await baseContracts.converter.convertForeignTokenToNative(
+            baseContracts.foreignMPH.address,
+            Base.num2str(amount)
+          );
+
+          // check balances
+          const foreignMPHGiven = beforeForeignMPHBalance.minus(
+            await baseContracts.foreignMPH.balanceOf(acc0)
+          );
+          const mphReceived = BigNumber(
+            await baseContracts.mph.balanceOf(acc0)
+          ).minus(beforeMPHBalance);
+          Base.assertEpsilonEq(
+            amount,
+            mphReceived,
+            "native MPH received amount incorrect"
+          );
+          Base.assertEpsilonEq(
+            amount,
+            foreignMPHGiven,
+            "foreign MPH given amount incorrect"
+          );
+        });
+
+        it("convert from native to foreign", async () => {
+          // convert foreign to native with acc0
+          await baseContracts.foreignMPH.mint(acc0, Base.num2str(amount));
+          await baseContracts.converter.convertForeignTokenToNative(
+            baseContracts.foreignMPH.address,
+            Base.num2str(amount)
+          );
+
+          // send native tokens to acc1
+          await baseContracts.mph.transfer(acc1, Base.num2str(amount), {
+            from: acc0
+          });
+
+          // convert native to foreign with acc1
+          const beforeMPHBalance = BigNumber(
+            await baseContracts.mph.balanceOf(acc1)
+          );
+          const beforeForeignMPHBalance = BigNumber(
+            await baseContracts.foreignMPH.balanceOf(acc1)
+          );
+          await baseContracts.converter.convertNativeTokenToForeign(
+            baseContracts.foreignMPH.address,
+            Base.num2str(amount),
+            { from: acc1 }
+          );
+
+          // check acc1 balances
+          const mphGiven = beforeMPHBalance.minus(
+            await baseContracts.mph.balanceOf(acc1)
+          );
+          const foreignMPHReceived = BigNumber(
+            await baseContracts.foreignMPH.balanceOf(acc1)
+          ).minus(beforeForeignMPHBalance);
+          Base.assertEpsilonEq(
+            amount,
+            mphGiven,
+            "native MPH given amount incorrect"
+          );
+          Base.assertEpsilonEq(
+            amount,
+            foreignMPHReceived,
+            "foreign MPH received amount incorrect"
+          );
+        });
+
+        it("cannot exceed daily limit", async () => {
+          const crazyBigAmount = 1e9 * Base.PRECISION;
+
+          // mint foreign tokens
+          await baseContracts.foreignMPH.mint(
+            acc0,
+            Base.num2str(crazyBigAmount)
+          );
+
+          // convert to native should fail
+          try {
+            await baseContracts.converter.convertForeignTokenToNative(
+              baseContracts.foreignMPH.address,
+              Base.num2str(crazyBigAmount)
+            );
+          } catch (err) {
+            assert(
+              err.message.includes("MPHConverter: LIMIT"),
+              `wrong revert message: ${err.message}`
+            );
+          }
+        });
+
+        it("reset daily limit after 24 hours", async () => {
+          // mint foreign tokens
+          await baseContracts.foreignMPH.mint(acc0, Base.dailyConvertLimit);
+
+          // convert to native
+          await baseContracts.converter.convertForeignTokenToNative(
+            baseContracts.foreignMPH.address,
+            Base.dailyConvertLimit
+          );
+
+          // wait 24 hours
+          await moneyMarketModule.timePass(1 / 365);
+
+          // mint foreign tokens
+          await baseContracts.foreignMPH.mint(acc0, Base.dailyConvertLimit);
+
+          // convert to native
+          await baseContracts.converter.convertForeignTokenToNative(
+            baseContracts.foreignMPH.address,
+            Base.dailyConvertLimit
+          );
+        });
+      });
     });
   }
 });

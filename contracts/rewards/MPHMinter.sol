@@ -23,6 +23,7 @@ contract MPHMinter is AccessControlUpgradeable {
         keccak256("WHITELISTED_POOL_ROLE");
     bytes32 public constant LEGACY_MINTER_ROLE =
         keccak256("LEGACY_MINTER_ROLE");
+    bytes32 public constant CONVERTER_ROLE = keccak256("CONVERTER_ROLE");
 
     event ESetParamAddress(
         address indexed sender,
@@ -262,6 +263,13 @@ contract MPHMinter is AccessControlUpgradeable {
         }
 
         return funderReward;
+    }
+
+    function converterMint(address to, uint256 amount)
+        external
+        onlyRole(CONVERTER_ROLE)
+    {
+        mph.ownerMint(to, amount);
     }
 
     /**

@@ -1,5 +1,8 @@
+const requireNoCache = require("./requireNoCache");
+const config = requireNoCache("../deploy-configs/get-network-config");
+
 module.exports = async ({ getNamedAccounts, deployments }) => {
-  const { deploy, log, get } = deployments;
+  const { deploy, log, get, read, execute } = deployments;
   const { deployer } = await getNamedAccounts();
 
   const mphMinterDeployment = await get("MPHMinter");

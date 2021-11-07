@@ -49,5 +49,6 @@ module.exports = async ({ getNamedAccounts, deployments, artifacts }) => {
   }
 };
 module.exports.tags = [name, "FundingMultitoken"];
-module.exports.dependencies =
-  ["ERC20WrapperTemplate"] + (config.isEthereum ? [] : ["MPHToken"]);
+module.exports.dependencies = config.isEthereum
+  ? ["ERC20WrapperTemplate"]
+  : ["ERC20WrapperTemplate", "MPHToken"];

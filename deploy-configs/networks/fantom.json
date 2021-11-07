@@ -1,6 +1,9 @@
 {
   "govTreasury": "0x916e78f904B5e854DB0578646AA182C0AAbED8C8",
+  "devWallet": "0xfecBad5D60725EB6fd10f8936e02fa203fd27E4b",
   "govTimelock": "0x83e4758BEA7C6c2e2b5Ed4DE9d1cc9e94dEEaDdA",
+  "devRewardMultiplier": 0.1e18,
+  "govRewardMultiplier": 0.1e18,
   "interestFee": 0.2e18,
   "earlyWithdrawFee": 0.005e18,
   "interestRateMultiplierIntercept": 0.75e18,

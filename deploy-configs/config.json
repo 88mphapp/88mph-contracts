@@ -1,6 +1,6 @@
 {
-  "network": "mainnet",
-  "pool": "aave-dai",
-  "protocol": "aave",
+  "network": "fantom",
+  "pool": "geist-dai",
+  "protocol": "geist",
   "decimals": 18
 }

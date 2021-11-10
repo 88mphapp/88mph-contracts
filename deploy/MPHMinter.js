@@ -13,6 +13,8 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
     : (await get("MPHToken")).address;
   const deployResult = await deploy("MPHMinter", {
     from: deployer,
+    contract: "MPHMinter",
+    log: true,
     proxy: {
       owner: config.govTimelock,
       proxyContract: "OptimizedTransparentProxy",
@@ -31,53 +33,6 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
       }
     }
   });
-  if (deployResult.newlyDeployed) {
-    log(`MPHMinter deployed at ${deployResult.address}`);
-  }
-
-  // give roles to gov treasury
-  const DEFAULT_ADMIN_ROLE =
-    "0x0000000000000000000000000000000000000000000000000000000000000000";
-  const WHITELISTER_ROLE = web3.utils.soliditySha3("WHITELISTER_ROLE");
-  /*if (
-    !(await read(
-      "MPHMinter",
-      "hasRole",
-      DEFAULT_ADMIN_ROLE,
-      config.govTreasury
-    ))
-  ) {
-    await execute(
-      "MPHMinter",
-      { from: deployer },
-      "grantRole",
-      DEFAULT_ADMIN_ROLE,
-      config.govTreasury
-    );
-    log(`Grant MPHMinter DEFAULT_ADMIN_ROLE to ${config.govTreasury}`);
-  }
-  if (
-    !(await read("MPHMinter", "hasRole", WHITELISTER_ROLE, config.govTreasury))
-  ) {
-    await execute(
-      "MPHMinter",
-      { from: deployer },
-      "grantRole",
-      WHITELISTER_ROLE,
-      config.govTreasury
-    );
-    log(`Grant MPHMinter WHITELISTER_ROLE to ${config.govTreasury}`);
-  }
-  if (await read("MPHMinter", "hasRole", DEFAULT_ADMIN_ROLE, deployer)) {
-    await execute(
-      "MPHMinter",
-      { from: deployer },
-      "renounceRole",
-      DEFAULT_ADMIN_ROLE,
-      deployer
-    );
-    log(`Renounce MPHMinter DEFAULT_ADMIN_ROLE of ${deployer}`);
-  }*/
 
   // set MPHMinter address for Vesting02
   if ((await read("Vesting02", "mphMinter")) !== deployResult.address) {

@@ -13,7 +13,7 @@ import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 import {DInterest} from "../DInterest.sol";
 import {MPHToken} from "./MPHToken.sol";
 
-contract MPHMinter is AccessControlUpgradeable {
+contract MPHMinterFantomFix is AccessControlUpgradeable {
     using AddressUpgradeable for address;
     using PRBMathUD60x18 for uint256;
 
@@ -78,6 +78,8 @@ contract MPHMinter is AccessControlUpgradeable {
     address public devWallet;
     Vesting02 public vesting02;
 
+    bool public hasFixedFantomRoles;
+
     function __MPHMinter_init(
         address _mph,
         address _govTreasury,
@@ -105,10 +107,7 @@ contract MPHMinter is AccessControlUpgradeable {
         uint256 _devRewardMultiplier,
         uint256 _govRewardMultiplier
     ) internal initializer {
-        // setup initial roles
-        _setupRole(DEFAULT_ADMIN_ROLE, _govTreasury);
-        _setupRole(WHITELISTER_ROLE, _govTreasury);
-
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         // only accounts with the whitelister role can whitelist pools
         _setRoleAdmin(WHITELISTED_POOL_ROLE, WHITELISTER_ROLE);
 
@@ -136,6 +135,18 @@ contract MPHMinter is AccessControlUpgradeable {
             _devRewardMultiplier,
             _govRewardMultiplier
         );
+    }
+
+    function fantomFixRoles() external {
+        require(!hasFixedFantomRoles, "MPHMinterFantomFix: FIXED");
+        require(msg.sender == govTreasury, "MPHMinterFantomFix: WHO?");
+
+        // grant WHITELISTER_ROLE and DEFAULT_ADMIN_ROLE to govTreasury
+        _setupRole(DEFAULT_ADMIN_ROLE, govTreasury);
+        _setupRole(WHITELISTER_ROLE, govTreasury);
+
+        // prevent calling function again
+        hasFixedFantomRoles = true;
     }
 
     function createVestForDeposit(address account, uint64 depositID)

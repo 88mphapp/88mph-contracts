@@ -13,7 +13,7 @@ import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 import {DInterest} from "../DInterest.sol";
 import {MPHToken} from "./MPHToken.sol";
 
-contract MPHMinter is AccessControlUpgradeable {
+contract MPHMinterMainnet is AccessControlUpgradeable {
     using AddressUpgradeable for address;
     using PRBMathUD60x18 for uint256;
 
@@ -105,10 +105,7 @@ contract MPHMinter is AccessControlUpgradeable {
         uint256 _devRewardMultiplier,
         uint256 _govRewardMultiplier
     ) internal initializer {
-        // setup initial roles
-        _setupRole(DEFAULT_ADMIN_ROLE, _govTreasury);
-        _setupRole(WHITELISTER_ROLE, _govTreasury);
-
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         // only accounts with the whitelister role can whitelist pools
         _setRoleAdmin(WHITELISTED_POOL_ROLE, WHITELISTER_ROLE);
 

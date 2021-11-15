@@ -16,6 +16,7 @@ module.exports = async ({
     : (await get("MPHToken")).address;
   const deployResult = await deploy("Vesting02", {
     from: deployer,
+    contract: "Vesting02",
     proxy: {
       owner: config.govTimelock,
       proxyContract: "OptimizedTransparentProxy",

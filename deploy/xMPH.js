@@ -2,7 +2,7 @@ const requireNoCache = require("./requireNoCache");
 const config = requireNoCache("../deploy-configs/get-network-config");
 
 module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
-  const { deploy, log } = deployments;
+  const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
 
   const deployResult = await deploy("xMPH", {
@@ -10,7 +10,8 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
     proxy: {
       owner: config.govTimelock,
       proxyContract: "OptimizedTransparentProxy"
-    }
+    },
+    log: true
   });
   if (deployResult.newlyDeployed) {
     const xMPH = artifacts.require("xMPH");
@@ -26,7 +27,6 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
       config.xMPHRewardUnlockPeriod,
       config.govTreasury
     );
-    log(`xMPH deployed at ${deployResult.address}`);
 
     // transfer xMPH ownership to gov treasury
     const DEFAULT_ADMIN_ROLE = "0x00";

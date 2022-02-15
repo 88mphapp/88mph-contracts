@@ -15,6 +15,7 @@ import {
 import {CreamERC20Market} from "./moneymarkets/cream/CreamERC20Market.sol";
 import {HarvestMarket} from "./moneymarkets/harvest/HarvestMarket.sol";
 import {YVaultMarket} from "./moneymarkets/yvault/YVaultMarket.sol";
+import {FuseERC20Market} from "./moneymarkets/fuse/FuseERC20Market.sol";
 import {DInterest} from "./DInterest.sol";
 import {DInterestWithDepositFee} from "./DInterestWithDepositFee.sol";
 
@@ -256,6 +257,25 @@ contract Factory {
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("YVaultMarket", template, salt, address(clone));
+        return clone;
+    }
+
+    function createFuseERC20Market(
+        address template,
+        bytes32 salt,
+        address _fToken,
+        address _rewardsDistributor,
+        address _rescuer,
+        address _stablecoin
+    ) external returns (FuseERC20Market) {
+        FuseERC20Market clone =
+            FuseERC20Market(template.cloneDeterministic(salt));
+
+        // initialize
+        clone.initialize(_fToken, _rewardsDistributor, _rescuer, _stablecoin);
+        clone.transferOwnership(msg.sender);
+
+        emit CreateClone("FuseERC20Market", template, salt, address(clone));
         return clone;
     }
 

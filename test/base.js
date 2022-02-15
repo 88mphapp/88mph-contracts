@@ -448,6 +448,65 @@ const creamERC20MoneyMarketModule = () => {
   };
 };
 
+const fuseERC20MoneyMarketModule = () => {
+  // Contract artifacts
+  const FuseERC20Market = artifacts.require("FuseERC20Market");
+  const FERC20Mock = artifacts.require("CERC20Mock");
+  const RewardsDistributorMock = artifacts.require("RewardsDistributorMock");
+
+  let fToken;
+  let dai;
+  let rewardsDistributor;
+  const fTokenAddressList = [];
+  const INIT_INTEREST_RATE = 0.1; // 10% APY
+
+  const deployMoneyMarket = async (accounts, factory, stablecoin, rewards) => {
+    // Deploy Fuse mock contracts
+    fToken = await FERC20Mock.new(stablecoin.address);
+    if (!fTokenAddressList.includes(fToken.address)) {
+      fTokenAddressList.push(fToken.address);
+    }
+
+    //Mock Reward Token
+    dai = await ERC20Mock.new();
+    rewardsDistributor = await RewardsDistributorMock.new(dai.address);
+    await rewardsDistributor.addMarket(fToken.address);
+
+    // Mint stablecoins
+    const mintAmount = 1000 * STABLECOIN_PRECISION;
+    await stablecoin.mint(fToken.address, num2str(mintAmount));
+
+    // Initialize the money market
+    const marketTemplate = await FuseERC20Market.new();
+    const marketReceipt = await factory.createFuseERC20Market(
+      marketTemplate.address,
+      DEFAULT_SALT,
+      fToken.address,
+      rewardsDistributor.address,
+      accounts[0],
+      stablecoin.address
+    );
+    return await factoryReceiptToContract(marketReceipt, FuseERC20Market);
+  };
+
+  const timePass = async timeInYears => {
+    await timeTravel(timeInYears * YEAR_IN_SEC);
+    for (const fTokenAddress of fTokenAddressList) {
+      const fToken = await FERC20Mock.at(fTokenAddress);
+      const currentExRate = BigNumber(await fToken.exchangeRateStored());
+      const rateAfterTimePasses = BigNumber(currentExRate).times(
+        1 + timeInYears * INIT_INTEREST_RATE
+      );
+      await fToken._setExchangeRateStored(num2str(rateAfterTimePasses));
+    }
+  };
+
+  return {
+    deployMoneyMarket,
+    timePass
+  };
+};
+
 const harvestMoneyMarketModule = () => {
   // Contract artifacts
   const VaultMock = artifacts.require("VaultMock");
@@ -587,6 +646,10 @@ const moneyMarketModuleList = (module.exports.moneyMarketModuleList = [
   {
     name: "YVault",
     moduleGenerator: yvaultMoneyMarketModule
+  },
+  {
+    name: "FuseERC20",
+    moduleGenerator: fuseERC20MoneyMarketModule
   }
 ]);
 

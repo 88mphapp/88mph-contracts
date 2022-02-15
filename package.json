@@ -25,7 +25,7 @@
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin/hardhat-upgrades": "^1.9.0",
     "@typechain/ethers-v5": "^7.0.1",
-    "@typechain/hardhat": "^2.3.0",
+    "@typechain/hardhat": "^2.3.1",
     "@typechain/truffle-v5": "^5.0.0",
     "@types/chai": "^4.2.21",
     "@types/mocha": "^9.0.0",

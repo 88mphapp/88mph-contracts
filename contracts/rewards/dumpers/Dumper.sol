@@ -4,8 +4,14 @@ pragma solidity 0.8.4;
 import {OneSplitDumper} from "./OneSplitDumper.sol";
 import {CurveLPWithdrawer} from "./withdrawers/CurveLPWithdrawer.sol";
 import {YearnWithdrawer} from "./withdrawers/YearnWithdrawer.sol";
+import {StakedAaveWithdrawer} from "./withdrawers/StakedAaveWithdrawer.sol";
 
-contract Dumper is OneSplitDumper, CurveLPWithdrawer, YearnWithdrawer {
+contract Dumper is
+    OneSplitDumper,
+    CurveLPWithdrawer,
+    YearnWithdrawer,
+    StakedAaveWithdrawer
+{
     function initialize(address _oneSplit, address _xMPHToken)
         external
         initializer

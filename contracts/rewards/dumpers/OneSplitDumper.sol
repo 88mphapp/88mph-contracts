@@ -10,6 +10,9 @@ import {AdminControlled} from "../../libs/AdminControlled.sol";
 contract OneSplitDumper is AdminControlled {
     using SafeERC20 for IERC20;
 
+    address public constant GOV_TREASURY =
+        0x56f34826Cc63151f74FA8f701E4f73C5EAae52AD;
+
     OneSplitAudit public oneSplit;
     xMPH public xMPHToken;
     IERC20 public rewardToken;
@@ -71,8 +74,12 @@ contract OneSplitDumper is AdminControlled {
     }
 
     function notify() external onlyAdmin {
-        uint256 balance = rewardToken.balanceOf(address(this));
-        rewardToken.safeIncreaseAllowance(address(xMPHToken), balance);
-        xMPHToken.distributeReward(balance);
+        uint256 halfBalance = rewardToken.balanceOf(address(this)) / 2;
+
+        // split up balance between xMPH and gov treasury
+        rewardToken.safeIncreaseAllowance(address(xMPHToken), halfBalance);
+        xMPHToken.distributeReward(halfBalance);
+
+        rewardToken.safeTransfer(GOV_TREASURY, halfBalance);
     }
 }

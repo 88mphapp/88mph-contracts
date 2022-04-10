@@ -1,14 +1,29 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.4;
 
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+
 import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 
+import {Bytes32AddressLib} from "@rari-capital/solmate/src/utils/Bytes32AddressLib.sol";
+
+import {Forwarder} from "./Forwarder.sol";
 import {Vesting02} from "./Vesting02.sol";
 import {DInterest} from "../DInterest.sol";
 import {FullMath} from "../libs/FullMath.sol";
 
+/// @title Vesting03
+/// @author zefram.eth
+/// @notice Distributes MPH rewards to depositors over time based on a staking-pool like logic
 contract Vesting03 is Vesting02 {
+    /// -----------------------------------------------------------------------
+    /// Library usage
+    /// -----------------------------------------------------------------------
+
+    using Clones for address;
     using PRBMathUD60x18 for uint256;
+    using Bytes32AddressLib for address;
+    using Bytes32AddressLib for bytes32;
 
     /// -----------------------------------------------------------------------
     /// Errors
@@ -16,7 +31,9 @@ contract Vesting03 is Vesting02 {
 
     error Error_Overflow();
     error Error_NotMinter();
+    error Error_NotVestOwner();
     error Error_AmountTooLarge();
+    error Error_ForwarderNotDeployed();
     error Error_NotRewardDistributor();
 
     /// -----------------------------------------------------------------------
@@ -27,12 +44,15 @@ contract Vesting03 is Vesting02 {
     event Staked(uint64 indexed vestID, uint256 amount);
     event Withdrawn(uint64 indexed vestID, uint256 amount);
     event RewardPaid(uint64 indexed vestID, uint256 reward);
+    event UpdateDuration(uint64 newDuration);
+    event SetRewardDistributor(address indexed account, bool isDistributor);
 
     /// -----------------------------------------------------------------------
-    /// Constants
+    /// Immutable parameters
     /// -----------------------------------------------------------------------
 
-    uint64 internal constant DURATION = 30 days;
+    /// @notice The Forwarder template for cloning Forwarders
+    Forwarder public immutable forwarderTemplate;
 
     /// -----------------------------------------------------------------------
     /// Storage variables
@@ -44,6 +64,7 @@ contract Vesting03 is Vesting02 {
         /// @notice The Unix timestamp (in seconds) at which the current reward period ends
         uint64 periodFinish;
     }
+    /// @notice Info about the reward period of each pool
     /// @dev pool => value
     mapping(address => PeriodInfo) public periodInfo;
 
@@ -75,6 +96,17 @@ contract Vesting03 is Vesting02 {
     /// @dev account => value
     mapping(address => bool) public isRewardDistributor;
 
+    /// @notice The duration of each reward period, in seconds
+    uint64 public DURATION;
+
+    /// -----------------------------------------------------------------------
+    /// Constructor
+    /// -----------------------------------------------------------------------
+
+    constructor(Forwarder forwarderTemplate_) {
+        forwarderTemplate = forwarderTemplate_;
+    }
+
     /// -----------------------------------------------------------------------
     /// Vesting02 compatibility
     /// -----------------------------------------------------------------------
@@ -97,10 +129,11 @@ contract Vesting03 is Vesting02 {
         /// Storage loads
         /// -----------------------------------------------------------------------
 
+        uint256 totalSupply_ = totalSupply[pool];
         uint64 lastTimeRewardApplicable_ = lastTimeRewardApplicable(pool);
         uint256 rewardPerToken_ = _rewardPerToken(
             pool,
-            totalSupply[pool],
+            totalSupply_,
             lastTimeRewardApplicable_,
             rewardRate[pool]
         );
@@ -150,7 +183,7 @@ contract Vesting03 is Vesting02 {
         totalDepositStored[pool] = totalDeposit;
 
         // update total supply
-        totalSupply[pool] += depositAmount;
+        totalSupply[pool] = totalSupply_ + depositAmount;
 
         emit Staked(vestID, depositAmount);
     }
@@ -171,6 +204,10 @@ contract Vesting03 is Vesting02 {
         }
 
         uint64 vestID = depositIDToVestID[pool][depositID];
+        if (vestID == 0) {
+            // deposit was created before vesting contract, return
+            return;
+        }
         Vest storage vestEntry = _getVest(vestID);
 
         if (vestEntry.lastUpdateTimestamp == 0) {
@@ -180,10 +217,11 @@ contract Vesting03 is Vesting02 {
             /// Storage loads
             /// -----------------------------------------------------------------------
 
+            uint256 totalSupply_ = totalSupply[pool];
             uint64 lastTimeRewardApplicable_ = lastTimeRewardApplicable(pool);
             uint256 rewardPerToken_ = _rewardPerToken(
                 pool,
-                totalSupply[pool],
+                totalSupply_,
                 lastTimeRewardApplicable_,
                 rewardRate[pool]
             );
@@ -211,13 +249,16 @@ contract Vesting03 is Vesting02 {
             // update total supply
             if (depositAmount > 0) {
                 // deposit
-                totalSupply[pool] += depositAmount;
+                totalSupply[pool] = totalSupply_ + depositAmount;
 
                 emit Staked(vestID, depositAmount);
             } else {
                 // withdrawal
+                // this is the only way for the vesting contract to learn
+                // of the amount that was withdrawn, since it's not passed in
+                // as an argument
                 uint256 withdrawAmount = totalDepositStored_ - totalDeposit;
-                totalSupply[pool] -= withdrawAmount;
+                totalSupply[pool] = totalSupply_ - withdrawAmount;
 
                 emit Withdrawn(vestID, withdrawAmount);
             }
@@ -268,8 +309,6 @@ contract Vesting03 is Vesting02 {
         returns (uint256 withdrawnAmount)
     {
         Vest storage vestEntry = _getVest(vestID);
-        address pool = vestEntry.pool;
-        uint64 depositID = vestEntry.depositID;
 
         if (vestEntry.lastUpdateTimestamp == 0) {
             // created by Vesting03
@@ -277,12 +316,16 @@ contract Vesting03 is Vesting02 {
             /// Validation
             /// -----------------------------------------------------------------------
 
-            require(ownerOf(vestID) == msg.sender, "Vesting03: not owner");
+            if (ownerOf(vestID) != msg.sender) {
+                revert Error_NotVestOwner();
+            }
 
             /// -----------------------------------------------------------------------
             /// Storage loads
             /// -----------------------------------------------------------------------
 
+            address pool = vestEntry.pool;
+            uint64 depositID = vestEntry.depositID;
             uint64 lastTimeRewardApplicable_ = lastTimeRewardApplicable(pool);
             uint256 rewardPerToken_ = _rewardPerToken(
                 pool,
@@ -403,6 +446,24 @@ contract Vesting03 is Vesting02 {
     }
 
     /// -----------------------------------------------------------------------
+    /// Forwarder
+    /// -----------------------------------------------------------------------
+
+    function forwarderOfPool(address pool) public view returns (Forwarder) {
+        return
+            Forwarder(
+                Clones.predictDeterministicAddress(
+                    address(forwarderTemplate),
+                    pool.fillLast12Bytes()
+                )
+            );
+    }
+
+    function deployForwarderOfPool(address pool) external {
+        address(forwarderTemplate).cloneDeterministic(pool.fillLast12Bytes());
+    }
+
+    /// -----------------------------------------------------------------------
     /// Staking pool logic
     /// -----------------------------------------------------------------------
 
@@ -413,6 +474,7 @@ contract Vesting03 is Vesting02 {
     /// the newly sent rewards as the reward.
     /// @dev If the reward amount will cause an overflow when computing rewardPerToken, then
     /// this function will revert.
+    /// @param pool The pool to distribute reward tokens to
     /// @param reward The amount of reward tokens to use in the new reward period.
     function notifyRewardAmount(address pool, uint256 reward) external {
         /// -----------------------------------------------------------------------
@@ -435,6 +497,7 @@ contract Vesting03 is Vesting02 {
         uint64 lastTimeRewardApplicable_ = block.timestamp < periodFinish_
             ? uint64(block.timestamp)
             : periodFinish_;
+        uint64 duration = DURATION;
 
         /// -----------------------------------------------------------------------
         /// State updates
@@ -451,23 +514,54 @@ contract Vesting03 is Vesting02 {
         // record new reward
         uint256 newRewardRate;
         if (block.timestamp >= periodFinish_) {
-            newRewardRate = reward / DURATION;
+            newRewardRate = reward / duration;
         } else {
             uint256 remaining = periodFinish_ - block.timestamp;
             uint256 leftover = remaining * rewardRate_;
-            newRewardRate = (reward + leftover) / DURATION;
+            newRewardRate = (reward + leftover) / duration;
         }
         // prevent overflow when computing rewardPerToken
-        if (newRewardRate >= ((type(uint256).max / PRECISION) / DURATION)) {
+        if (newRewardRate >= ((type(uint256).max / PRECISION) / duration)) {
             revert Error_AmountTooLarge();
         }
         rewardRate[pool] = newRewardRate;
         periodInfo[pool] = PeriodInfo({
             lastUpdateTime: uint64(block.timestamp),
-            periodFinish: uint64(block.timestamp + DURATION)
+            periodFinish: uint64(block.timestamp + duration)
         });
 
+        /// -----------------------------------------------------------------------
+        /// Effects
+        /// -----------------------------------------------------------------------
+
+        // pull rewards from the forwarder contract
+        Forwarder forwarder = forwarderOfPool(pool);
+        if (address(forwarder).code.length == 0)
+            revert Error_ForwarderNotDeployed();
+        forwarder.pullTokens(address(mphMinter.mph()), reward);
+
         emit RewardAdded(pool, reward);
+    }
+
+    /// -----------------------------------------------------------------------
+    /// Owner functions
+    /// -----------------------------------------------------------------------
+
+    function updateDuration(uint64 duration_) external onlyOwner {
+        DURATION = duration_;
+        emit UpdateDuration(duration_);
+    }
+
+    /// @notice Lets the owner add/remove accounts from the list of reward distributors.
+    /// Reward distributors can call notifyRewardAmount()
+    /// @param rewardDistributor The account to add/remove
+    /// @param isRewardDistributor_ True to add the account, false to remove the account
+    function setRewardDistributor(
+        address rewardDistributor,
+        bool isRewardDistributor_
+    ) external onlyOwner {
+        isRewardDistributor[rewardDistributor] = isRewardDistributor_;
+        emit SetRewardDistributor(rewardDistributor, isRewardDistributor_);
     }
 
     /// -----------------------------------------------------------------------

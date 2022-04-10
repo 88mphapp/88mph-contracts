@@ -57,6 +57,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.3.2",
     "@openzeppelin/contracts-upgradeable": "^4.3.2",
+    "@rari-capital/solmate": "^6.2.0",
     "base64-sol": "^1.0.1",
     "prb-math": "^2.2.0"
   },

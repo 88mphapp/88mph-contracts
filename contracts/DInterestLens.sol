@@ -46,15 +46,17 @@ contract DInterestLens {
 
         // Compute token amounts
         bool early = block.timestamp < depositEntry.maturationTimestamp;
-        uint256 depositAmount =
-            virtualTokenAmount.div(depositEntry.interestRate + PRECISION);
+        uint256 depositAmount = virtualTokenAmount.div(
+            depositEntry.interestRate + PRECISION
+        );
         uint256 interestAmount = early ? 0 : virtualTokenAmount - depositAmount;
         withdrawableAmount = depositAmount + interestAmount;
 
         if (early) {
             // apply fee to withdrawAmount
-            uint256 earlyWithdrawFee =
-                pool.feeModel().getEarlyWithdrawFeeAmount(
+            uint256 earlyWithdrawFee = pool
+                .feeModel()
+                .getEarlyWithdrawFeeAmount(
                     address(pool),
                     depositID,
                     withdrawableAmount
@@ -78,14 +80,16 @@ contract DInterestLens {
         returns (uint256 fundingInterestAmount)
     {
         DInterest.Funding memory f = pool.getFunding(fundingID);
-        uint256 fundingTokenTotalSupply =
-            pool.fundingMultitoken().totalSupply(fundingID);
-        uint256 recordedFundedPrincipalAmount =
-            (fundingTokenTotalSupply * f.principalPerToken) / ULTRA_PRECISION;
-        uint256 recordedMoneyMarketIncomeIndex =
-            f.recordedMoneyMarketIncomeIndex;
-        uint256 currentMoneyMarketIncomeIndex =
-            pool.moneyMarket().incomeIndex();
+        uint256 fundingTokenTotalSupply = pool.fundingMultitoken().totalSupply(
+            fundingID
+        );
+        uint256 recordedFundedPrincipalAmount = (fundingTokenTotalSupply *
+            f.principalPerToken) / ULTRA_PRECISION;
+        uint256 recordedMoneyMarketIncomeIndex = f
+            .recordedMoneyMarketIncomeIndex;
+        uint256 currentMoneyMarketIncomeIndex = pool
+            .moneyMarket()
+            .incomeIndex();
         require(currentMoneyMarketIncomeIndex > 0, "DInterest: BAD_INDEX");
 
         // Compute interest to funders
@@ -127,11 +131,9 @@ contract DInterestLens {
         virtual
         returns (uint256 interestOwed)
     {
-        uint256 currentValue =
-            (pool.moneyMarket().incomeIndex() *
-                pool
-                    .sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex()) /
-                EXTRA_PRECISION;
+        uint256 currentValue = (pool.moneyMarket().incomeIndex() *
+            pool.sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex()) /
+            EXTRA_PRECISION;
         uint256 initialValue = pool.totalFundedPrincipalAmount();
         if (currentValue < initialValue) {
             return 0;
@@ -156,19 +158,17 @@ contract DInterestLens {
 
         DInterest.Deposit memory depositEntry = pool.getDeposit(depositID);
         if (depositEntry.fundingID != 0) {
-            uint256 totalPrincipal =
-                _depositVirtualTokenToPrincipal(
-                    depositEntry,
-                    depositEntry.virtualTokenTotalSupply
-                );
-            uint256 principalPerToken =
-                pool.getFunding(depositEntry.fundingID).principalPerToken;
-            uint256 unfundedPrincipalAmount =
-                totalPrincipal -
-                    (pool.fundingMultitoken().totalSupply(
-                        depositEntry.fundingID
-                    ) * principalPerToken) /
-                    ULTRA_PRECISION;
+            uint256 totalPrincipal = _depositVirtualTokenToPrincipal(
+                depositEntry,
+                depositEntry.virtualTokenTotalSupply
+            );
+            uint256 principalPerToken = pool
+                .getFunding(depositEntry.fundingID)
+                .principalPerToken;
+            uint256 unfundedPrincipalAmount = totalPrincipal -
+                (pool.fundingMultitoken().totalSupply(depositEntry.fundingID) *
+                    principalPerToken) /
+                ULTRA_PRECISION;
             surplusAmount =
                 (surplusAmount * unfundedPrincipalAmount) /
                 totalPrincipal;
@@ -207,16 +207,15 @@ contract DInterestLens {
         uint256 currentMoneyMarketIncomeIndex
     ) internal virtual returns (bool isNegative, uint256 surplusAmount) {
         DInterest.Deposit memory depositEntry = pool.getDeposit(depositID);
-        uint256 depositAmount =
-            depositEntry.virtualTokenTotalSupply.div(
-                depositEntry.interestRate + PRECISION
-            );
-        uint256 interestAmount =
-            depositEntry.virtualTokenTotalSupply - depositAmount;
+        uint256 depositAmount = depositEntry.virtualTokenTotalSupply.div(
+            depositEntry.interestRate + PRECISION
+        );
+        uint256 interestAmount = depositEntry.virtualTokenTotalSupply -
+            depositAmount;
         uint256 feeAmount = depositAmount.mul(depositEntry.feeRate);
-        uint256 currentDepositValue =
-            (depositAmount * currentMoneyMarketIncomeIndex) /
-                depositEntry.averageRecordedIncomeIndex;
+        uint256 currentDepositValue = (depositAmount *
+            currentMoneyMarketIncomeIndex) /
+            depositEntry.averageRecordedIncomeIndex;
         uint256 owed = depositAmount + interestAmount + feeAmount;
         if (currentDepositValue >= owed) {
             // Locked value more than owed deposits, positive surplus

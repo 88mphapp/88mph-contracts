@@ -13,7 +13,7 @@ const assertRevertMessage = (errMessage, expectedErrMessage) => {
   );
 };
 
-contract("ZeroCouponBond", accounts => {
+contract("ZeroCouponBond", (accounts) => {
   // Accounts
   const acc0 = accounts[0];
   const acc1 = accounts[1];
@@ -40,29 +40,30 @@ contract("ZeroCouponBond", accounts => {
         // Deploy ZeroCouponBond
         const zeroCouponBondTemplate = await ZeroCouponBond.new();
         const blockNow = await Base.latestBlockTimestamp();
-        const zeroCouponBondAddress = await baseContracts.factory.predictAddress(
-          zeroCouponBondTemplate.address,
-          Base.DEFAULT_SALT
-        );
+        const zeroCouponBondAddress =
+          await baseContracts.factory.predictAddress(
+            zeroCouponBondTemplate.address,
+            Base.DEFAULT_SALT
+          );
         await baseContracts.stablecoin.approve(
           zeroCouponBondAddress,
           Base.INF,
           {
-            from: acc0
+            from: acc0,
           }
         );
         await baseContracts.stablecoin.approve(
           zeroCouponBondAddress,
           Base.INF,
           {
-            from: acc1
+            from: acc1,
           }
         );
         await baseContracts.stablecoin.approve(
           zeroCouponBondAddress,
           Base.INF,
           {
-            from: acc2
+            from: acc2,
           }
         );
         const zcbReceipt = await baseContracts.factory.createZeroCouponBond(
@@ -98,14 +99,13 @@ contract("ZeroCouponBond", accounts => {
               Base.num2str(depositAmount),
               Base.num2str(expectedInterestAmount),
               {
-                from: acc1
+                from: acc1,
               }
             );
             // check mint amount
             const actualZCBMinted = await zeroCouponBond.balanceOf(acc1);
-            const expectedZCBMinted = expectedInterestAmount.plus(
-              depositAmount
-            );
+            const expectedZCBMinted =
+              expectedInterestAmount.plus(depositAmount);
             Base.assertEpsilonEq(
               actualZCBMinted,
               expectedZCBMinted,
@@ -131,7 +131,7 @@ contract("ZeroCouponBond", accounts => {
                 Base.num2str(depositAmount),
                 Base.num2str(expectedInterestAmount),
                 {
-                  from: acc1
+                  from: acc1,
                 }
               );
               assert.fail();
@@ -161,7 +161,7 @@ contract("ZeroCouponBond", accounts => {
               Base.num2str(depositAmount),
               Base.num2str(expectedInterestAmount),
               {
-                from: acc1
+                from: acc1,
               }
             );
 
@@ -169,7 +169,8 @@ contract("ZeroCouponBond", accounts => {
             await moneyMarketModule.timePass(1);
 
             await zeroCouponBond.withdrawDeposit({ from: acc1 });
-            const dInterestBalanceAfterWithdrawal = await baseContracts.dInterestPool.totalDeposit();
+            const dInterestBalanceAfterWithdrawal =
+              await baseContracts.dInterestPool.totalDeposit();
             Base.assertEpsilonEq(
               dInterestBalanceAfterWithdrawal,
               0,
@@ -193,7 +194,7 @@ contract("ZeroCouponBond", accounts => {
               Base.num2str(depositAmount),
               Base.num2str(expectedInterestAmount),
               {
-                from: acc1
+                from: acc1,
               }
             );
 
@@ -230,7 +231,7 @@ contract("ZeroCouponBond", accounts => {
               Base.num2str(depositAmount),
               Base.num2str(expectedInterestAmount),
               {
-                from: acc1
+                from: acc1,
               }
             );
 
@@ -239,9 +240,8 @@ contract("ZeroCouponBond", accounts => {
 
             // acc1 redeems
             const bondBalance = await zeroCouponBond.balanceOf(acc1);
-            const beforeStablecoinBalance = await baseContracts.stablecoin.balanceOf(
-              acc1
-            );
+            const beforeStablecoinBalance =
+              await baseContracts.stablecoin.balanceOf(acc1);
             await zeroCouponBond.redeem(bondBalance, true, { from: acc1 });
 
             // check zcb balance
@@ -286,7 +286,7 @@ contract("ZeroCouponBond", accounts => {
               Base.num2str(depositAmount),
               Base.num2str(expectedInterestAmount),
               {
-                from: acc1
+                from: acc1,
               }
             );
 
@@ -316,7 +316,7 @@ contract("ZeroCouponBond", accounts => {
               Base.num2str(depositAmount),
               Base.num2str(expectedInterestAmount),
               {
-                from: acc1
+                from: acc1,
               }
             );
 
@@ -327,7 +327,7 @@ contract("ZeroCouponBond", accounts => {
             const bondBalance = await zeroCouponBond.balanceOf(acc1);
             try {
               await zeroCouponBond.redeem(bondBalance + 2, true, {
-                from: acc1
+                from: acc1,
               });
               assert.fail();
             } catch (error) {
@@ -351,7 +351,7 @@ contract("ZeroCouponBond", accounts => {
               Base.num2str(depositAmount),
               Base.num2str(expectedInterestAmount),
               {
-                from: acc1
+                from: acc1,
               }
             );
 
@@ -384,7 +384,7 @@ contract("ZeroCouponBond", accounts => {
               Base.num2str(depositAmount),
               Base.num2str(expectedInterestAmount),
               {
-                from: acc1
+                from: acc1,
               }
             );
 
@@ -395,9 +395,8 @@ contract("ZeroCouponBond", accounts => {
 
             // acc1 redeems
             const bondBalance = await zeroCouponBond.balanceOf(acc1);
-            const beforeStablecoinBalance = await baseContracts.stablecoin.balanceOf(
-              acc1
-            );
+            const beforeStablecoinBalance =
+              await baseContracts.stablecoin.balanceOf(acc1);
 
             await zeroCouponBond.redeem(bondBalance, true, { from: acc1 });
             // check zcb balance

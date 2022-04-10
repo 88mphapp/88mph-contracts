@@ -37,11 +37,11 @@ module.exports = async ({ getNamedAccounts, deployments, artifacts }) => {
             true,
             baseName,
             baseSymbol,
-            BigNumber(stablecoinDecimals).toString()
-          ]
-        }
-      }
-    }
+            BigNumber(stablecoinDecimals).toString(),
+          ],
+        },
+      },
+    },
   });
 
   if (deployResult.newlyDeployed) {

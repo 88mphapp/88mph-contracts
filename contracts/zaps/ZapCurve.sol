@@ -3,12 +3,8 @@ pragma solidity 0.8.4;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "../libs/SafeERC20.sol";
-import {
-    ERC1155Receiver
-} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
-import {
-    IERC721Receiver
-} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {ERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {CurveZapIn} from "./imports/CurveZapIn.sol";
 import {DInterest} from "../DInterest.sol";
 import {NFT} from "../tokens/NFT.sol";
@@ -18,7 +14,7 @@ import {Vesting02} from "../rewards/Vesting02.sol";
 contract ZapCurve is ERC1155Receiver, IERC721Receiver {
     using SafeERC20 for ERC20;
 
-    modifier active {
+    modifier active() {
         isActive = true;
         _;
         isActive = false;
@@ -43,13 +39,12 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
         // zap into curve
         uint64 depositID;
         {
-            uint256 outputTokenAmount =
-                _zapTokenInCurve(
-                    swapAddress,
-                    inputToken,
-                    inputTokenAmount,
-                    minOutputTokenAmount
-                );
+            uint256 outputTokenAmount = _zapTokenInCurve(
+                swapAddress,
+                inputToken,
+                inputTokenAmount,
+                minOutputTokenAmount
+            );
 
             // create deposit
             poolContract.stablecoin().safeIncreaseAllowance(
@@ -93,18 +88,19 @@ contract ZapCurve is ERC1155Receiver, IERC721Receiver {
         FundingMultitoken fundingMultitoken = poolContract.fundingMultitoken();
 
         // zap into curve
-        uint256 outputTokenAmount =
-            _zapTokenInCurve(
-                swapAddress,
-                inputToken,
-                inputTokenAmount,
-                minOutputTokenAmount
-            );
+        uint256 outputTokenAmount = _zapTokenInCurve(
+            swapAddress,
+            inputToken,
+            inputTokenAmount,
+            minOutputTokenAmount
+        );
 
         // create funding
         stablecoin.safeIncreaseAllowance(pool, outputTokenAmount);
-        (uint64 fundingID, , , ) =
-            poolContract.fund(depositID, outputTokenAmount);
+        (uint64 fundingID, , , ) = poolContract.fund(
+            depositID,
+            outputTokenAmount
+        );
 
         // transfer funding multitoken to msg.sender
         fundingMultitoken.safeTransferFrom(

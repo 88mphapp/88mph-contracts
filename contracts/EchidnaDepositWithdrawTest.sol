@@ -122,8 +122,8 @@ contract EchidnaDepositWithdrawTest {
         uint256 exaScalingFactor = 18;
         // limit amount to 1 exa exa mockToken so tests are not cluttered with overflow errors
         // 18 * 3 = 54
-        uint256 amount =
-            seed % 10**(decimals + exaScalingFactor + exaScalingFactor);
+        uint256 amount = seed %
+            10**(decimals + exaScalingFactor + exaScalingFactor);
         require(mockToken.balanceOf(address(this)) == 0);
         mockToken.mint(address(this), amount);
     }
@@ -149,8 +149,10 @@ contract EchidnaDepositWithdrawTest {
         assert(10**mockToken.decimals() == 1000000);
         uint64 maturationTimestamp = randomMaturationTimestamp(seed);
         uint256 balanceBefore = mockToken.balanceOf(address(this));
-        uint256 allowanceBefore =
-            mockToken.allowance(address(this), address(dinterest));
+        uint256 allowanceBefore = mockToken.allowance(
+            address(this),
+            address(dinterest)
+        );
 
         // --------------------------------------------------------------------------------
         // detect success or failure
@@ -242,8 +244,10 @@ contract EchidnaDepositWithdrawTest {
             }
         }
 
-        uint256 interest =
-            dinterest.calculateInterestAmount(amount, depositPeriod);
+        uint256 interest = dinterest.calculateInterestAmount(
+            amount,
+            depositPeriod
+        );
         if (interest == 0) {
             if (success) {
                 emit AssertionFailed("deposit must revert if interest is 0");
@@ -336,8 +340,9 @@ contract EchidnaDepositWithdrawTest {
             }
         }
 
-        uint64 maturationTimestamp =
-            dinterest.getDeposit(echidna_depositID).maturationTimestamp;
+        uint64 maturationTimestamp = dinterest
+            .getDeposit(echidna_depositID)
+            .maturationTimestamp;
         bool isActuallyEarly = block.timestamp < maturationTimestamp;
         if (early != isActuallyEarly) {
             if (success) {

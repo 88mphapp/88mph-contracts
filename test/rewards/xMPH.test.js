@@ -5,7 +5,7 @@ const { assert, artifacts } = require("hardhat");
 const MPHToken = artifacts.require("MPHToken");
 const xMPHArtifact = artifacts.require("xMPH");
 
-contract("xMPH", accounts => {
+contract("xMPH", (accounts) => {
   // Accounts
   const acc0 = accounts[0];
   const acc1 = accounts[1];

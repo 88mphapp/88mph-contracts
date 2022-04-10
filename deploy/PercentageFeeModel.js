@@ -7,7 +7,7 @@ module.exports = async ({
   getNamedAccounts,
   deployments,
   getChainId,
-  artifacts
+  artifacts,
 }) => {
   const { deploy, log, get, execute, read } = deployments;
   const { deployer } = await getNamedAccounts();
@@ -21,8 +21,8 @@ module.exports = async ({
     args: [
       feeRecipient,
       BigNumber(config.interestFee).toFixed(),
-      BigNumber(config.earlyWithdrawFee).toFixed()
-    ]
+      BigNumber(config.earlyWithdrawFee).toFixed(),
+    ],
   });
   if (deployResult.newlyDeployed) {
     log(`PercentageFeeModel deployed at ${deployResult.address}`);

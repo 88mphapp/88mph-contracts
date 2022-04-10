@@ -2,7 +2,7 @@ const Base = require("./base");
 const BigNumber = require("bignumber.js");
 const { assert } = require("hardhat");
 
-contract("DInterest", accounts => {
+contract("DInterest", (accounts) => {
   // Accounts
   const acc0 = accounts[0];
   const acc1 = accounts[1];

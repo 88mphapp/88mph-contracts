@@ -3,7 +3,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deployer } = await getNamedAccounts();
 
   const deployResult = await deploy("NFTDescriptor", {
-    from: deployer
+    from: deployer,
   });
   if (deployResult.newlyDeployed) {
     log(`NFTDescriptor deployed at ${deployResult.address}`);

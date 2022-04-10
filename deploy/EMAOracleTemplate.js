@@ -3,14 +3,14 @@ module.exports = async ({
   getNamedAccounts,
   deployments,
   getChainId,
-  artifacts
+  artifacts,
 }) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
   const deployResult = await deploy("EMAOracleTemplate", {
     from: deployer,
-    contract: "EMAOracle"
+    contract: "EMAOracle",
   });
   if (deployResult.newlyDeployed) {
     log(`EMAOracleTemplate deployed at ${deployResult.address}`);

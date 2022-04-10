@@ -15,10 +15,10 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
       execute: {
         init: {
           methodName: "initialize",
-          args: [mphMinterDeployment.address]
-        }
-      }
-    }
+          args: [mphMinterDeployment.address],
+        },
+      },
+    },
   });
   if (deployResult.newlyDeployed) {
     log(`MPHConverter deployed at ${deployResult.address}`);

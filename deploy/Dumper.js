@@ -16,14 +16,14 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
       execute: {
         init: {
           methodName: "initialize",
-          args: [config.oneSplitAddress, xMPHDeployment.address]
+          args: [config.oneSplitAddress, xMPHDeployment.address],
         },
         onUpgrade: {
           methodName: "postUpgrade",
-          args: []
-        }
-      }
-    }
+          args: [],
+        },
+      },
+    },
   });
   if (deployResult.newlyDeployed) {
     log(`Dumper deployed at ${deployResult.address}`);
@@ -35,11 +35,11 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
     const Dumper = artifacts.require("Dumper");
     const dumperContract = await Dumper.at(deployResult.address);
     await dumperContract.grantRole(DEFAULT_ADMIN_ROLE, config.govTreasury, {
-      from: deployer
+      from: deployer,
     });
     log(`Grant Dumper DEFAULT_ADMIN_ROLE to ${config.govTreasury}`);
     await dumperContract.renounceRole(DEFAULT_ADMIN_ROLE, deployer, {
-      from: deployer
+      from: deployer,
     });
     log(`Renounce Dumper DEFAULT_ADMIN_ROLE of ${deployer}`);
 
@@ -47,7 +47,7 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
     const xMPH = artifacts.require("xMPH");
     const xMPHContract = await xMPH.at(xMPHDeployment.address);
     await xMPHContract.grantRole(DISTRIBUTOR_ROLE, deployResult.address, {
-      from: deployer
+      from: deployer,
     });
     log(`Grant xMPH DISTRIBUTOR_ROLE to ${deployResult.address}`);
   }

@@ -3,16 +3,10 @@ pragma solidity 0.8.4;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "./libs/SafeERC20.sol";
-import {
-    ReentrancyGuardUpgradeable
-} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import {
-    AddressUpgradeable
-} from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import {AddressUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import {BoringOwnable} from "./libs/BoringOwnable.sol";
-import {
-    MulticallUpgradeable
-} from "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
+import {MulticallUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
 import {MoneyMarket} from "./moneymarkets/MoneyMarket.sol";
 import {IFeeModel} from "./models/fee/IFeeModel.sol";
 import {IInterestModel} from "./models/interest/IInterestModel.sol";
@@ -460,8 +454,8 @@ contract DInterest is
         uint256 depositAmount,
         uint256 depositPeriodInSeconds
     ) public virtual returns (uint256 interestAmount) {
-        (, uint256 moneyMarketInterestRatePerSecond) =
-            interestOracle.updateAndQuery();
+        (, uint256 moneyMarketInterestRatePerSecond) = interestOracle
+            .updateAndQuery();
         (bool surplusIsNegative, uint256 surplusAmount) = surplus();
 
         return
@@ -594,8 +588,10 @@ contract DInterest is
         );
 
         // Calculate fee
-        uint256 feeAmount =
-            feeModel.getInterestFeeAmount(address(this), interestAmount);
+        uint256 feeAmount = feeModel.getInterestFeeAmount(
+            address(this),
+            interestAmount
+        );
         interestAmount -= feeAmount;
 
         // Record deposit data
@@ -695,8 +691,8 @@ contract DInterest is
         require(depositNFT.ownerOf(depositID) == sender, "NOT_OWNER");
 
         // underflow check prevents topups after maturation
-        uint256 depositPeriod =
-            depositEntry.maturationTimestamp - block.timestamp;
+        uint256 depositPeriod = depositEntry.maturationTimestamp -
+            block.timestamp;
 
         // Calculate interest
         interestAmount = calculateInterestAmount(depositAmount, depositPeriod);
@@ -706,14 +702,17 @@ contract DInterest is
         );
 
         // Calculate fee
-        uint256 feeAmount =
-            feeModel.getInterestFeeAmount(address(this), interestAmount);
+        uint256 feeAmount = feeModel.getInterestFeeAmount(
+            address(this),
+            interestAmount
+        );
         interestAmount -= feeAmount;
 
         // Update deposit struct
         uint256 interestRate = depositEntry.interestRate;
-        uint256 currentDepositAmount =
-            depositEntry.virtualTokenTotalSupply.div(interestRate + PRECISION);
+        uint256 currentDepositAmount = depositEntry.virtualTokenTotalSupply.div(
+            interestRate + PRECISION
+        );
         depositEntry.virtualTokenTotalSupply += depositAmount + interestAmount;
         depositEntry.interestRate =
             (PRECISION * interestAmount + currentDepositAmount * interestRate) /
@@ -724,8 +723,8 @@ contract DInterest is
                 currentDepositAmount *
                 depositEntry.feeRate) /
             (depositAmount + currentDepositAmount);
-        uint256 sumOfRecordedDepositAmountDivRecordedIncomeIndex =
-            (currentDepositAmount * EXTRA_PRECISION) /
+        uint256 sumOfRecordedDepositAmountDivRecordedIncomeIndex = (currentDepositAmount *
+                EXTRA_PRECISION) /
                 depositEntry.averageRecordedIncomeIndex +
                 (depositAmount * EXTRA_PRECISION) /
                 moneyMarket().incomeIndex();
@@ -785,8 +784,13 @@ contract DInterest is
         string memory uri
     ) internal virtual returns (uint64 newDepositID, uint256 interestAmount) {
         // withdraw from existing deposit
-        uint256 withdrawnStablecoinAmount =
-            _withdraw(sender, depositID, type(uint256).max, false, true);
+        uint256 withdrawnStablecoinAmount = _withdraw(
+            sender,
+            depositID,
+            type(uint256).max,
+            false,
+            true
+        );
 
         // deposit funds into a new deposit
         (newDepositID, interestAmount) = _deposit(
@@ -863,8 +867,8 @@ contract DInterest is
 
         // Check if withdrawing all funds
         {
-            uint256 virtualTokenTotalSupply =
-                depositEntry.virtualTokenTotalSupply;
+            uint256 virtualTokenTotalSupply = depositEntry
+                .virtualTokenTotalSupply;
             if (virtualTokenAmount > virtualTokenTotalSupply) {
                 virtualTokenAmount = virtualTokenTotalSupply;
             }
@@ -873,21 +877,22 @@ contract DInterest is
         // Compute token amounts
         uint256 interestRate = depositEntry.interestRate;
         uint256 feeRate = depositEntry.feeRate;
-        uint256 depositAmount =
-            virtualTokenAmount.div(interestRate + PRECISION);
+        uint256 depositAmount = virtualTokenAmount.div(
+            interestRate + PRECISION
+        );
         {
-            uint256 interestAmount =
-                early ? 0 : virtualTokenAmount - depositAmount;
+            uint256 interestAmount = early
+                ? 0
+                : virtualTokenAmount - depositAmount;
             withdrawAmount = depositAmount + interestAmount;
         }
         if (early) {
             // apply fee to withdrawAmount
-            uint256 earlyWithdrawFee =
-                feeModel.getEarlyWithdrawFeeAmount(
-                    address(this),
-                    depositID,
-                    withdrawAmount
-                );
+            uint256 earlyWithdrawFee = feeModel.getEarlyWithdrawFeeAmount(
+                address(this),
+                depositID,
+                withdrawAmount
+            );
             feeAmount = earlyWithdrawFee;
             withdrawAmount -= earlyWithdrawFee;
         } else {
@@ -905,19 +910,18 @@ contract DInterest is
             Funding storage funding = _getFunding(fundingID);
 
             // Compute funded deposit amount before withdrawal
-            uint256 recordedFundedPrincipalAmount =
-                (fundingMultitoken.totalSupply(fundingID) *
-                    funding.principalPerToken) / ULTRA_PRECISION;
+            uint256 recordedFundedPrincipalAmount = (fundingMultitoken
+                .totalSupply(fundingID) * funding.principalPerToken) /
+                ULTRA_PRECISION;
 
             // Shrink funding principal per token value
             {
-                uint256 totalPrincipal =
-                    _depositVirtualTokenToPrincipal(
-                        depositID,
-                        depositEntry.virtualTokenTotalSupply
-                    );
-                uint256 totalPrincipalDecrease =
-                    virtualTokenAmount + depositAmount.mul(feeRate);
+                uint256 totalPrincipal = _depositVirtualTokenToPrincipal(
+                    depositID,
+                    depositEntry.virtualTokenTotalSupply
+                );
+                uint256 totalPrincipalDecrease = virtualTokenAmount +
+                    depositAmount.mul(feeRate);
                 if (
                     totalPrincipal <=
                     totalPrincipalDecrease + recordedFundedPrincipalAmount
@@ -946,10 +950,9 @@ contract DInterest is
 
         // Update vest
         {
-            uint256 depositAmountBeforeWithdrawal =
-                _getDeposit(depositID).virtualTokenTotalSupply.div(
-                    interestRate + PRECISION
-                );
+            uint256 depositAmountBeforeWithdrawal = _getDeposit(depositID)
+                .virtualTokenTotalSupply
+                .div(interestRate + PRECISION);
             mphMinter.updateVestForDeposit(
                 depositID,
                 depositAmountBeforeWithdrawal,
@@ -982,8 +985,9 @@ contract DInterest is
 
             // We do this because feePlusFundingInterest might
             // be slightly less due to rounding
-            uint256 feePlusFundingInterest =
-                moneyMarket().withdraw(feeAmount + fundingInterestAmount);
+            uint256 feePlusFundingInterest = moneyMarket().withdraw(
+                feeAmount + fundingInterestAmount
+            );
             if (feePlusFundingInterest >= feeAmount + fundingInterestAmount) {
                 // enough to pay everything, if there's extra give to feeAmount
                 feeAmount = feePlusFundingInterest - fundingInterestAmount;
@@ -999,10 +1003,9 @@ contract DInterest is
             // we're keeping the withdrawal amount in the money market
             withdrawnStablecoinAmount = withdrawAmount;
         } else {
-            uint256 actualWithdrawnAmount =
-                moneyMarket().withdraw(
-                    withdrawAmount + feeAmount + fundingInterestAmount
-                );
+            uint256 actualWithdrawnAmount = moneyMarket().withdraw(
+                withdrawAmount + feeAmount + fundingInterestAmount
+            );
 
             // We do this because `actualWithdrawnAmount` might
             // be slightly less due to rounding
@@ -1115,17 +1118,15 @@ contract DInterest is
 
         // Create funding struct if one doesn't exist
         {
-            uint256 virtualTokenTotalSupply =
-                depositEntry.virtualTokenTotalSupply;
-            uint256 totalPrincipal =
-                _depositVirtualTokenToPrincipal(
-                    depositID,
-                    virtualTokenTotalSupply
-                );
-            uint256 depositAmount =
-                virtualTokenTotalSupply.div(
-                    depositEntry.interestRate + PRECISION
-                );
+            uint256 virtualTokenTotalSupply = depositEntry
+                .virtualTokenTotalSupply;
+            uint256 totalPrincipal = _depositVirtualTokenToPrincipal(
+                depositID,
+                virtualTokenTotalSupply
+            );
+            uint256 depositAmount = virtualTokenTotalSupply.div(
+                depositEntry.interestRate + PRECISION
+            );
             if (
                 fundingID == 0 || _getFunding(fundingID).principalPerToken == 0
             ) {
@@ -1144,11 +1145,10 @@ contract DInterest is
                 depositEntry.fundingID = fundingID;
 
                 // Bound fundAmount upwards by the fixed rate yield amount
-                uint256 bound =
-                    calculateInterestAmount(
-                        depositAmount,
-                        depositEntry.maturationTimestamp - block.timestamp
-                    );
+                uint256 bound = calculateInterestAmount(
+                    depositAmount,
+                    depositEntry.maturationTimestamp - block.timestamp
+                );
                 if (fundAmount > bound) {
                     fundAmount = bound;
                 }
@@ -1161,21 +1161,18 @@ contract DInterest is
                 _payInterestToFunders(fundingID, incomeIndex);
 
                 // Compute amount of principal to fund
-                uint256 principalPerToken =
-                    _getFunding(fundingID).principalPerToken;
-                uint256 unfundedPrincipalAmount =
-                    totalPrincipal -
-                        (fundingMultitoken.totalSupply(fundingID) *
-                            principalPerToken) /
-                        ULTRA_PRECISION;
+                uint256 principalPerToken = _getFunding(fundingID)
+                    .principalPerToken;
+                uint256 unfundedPrincipalAmount = totalPrincipal -
+                    (fundingMultitoken.totalSupply(fundingID) *
+                        principalPerToken) /
+                    ULTRA_PRECISION;
 
                 // Bound fundAmount upwards by the fixed rate yield amount
-                uint256 bound =
-                    calculateInterestAmount(
-                        (depositAmount * unfundedPrincipalAmount) /
-                            totalPrincipal,
-                        depositEntry.maturationTimestamp - block.timestamp
-                    );
+                uint256 bound = calculateInterestAmount(
+                    (depositAmount * unfundedPrincipalAmount) / totalPrincipal,
+                    depositEntry.maturationTimestamp - block.timestamp
+                );
                 if (fundAmount > bound) {
                     fundAmount = bound;
                 }
@@ -1231,13 +1228,13 @@ contract DInterest is
     ) internal virtual returns (uint256 interestAmount) {
         Funding storage f = _getFunding(fundingID);
         {
-            uint256 recordedMoneyMarketIncomeIndex =
-                f.recordedMoneyMarketIncomeIndex;
-            uint256 fundingTokenTotalSupply =
-                fundingMultitoken.totalSupply(fundingID);
-            uint256 recordedFundedPrincipalAmount =
-                (fundingTokenTotalSupply * f.principalPerToken) /
-                    ULTRA_PRECISION;
+            uint256 recordedMoneyMarketIncomeIndex = f
+                .recordedMoneyMarketIncomeIndex;
+            uint256 fundingTokenTotalSupply = fundingMultitoken.totalSupply(
+                fundingID
+            );
+            uint256 recordedFundedPrincipalAmount = (fundingTokenTotalSupply *
+                f.principalPerToken) / ULTRA_PRECISION;
 
             // Update funding values
             sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex =
@@ -1301,16 +1298,15 @@ contract DInterest is
         Funding storage f = _getFunding(fundingID);
 
         // Mint funder rewards
-        uint256 maturationTimestamp =
-            _getDeposit(f.depositID).maturationTimestamp;
+        uint256 maturationTimestamp = _getDeposit(f.depositID)
+            .maturationTimestamp;
         if (block.timestamp > maturationTimestamp) {
             // past maturation, only mint proportionally to maturation - last payout
             uint256 lastInterestPayoutTimestamp = f.lastInterestPayoutTimestamp;
             if (lastInterestPayoutTimestamp < maturationTimestamp) {
-                uint256 effectiveInterestAmount =
-                    (rawInterestAmount *
-                        (maturationTimestamp - lastInterestPayoutTimestamp)) /
-                        (block.timestamp - lastInterestPayoutTimestamp);
+                uint256 effectiveInterestAmount = (rawInterestAmount *
+                    (maturationTimestamp - lastInterestPayoutTimestamp)) /
+                    (block.timestamp - lastInterestPayoutTimestamp);
                 mphMinter.distributeFundingRewards(
                     fundingID,
                     effectiveInterestAmount
@@ -1345,21 +1341,19 @@ contract DInterest is
         returns (uint256 fundingInterestAmount, uint256 refundAmount)
     {
         Funding storage f = _getFunding(fundingID);
-        uint256 currentFundedPrincipalAmount =
-            (fundingMultitoken.totalSupply(fundingID) * f.principalPerToken) /
-                ULTRA_PRECISION;
+        uint256 currentFundedPrincipalAmount = (fundingMultitoken.totalSupply(
+            fundingID
+        ) * f.principalPerToken) / ULTRA_PRECISION;
 
         // Update funding values
         {
-            uint256 recordedMoneyMarketIncomeIndex =
-                f.recordedMoneyMarketIncomeIndex;
+            uint256 recordedMoneyMarketIncomeIndex = f
+                .recordedMoneyMarketIncomeIndex;
             uint256 currentMoneyMarketIncomeIndex = moneyMarket().incomeIndex();
-            uint256 currentFundedPrincipalAmountDivRecordedIncomeIndex =
-                (currentFundedPrincipalAmount * EXTRA_PRECISION) /
-                    currentMoneyMarketIncomeIndex;
-            uint256 recordedFundedPrincipalAmountDivRecordedIncomeIndex =
-                (recordedFundedPrincipalAmount * EXTRA_PRECISION) /
-                    recordedMoneyMarketIncomeIndex;
+            uint256 currentFundedPrincipalAmountDivRecordedIncomeIndex = (currentFundedPrincipalAmount *
+                    EXTRA_PRECISION) / currentMoneyMarketIncomeIndex;
+            uint256 recordedFundedPrincipalAmountDivRecordedIncomeIndex = (recordedFundedPrincipalAmount *
+                    EXTRA_PRECISION) / recordedMoneyMarketIncomeIndex;
             if (
                 sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex +
                     currentFundedPrincipalAmountDivRecordedIncomeIndex >=
@@ -1391,19 +1385,18 @@ contract DInterest is
             Deposit storage depositEntry = _getDeposit(f.depositID);
             uint256 interestRate = depositEntry.interestRate;
             uint256 feeRate = depositEntry.feeRate;
-            (, uint256 moneyMarketInterestRatePerSecond) =
-                interestOracle.updateAndQuery();
+            (, uint256 moneyMarketInterestRatePerSecond) = interestOracle
+                .updateAndQuery();
             refundAmount = (recordedFundedPrincipalAmount -
+                currentFundedPrincipalAmount).mul(
+                    (moneyMarketInterestRatePerSecond *
+                        (depositEntry.maturationTimestamp - block.timestamp))
+                        .exp2() - PRECISION
+                );
+            uint256 maxRefundAmount = (recordedFundedPrincipalAmount -
                 currentFundedPrincipalAmount)
-                .mul(
-                (moneyMarketInterestRatePerSecond *
-                    (depositEntry.maturationTimestamp - block.timestamp))
-                    .exp2() - PRECISION
-            );
-            uint256 maxRefundAmount =
-                (recordedFundedPrincipalAmount - currentFundedPrincipalAmount)
-                    .div(PRECISION + interestRate + feeRate)
-                    .mul(interestRate + feeRate);
+                .div(PRECISION + interestRate + feeRate)
+                .mul(interestRate + feeRate);
             refundAmount = refundAmount <= maxRefundAmount
                 ? refundAmount
                 : maxRefundAmount;
@@ -1480,10 +1473,9 @@ contract DInterest is
         returns (bool isNegative, uint256 surplusAmount)
     {
         // compute totalInterestOwedToFunders
-        uint256 currentValue =
-            (incomeIndex *
-                sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex) /
-                EXTRA_PRECISION;
+        uint256 currentValue = (incomeIndex *
+            sumOfRecordedFundedPrincipalAmountDivRecordedIncomeIndex) /
+            EXTRA_PRECISION;
         uint256 initialValue = totalFundedPrincipalAmount;
         uint256 totalInterestOwedToFunders;
         if (currentValue > initialValue) {
@@ -1492,11 +1484,10 @@ contract DInterest is
 
         // compute surplus
         uint256 totalValue = moneyMarket().totalValue(incomeIndex);
-        uint256 totalOwed =
-            totalDeposit +
-                totalInterestOwed +
-                totalFeeOwed +
-                totalInterestOwedToFunders;
+        uint256 totalOwed = totalDeposit +
+            totalInterestOwed +
+            totalFeeOwed +
+            totalInterestOwedToFunders;
         if (totalValue >= totalOwed) {
             // Locked value more than owed deposits, positive surplus
             isNegative = false;
@@ -1584,11 +1575,12 @@ contract DInterest is
         Deposit storage depositStorage = _getDeposit(depositID);
         uint256 feeRate = depositStorage.feeRate;
         uint256 interestRate = depositStorage.interestRate;
-        uint256 virtualTokenTotalSupply =
-            depositStorage.virtualTokenTotalSupply;
+        uint256 virtualTokenTotalSupply = depositStorage
+            .virtualTokenTotalSupply;
         require(newFeeRate < feeRate, "BAD_VAL");
-        uint256 depositAmount =
-            virtualTokenTotalSupply.div(interestRate + PRECISION);
+        uint256 depositAmount = virtualTokenTotalSupply.div(
+            interestRate + PRECISION
+        );
 
         // update fee rate
         depositStorage.feeRate = newFeeRate;

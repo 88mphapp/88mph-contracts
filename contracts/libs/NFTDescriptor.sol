@@ -57,8 +57,9 @@ library NFTDescriptor {
             }
         }
         if (quotesCount > 0) {
-            bytes memory escapedBytes =
-                new bytes(symbolBytes.length + (quotesCount));
+            bytes memory escapedBytes = new bytes(
+                symbolBytes.length + (quotesCount)
+            );
             uint256 index;
             for (uint8 i = 0; i < symbolBytes.length; i++) {
                 if (symbolBytes[i] == '"') {
@@ -97,8 +98,10 @@ library NFTDescriptor {
         pure
         returns (string memory svg)
     {
-        NFTSVG.SVGParams memory svgParams =
-            NFTSVG.SVGParams({tokenId: params.tokenId, name: params.name});
+        NFTSVG.SVGParams memory svgParams = NFTSVG.SVGParams({
+            tokenId: params.tokenId,
+            name: params.name
+        });
 
         return NFTSVG.generateSVG(svgParams);
     }

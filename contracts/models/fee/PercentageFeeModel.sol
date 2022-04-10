@@ -57,8 +57,9 @@ contract PercentageFeeModel is IFeeModel, Ownable {
         returns (uint256 feeAmount)
     {
         uint256 feeRate;
-        FeeOverride memory feeOverrideForPool =
-            interestFeeOverrideForPool[pool];
+        FeeOverride memory feeOverrideForPool = interestFeeOverrideForPool[
+            pool
+        ];
         if (feeOverrideForPool.isOverridden) {
             // fee has been overridden for pool
             feeRate = feeOverrideForPool.fee;
@@ -75,14 +76,18 @@ contract PercentageFeeModel is IFeeModel, Ownable {
         uint256 withdrawnDepositAmount
     ) external view override returns (uint256 feeAmount) {
         uint256 feeRate;
-        FeeOverride memory feeOverrideForDeposit =
-            earlyWithdrawFeeOverrideForDeposit[pool][depositID];
+        FeeOverride
+            memory feeOverrideForDeposit = earlyWithdrawFeeOverrideForDeposit[
+                pool
+            ][depositID];
         if (feeOverrideForDeposit.isOverridden) {
             // fee has been overridden for deposit
             feeRate = feeOverrideForDeposit.fee;
         } else {
-            FeeOverride memory feeOverrideForPool =
-                earlyWithdrawFeeOverrideForPool[pool];
+            FeeOverride
+                memory feeOverrideForPool = earlyWithdrawFeeOverrideForPool[
+                    pool
+                ];
             if (feeOverrideForPool.isOverridden) {
                 // fee has been overridden for pool
                 feeRate = feeOverrideForPool.fee;

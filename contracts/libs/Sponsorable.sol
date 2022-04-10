@@ -83,35 +83,33 @@ abstract contract Sponsorable {
             chainId := chainid()
         }
 
-        bytes32 digest =
-            keccak256(
-                abi.encodePacked(
-                    "\x19Ethereum Signed Message:\n32",
-                    keccak256(
-                        abi.encodePacked(
-                            abi.encode(
-                                chainId,
-                                address(this),
-                                sponsorship.sponsor,
-                                sponsorship.sponsorFeeToken,
-                                sponsorship.sponsorFeeAmount,
-                                sponsorship.nonce,
-                                sponsorship.deadline,
-                                funcSignature
-                            ),
-                            encodedParams
-                        )
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19Ethereum Signed Message:\n32",
+                keccak256(
+                    abi.encodePacked(
+                        abi.encode(
+                            chainId,
+                            address(this),
+                            sponsorship.sponsor,
+                            sponsorship.sponsorFeeToken,
+                            sponsorship.sponsorFeeAmount,
+                            sponsorship.nonce,
+                            sponsorship.deadline,
+                            funcSignature
+                        ),
+                        encodedParams
                     )
                 )
-            );
+            )
+        );
 
-        address recoveredAddress =
-            ECDSA.recover(
-                digest,
-                uint8(sponsorship.v),
-                sponsorship.r,
-                sponsorship.s
-            );
+        address recoveredAddress = ECDSA.recover(
+            digest,
+            uint8(sponsorship.v),
+            sponsorship.r,
+            sponsorship.s
+        );
         require(
             recoveredAddress != address(0) &&
                 recoveredAddress == sponsorship.sender,

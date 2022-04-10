@@ -23,7 +23,7 @@ async function main() {
       `${poolName} Deposit_Implementation.json`,
       `${poolName} Yield Token_Implementation.json`,
       `${poolName}_Implementation.json`,
-      `${poolName}--${moneyMarketName}_Implementation.json`
+      `${poolName}--${moneyMarketName}_Implementation.json`,
     ];
     const protocol = config.protocol;
     switch (protocol) {
@@ -58,7 +58,7 @@ async function main() {
       `88mph DAI via Aave Deposit_Implementation.json`,
       `88mph DAI via Aave Yield Token_Implementation.json`,
       `88mph DAI via Aave_Implementation.json`,
-      `${templatePoolName}--${moneyMarketName}_Implementation.json`
+      `${templatePoolName}--${moneyMarketName}_Implementation.json`,
     ];
     const deploymentsRoot = `deployments/${config.network}/`;
     for (let i in fromFileNames) {
@@ -75,7 +75,7 @@ async function main() {
 
     // deploy
     await hre.run("deploy", {
-      tags: "DInterest"
+      tags: "DInterest",
     });
 
     // remove config from list in json file
@@ -94,7 +94,7 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch(error => {
+  .catch((error) => {
     console.error(error);
     process.exit(1);
   });

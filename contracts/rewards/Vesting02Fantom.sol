@@ -3,13 +3,9 @@ pragma solidity 0.8.4;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "../libs/SafeERC20.sol";
-import {
-    ERC721URIStorageUpgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
+import {ERC721URIStorageUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import {BoringOwnable} from "../libs/BoringOwnable.sol";
-import {
-    MathUpgradeable
-} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
+import {MathUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import {MPHMinter} from "./MPHMinter.sol";
 import {DInterest} from "../DInterest.sol";
 import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
@@ -141,17 +137,18 @@ contract Vesting02Fantom is ERC721URIStorageUpgradeable, BoringOwnable {
         }
         Vest storage vestEntry = _getVest(vestID);
         DInterest pool = DInterest(poolAddress);
-        DInterest.Deposit memory depositEntry =
-            pool.getDeposit(vestEntry.depositID);
-        uint256 currentTimestamp =
-            MathUpgradeable.min(
-                block.timestamp,
-                depositEntry.maturationTimestamp
-            );
+        DInterest.Deposit memory depositEntry = pool.getDeposit(
+            vestEntry.depositID
+        );
+        uint256 currentTimestamp = MathUpgradeable.min(
+            block.timestamp,
+            depositEntry.maturationTimestamp
+        );
         if (currentTimestamp > vestEntry.lastUpdateTimestamp) {
             vestEntry.accumulatedAmount += (currentDepositAmount *
-                (currentTimestamp - vestEntry.lastUpdateTimestamp))
-                .mul(vestEntry.vestAmountPerStablecoinPerSecond);
+                (currentTimestamp - vestEntry.lastUpdateTimestamp)).mul(
+                    vestEntry.vestAmountPerStablecoinPerSecond
+                );
             require(block.timestamp <= type(uint64).max, "Vesting02: OVERFLOW");
             vestEntry.lastUpdateTimestamp = uint64(block.timestamp);
         }
@@ -231,22 +228,21 @@ contract Vesting02Fantom is ERC721URIStorageUpgradeable, BoringOwnable {
         // read vest data
         Vest memory vestEntry = _getVest(vestID);
         DInterest pool = DInterest(vestEntry.pool);
-        DInterest.Deposit memory depositEntry =
-            pool.getDeposit(vestEntry.depositID);
+        DInterest.Deposit memory depositEntry = pool.getDeposit(
+            vestEntry.depositID
+        );
 
         // compute vested amount
-        uint256 currentTimestamp =
-            MathUpgradeable.min(
-                block.timestamp,
-                depositEntry.maturationTimestamp
-            );
+        uint256 currentTimestamp = MathUpgradeable.min(
+            block.timestamp,
+            depositEntry.maturationTimestamp
+        );
         if (currentTimestamp < vestEntry.lastUpdateTimestamp) {
             return vestEntry.accumulatedAmount - vestEntry.withdrawnAmount;
         }
-        uint256 depositAmount =
-            depositEntry.virtualTokenTotalSupply.div(
-                PRECISION + depositEntry.interestRate
-            );
+        uint256 depositAmount = depositEntry.virtualTokenTotalSupply.div(
+            PRECISION + depositEntry.interestRate
+        );
         return
             vestEntry.accumulatedAmount +
             (depositAmount * (currentTimestamp - vestEntry.lastUpdateTimestamp))

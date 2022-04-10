@@ -4,7 +4,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
   const deployResult = await deploy("DInterestLens", {
     from: deployer,
-    contract: "DInterestLens"
+    contract: "DInterestLens",
   });
   if (deployResult.newlyDeployed) {
     log(`DInterestLens deployed at ${deployResult.address}`);

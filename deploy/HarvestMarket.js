@@ -26,11 +26,11 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
             rewardRecipient,
             poolConfig.moneyMarketParams.stakingPool,
             config.govTreasury,
-            poolConfig.stablecoin
-          ]
-        }
-      }
-    }
+            poolConfig.stablecoin,
+          ],
+        },
+      },
+    },
   });
   if (deployResult.newlyDeployed) {
     log(`${name} deployed at ${deployResult.address}`);

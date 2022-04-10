@@ -2,9 +2,7 @@
 pragma solidity 0.8.4;
 
 import {ERC1155Upgradeable} from "./ERC1155Upgradeable.sol";
-import {
-    AccessControlUpgradeable
-} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 /**
     @notice An extension of ERC1155 that provides access-controlled minting and burning,

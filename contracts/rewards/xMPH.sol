@@ -2,12 +2,8 @@
 pragma solidity 0.8.4;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {
-    ERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {
-    AccessControlUpgradeable
-} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {SafeERC20} from "../libs/SafeERC20.sol";
 import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 
@@ -141,10 +137,9 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
             // rewards not fully unlocked
             // deduct locked rewards from balance
             uint256 _lastRewardTimestamp = lastRewardTimestamp;
-            uint256 lockedRewardAmount =
-                (_lastRewardAmount *
-                    (_currentUnlockEndTimestamp - block.timestamp)) /
-                    (_currentUnlockEndTimestamp - _lastRewardTimestamp);
+            uint256 lockedRewardAmount = (_lastRewardAmount *
+                (_currentUnlockEndTimestamp - block.timestamp)) /
+                (_currentUnlockEndTimestamp - _lastRewardTimestamp);
             return (mphBalance - lockedRewardAmount).div(totalShares);
         }
     }
@@ -220,10 +215,9 @@ contract xMPH is ERC20Upgradeable, AccessControlUpgradeable {
             lastRewardAmount = rewardAmount;
         } else {
             // add rewards to current reward period
-            uint256 lockedRewardAmount =
-                (lastRewardAmount *
-                    (currentUnlockEndTimestamp - block.timestamp)) /
-                    (currentUnlockEndTimestamp - lastRewardTimestamp);
+            uint256 lockedRewardAmount = (lastRewardAmount *
+                (currentUnlockEndTimestamp - block.timestamp)) /
+                (currentUnlockEndTimestamp - lastRewardTimestamp);
             lastRewardTimestamp = block.timestamp;
             lastRewardAmount = rewardAmount + lockedRewardAmount;
         }

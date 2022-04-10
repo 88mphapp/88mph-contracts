@@ -1,17 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.4;
 
-import {
-    ERC20Upgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {
-    ReentrancyGuardUpgradeable
-} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import {SafeERC20} from "../libs/SafeERC20.sol";
-import {
-    IERC721ReceiverUpgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721ReceiverUpgradeable.sol";
+import {IERC721ReceiverUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721ReceiverUpgradeable.sol";
 import {NFT} from "../tokens/NFT.sol";
 import {DInterest} from "../DInterest.sol";
 import {Vesting02} from "../rewards/Vesting02.sol";
@@ -227,8 +221,9 @@ contract ZeroCouponBond is
         );
 
         if (withdrawDepositIfNeeded) {
-            uint256 balance =
-                pool.getDeposit(depositID).virtualTokenTotalSupply;
+            uint256 balance = pool
+                .getDeposit(depositID)
+                .virtualTokenTotalSupply;
             if (balance > 0) {
                 pool.withdraw(depositID, balance, false);
                 emit WithdrawDeposit();

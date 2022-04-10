@@ -17,7 +17,7 @@ async function main() {
   } catch (err) {
     throw err;
   }
-  networkList = networkList.filter(n => !excludedNetworks.includes(n));
+  networkList = networkList.filter((n) => !excludedNetworks.includes(n));
 
   // add oracles for each network
   let result = {};
@@ -32,7 +32,7 @@ async function main() {
       throw err;
     }
     oracleFileNameList = oracleFileNameList.filter(
-      f => f.includes("88mph") && f.includes("EMAOracle")
+      (f) => f.includes("88mph") && f.includes("EMAOracle")
     );
 
     // read all oracle addresses of network
@@ -61,7 +61,7 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch(error => {
+  .catch((error) => {
     console.error(error);
     process.exit(1);
   });

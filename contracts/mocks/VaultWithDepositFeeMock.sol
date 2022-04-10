@@ -22,8 +22,9 @@ contract VaultWithDepositFeeMock is ERC20 {
 
     function deposit(uint256 tokenAmount) public {
         uint256 sharePrice = getPricePerFullShare();
-        uint256 shareAmountAfterFee =
-            tokenAmount.div(sharePrice).mul(PRECISION - depositFee);
+        uint256 shareAmountAfterFee = tokenAmount.div(sharePrice).mul(
+            PRECISION - depositFee
+        );
         uint256 tokenFee = tokenAmount.mul(depositFee);
         _mint(msg.sender, shareAmountAfterFee);
 

@@ -4,31 +4,25 @@ const { assert, artifacts } = require("hardhat");
 
 // Contract artifacts
 const DInterest = (module.exports.DInterest = artifacts.require("DInterest"));
-const DInterestLens = (module.exports.DInterest = artifacts.require(
-  "DInterestLens"
-));
-const PercentageFeeModel = (module.exports.PercentageFeeModel = artifacts.require(
-  "PercentageFeeModel"
-));
-const LinearDecayInterestModel = (module.exports.LinearDecayInterestModel = artifacts.require(
-  "LinearDecayInterestModel"
-));
+const DInterestLens = (module.exports.DInterest =
+  artifacts.require("DInterestLens"));
+const PercentageFeeModel = (module.exports.PercentageFeeModel =
+  artifacts.require("PercentageFeeModel"));
+const LinearDecayInterestModel = (module.exports.LinearDecayInterestModel =
+  artifacts.require("LinearDecayInterestModel"));
 const NFT = (module.exports.NFT = artifacts.require("NFT"));
-const FundingMultitoken = (module.exports.FundingMultitoken = artifacts.require(
-  "FundingMultitoken"
-));
+const FundingMultitoken = (module.exports.FundingMultitoken =
+  artifacts.require("FundingMultitoken"));
 const Factory = (module.exports.Factory = artifacts.require("Factory"));
 const MPHToken = (module.exports.MPHToken = artifacts.require("MPHToken"));
 const MPHMinter = (module.exports.MPHMinter = artifacts.require("MPHMinter"));
 const ERC20Mock = (module.exports.ERC20Mock = artifacts.require("ERC20Mock"));
 const EMAOracle = (module.exports.EMAOracle = artifacts.require("EMAOracle"));
 const Vesting02 = (module.exports.Vesting02 = artifacts.require("Vesting02"));
-const ERC20Wrapper = (module.exports.ERC20Wrapper = artifacts.require(
-  "ERC20Wrapper"
-));
-const MPHConverter = (module.exports.MPHConverter = artifacts.require(
-  "MPHConverter"
-));
+const ERC20Wrapper = (module.exports.ERC20Wrapper =
+  artifacts.require("ERC20Wrapper"));
+const MPHConverter = (module.exports.MPHConverter =
+  artifacts.require("MPHConverter"));
 
 // Constants
 const PRECISION = (module.exports.PRECISION = 1e18);
@@ -43,12 +37,12 @@ const MaxDepositPeriod = (module.exports.MaxDepositPeriod = 3 * YEAR_IN_SEC); //
 const MinDepositAmount = (module.exports.MinDepositAmount = BigNumber(
   0.1 * STABLECOIN_PRECISION
 ).toFixed()); // 0.1 stablecoin
-const PoolDepositorRewardMintMultiplier = (module.exports.PoolDepositorRewardMintMultiplier = BigNumber(
-  3.168873e-13 * PRECISION * (PRECISION / STABLECOIN_PRECISION)
-).toFixed()); // 1e5 stablecoin * 1 year => 1 MPH
-const PoolFunderRewardMultiplier = (module.exports.PoolFunderRewardMultiplier = BigNumber(
-  1e-13 * PRECISION * (PRECISION / STABLECOIN_PRECISION)
-).toFixed()); // 1e5 stablecoin => 1 MPH
+const PoolDepositorRewardMintMultiplier =
+  (module.exports.PoolDepositorRewardMintMultiplier = BigNumber(
+    3.168873e-13 * PRECISION * (PRECISION / STABLECOIN_PRECISION)
+  ).toFixed()); // 1e5 stablecoin * 1 year => 1 MPH
+const PoolFunderRewardMultiplier = (module.exports.PoolFunderRewardMultiplier =
+  BigNumber(1e-13 * PRECISION * (PRECISION / STABLECOIN_PRECISION)).toFixed()); // 1e5 stablecoin => 1 MPH
 const DevRewardMultiplier = (module.exports.DevRewardMultiplier = BigNumber(
   0.1 * PRECISION
 ).toFixed());
@@ -59,7 +53,8 @@ const EMAUpdateInterval = (module.exports.EMAUpdateInterval = 24 * 60 * 60);
 const EMASmoothingFactor = (module.exports.EMASmoothingFactor = BigNumber(
   2 * PRECISION
 ).toFixed());
-const EMAAverageWindowInIntervals = (module.exports.EMAAverageWindowInIntervals = 30);
+const EMAAverageWindowInIntervals =
+  (module.exports.EMAAverageWindowInIntervals = 30);
 const interestFee = (module.exports.interestFee = BigNumber(
   0.2 * PRECISION
 ).toFixed());
@@ -69,27 +64,19 @@ const earlyWithdrawFee = (module.exports.earlyWithdrawFee = BigNumber(
 const dailyConvertLimit = (module.exports.dailyConvertLimit = BigNumber(
   10000 * PRECISION
 ).toFixed());
-const MINTER_BURNER_ROLE = (module.exports.MINTER_BURNER_ROLE = web3.utils.soliditySha3(
-  "MINTER_BURNER_ROLE"
-));
-const DIVIDEND_ROLE = (module.exports.DIVIDEND_ROLE = web3.utils.soliditySha3(
-  "DIVIDEND_ROLE"
-));
-const WHITELISTER_ROLE = (module.exports.WHITELISTER_ROLE = web3.utils.soliditySha3(
-  "WHITELISTER_ROLE"
-));
-const WHITELISTED_POOL_ROLE = (module.exports.WHITELISTED_POOL_ROLE = web3.utils.soliditySha3(
-  "WHITELISTED_POOL_ROLE"
-));
-const CONVERTER_ROLE = (module.exports.CONVERTER_ROLE = web3.utils.soliditySha3(
-  "CONVERTER_ROLE"
-));
+const MINTER_BURNER_ROLE = (module.exports.MINTER_BURNER_ROLE =
+  web3.utils.soliditySha3("MINTER_BURNER_ROLE"));
+const DIVIDEND_ROLE = (module.exports.DIVIDEND_ROLE =
+  web3.utils.soliditySha3("DIVIDEND_ROLE"));
+const WHITELISTER_ROLE = (module.exports.WHITELISTER_ROLE =
+  web3.utils.soliditySha3("WHITELISTER_ROLE"));
+const WHITELISTED_POOL_ROLE = (module.exports.WHITELISTED_POOL_ROLE =
+  web3.utils.soliditySha3("WHITELISTED_POOL_ROLE"));
+const CONVERTER_ROLE = (module.exports.CONVERTER_ROLE =
+  web3.utils.soliditySha3("CONVERTER_ROLE"));
 
 const epsilon = (module.exports.epsilon = 1e-4);
-const INF = (module.exports.INF = BigNumber(2)
-  .pow(256)
-  .minus(1)
-  .toFixed());
+const INF = (module.exports.INF = BigNumber(2).pow(256).minus(1).toFixed());
 const ZERO_ADDR = (module.exports.ZERO_ADDR =
   "0x0000000000000000000000000000000000000000");
 const DEFAULT_SALT = (module.exports.DEFAULT_SALT =
@@ -97,14 +84,14 @@ const DEFAULT_SALT = (module.exports.DEFAULT_SALT =
 
 // Utilities
 // travel `time` seconds forward in time
-const timeTravel = (module.exports.timeTravel = time => {
+const timeTravel = (module.exports.timeTravel = (time) => {
   return new Promise((resolve, reject) => {
     web3.currentProvider.send(
       {
         jsonrpc: "2.0",
         method: "evm_increaseTime",
         params: [time],
-        id: new Date().getTime()
+        id: new Date().getTime(),
       },
       (err, result) => {
         if (err) {
@@ -116,28 +103,33 @@ const timeTravel = (module.exports.timeTravel = time => {
   });
 });
 
-const latestBlockTimestamp = (module.exports.latestBlockTimestamp = async () => {
-  return (await web3.eth.getBlock("latest")).timestamp;
-});
+const latestBlockTimestamp = (module.exports.latestBlockTimestamp =
+  async () => {
+    return (await web3.eth.getBlock("latest")).timestamp;
+  });
 
-const calcFeeAmount = (module.exports.calcFeeAmount = interestAmount => {
+const calcFeeAmount = (module.exports.calcFeeAmount = (interestAmount) => {
   interestAmount = BigNumber(interestAmount);
   return interestAmount.times(interestFee).div(PRECISION);
 });
 
-const applyFee = (module.exports.applyFee = interestAmount => {
+const applyFee = (module.exports.applyFee = (interestAmount) => {
   interestAmount = BigNumber(interestAmount);
   return interestAmount.minus(calcFeeAmount(interestAmount));
 });
 
-const applyEarlyWithdrawFee = (module.exports.applyEarlyWithdrawFee = depositAmount => {
+const applyEarlyWithdrawFee = (module.exports.applyEarlyWithdrawFee = (
+  depositAmount
+) => {
   depositAmount = BigNumber(depositAmount);
   return depositAmount.minus(
     depositAmount.times(earlyWithdrawFee).div(PRECISION)
   );
 });
 
-const getIRMultiplier = (module.exports.getIRMultiplier = depositPeriodInSeconds => {
+const getIRMultiplier = (module.exports.getIRMultiplier = (
+  depositPeriodInSeconds
+) => {
   const multiplierDecrease = BigNumber(depositPeriodInSeconds).times(
     multiplierSlope
   );
@@ -167,10 +159,8 @@ const calcInterestAmount = (module.exports.calcInterestAmount = (
 });
 
 // Converts a JS number into a string that doesn't use scientific notation
-const num2str = (module.exports.num2str = num => {
-  return BigNumber(num)
-    .integerValue()
-    .toFixed();
+const num2str = (module.exports.num2str = (num) => {
+  return BigNumber(num).integerValue().toFixed();
 });
 
 const epsilonEq = (module.exports.epsilonEq = (curr, prev, ep) => {
@@ -178,17 +168,9 @@ const epsilonEq = (module.exports.epsilonEq = (curr, prev, ep) => {
   return (
     BigNumber(curr).eq(prev) ||
     (!BigNumber(prev).isZero() &&
-      BigNumber(curr)
-        .minus(prev)
-        .div(prev)
-        .abs()
-        .lt(_epsilon)) ||
+      BigNumber(curr).minus(prev).div(prev).abs().lt(_epsilon)) ||
     (!BigNumber(curr).isZero() &&
-      BigNumber(prev)
-        .minus(curr)
-        .div(curr)
-        .abs()
-        .lt(_epsilon))
+      BigNumber(prev).minus(curr).div(curr).abs().lt(_epsilon))
   );
 });
 
@@ -206,14 +188,12 @@ const assertEpsilonEq = (module.exports.assertEpsilonEq = (
   );
 });
 
-const factoryReceiptToContract = (module.exports.factoryReceiptToContract = async (
-  receipt,
-  contractArtifact
-) => {
-  return await contractArtifact.at(
-    receipt.logs[receipt.logs.length - 1].args.clone
-  );
-});
+const factoryReceiptToContract = (module.exports.factoryReceiptToContract =
+  async (receipt, contractArtifact) => {
+    return await contractArtifact.at(
+      receipt.logs[receipt.logs.length - 1].args.clone
+    );
+  });
 
 const aaveMoneyMarketModule = () => {
   // Contract artifacts
@@ -265,7 +245,7 @@ const aaveMoneyMarketModule = () => {
     return await factoryReceiptToContract(marketReceipt, AaveMarket);
   };
 
-  const timePass = async timeInYears => {
+  const timePass = async (timeInYears) => {
     await timeTravel(timeInYears * YEAR_IN_SEC);
     for (const aTokenAddress of aTokenAddresssList) {
       const aToken = await ATokenMock.at(aTokenAddress);
@@ -275,7 +255,7 @@ const aaveMoneyMarketModule = () => {
 
   return {
     deployMoneyMarket,
-    timePass
+    timePass,
   };
 };
 
@@ -322,7 +302,7 @@ const bProtocolMoneyMarketModule = () => {
     return await factoryReceiptToContract(marketReceipt, BProtocolMarket);
   };
 
-  const timePass = async timeInYears => {
+  const timePass = async (timeInYears) => {
     await timeTravel(timeInYears * YEAR_IN_SEC);
     for (const cTokenAddress of cTokenAddressList) {
       const cToken = await CERC20Mock.at(cTokenAddress);
@@ -336,7 +316,7 @@ const bProtocolMoneyMarketModule = () => {
 
   return {
     deployMoneyMarket,
-    timePass
+    timePass,
   };
 };
 
@@ -380,7 +360,7 @@ const compoundERC20MoneyMarketModule = () => {
     return await factoryReceiptToContract(marketReceipt, CompoundERC20Market);
   };
 
-  const timePass = async timeInYears => {
+  const timePass = async (timeInYears) => {
     await timeTravel(timeInYears * YEAR_IN_SEC);
     for (const cTokenAddress of cTokenAddressList) {
       const cToken = await CERC20Mock.at(cTokenAddress);
@@ -394,7 +374,7 @@ const compoundERC20MoneyMarketModule = () => {
 
   return {
     deployMoneyMarket,
-    timePass
+    timePass,
   };
 };
 
@@ -430,7 +410,7 @@ const creamERC20MoneyMarketModule = () => {
     return await factoryReceiptToContract(marketReceipt, CreamERC20Market);
   };
 
-  const timePass = async timeInYears => {
+  const timePass = async (timeInYears) => {
     await timeTravel(timeInYears * YEAR_IN_SEC);
     for (const cTokenAddress of cTokenAddressList) {
       const cToken = await CERC20Mock.at(cTokenAddress);
@@ -444,7 +424,7 @@ const creamERC20MoneyMarketModule = () => {
 
   return {
     deployMoneyMarket,
-    timePass
+    timePass,
   };
 };
 
@@ -478,7 +458,7 @@ const harvestMoneyMarketModule = () => {
     await farmToken.mint(harvestStaking.address, num2str(farmRewards));
     await harvestStaking.setRewardDistribution(accounts[0], true);
     await harvestStaking.notifyRewardAmount(num2str(farmRewards), {
-      from: accounts[0]
+      from: accounts[0],
     });
 
     // Initialize the money market
@@ -495,7 +475,7 @@ const harvestMoneyMarketModule = () => {
     return await factoryReceiptToContract(marketReceipt, HarvestMarket);
   };
 
-  const timePass = async timeInYears => {
+  const timePass = async (timeInYears) => {
     await timeTravel(timeInYears * YEAR_IN_SEC);
     for (const vaultAddress of vaultAddressList) {
       const vault = await VaultMock.at(vaultAddress);
@@ -510,7 +490,7 @@ const harvestMoneyMarketModule = () => {
 
   return {
     deployMoneyMarket,
-    timePass
+    timePass,
   };
 };
 
@@ -544,7 +524,7 @@ const yvaultMoneyMarketModule = () => {
     return await factoryReceiptToContract(marketReceipt, YVaultMarket);
   };
 
-  const timePass = async timeInYears => {
+  const timePass = async (timeInYears) => {
     await timeTravel(timeInYears * YEAR_IN_SEC);
     for (const vaultAddress of vaultAddressList) {
       const vault = await VaultMock.at(vaultAddress);
@@ -559,35 +539,35 @@ const yvaultMoneyMarketModule = () => {
 
   return {
     deployMoneyMarket,
-    timePass
+    timePass,
   };
 };
 
 const moneyMarketModuleList = (module.exports.moneyMarketModuleList = [
   {
     name: "Aave",
-    moduleGenerator: aaveMoneyMarketModule
+    moduleGenerator: aaveMoneyMarketModule,
   },
   {
     name: "B.Protocol",
-    moduleGenerator: bProtocolMoneyMarketModule
+    moduleGenerator: bProtocolMoneyMarketModule,
   },
   {
     name: "CompoundERC20",
-    moduleGenerator: compoundERC20MoneyMarketModule
+    moduleGenerator: compoundERC20MoneyMarketModule,
   },
   {
     name: "CreamERC20",
-    moduleGenerator: creamERC20MoneyMarketModule
+    moduleGenerator: creamERC20MoneyMarketModule,
   },
   {
     name: "Harvest",
-    moduleGenerator: harvestMoneyMarketModule
+    moduleGenerator: harvestMoneyMarketModule,
   },
   {
     name: "YVault",
-    moduleGenerator: yvaultMoneyMarketModule
-  }
+    moduleGenerator: yvaultMoneyMarketModule,
+  },
 ]);
 
 const setupTest = (module.exports.setupTest = async (
@@ -761,7 +741,7 @@ const setupTest = (module.exports.setupTest = async (
 
     // Set MPH minting multiplier for DInterest pool
     await mphMinter.grantRole(WHITELISTED_POOL_ROLE, dInterestPool.address, {
-      from: acc0
+      from: acc0,
     });
     await mphMinter.setPoolDepositorRewardMintMultiplier(
       dInterestPool.address,
@@ -794,7 +774,7 @@ const setupTest = (module.exports.setupTest = async (
       depositNFT,
       fundingMultitoken,
       interestOracle,
-      dInterestPool
+      dInterestPool,
     };
   };
   const dInterestPoolDeployResult = await deployDInterest();
@@ -820,6 +800,6 @@ const setupTest = (module.exports.setupTest = async (
     lens,
     foreignMPH,
     converter,
-    deployDInterest
+    deployDInterest,
   };
 });

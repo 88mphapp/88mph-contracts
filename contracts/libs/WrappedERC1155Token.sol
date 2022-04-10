@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.4;
 
-import {
-    ClonesUpgradeable
-} from "@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol";
-import {
-    StringsUpgradeable
-} from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
+import {ClonesUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol";
+import {StringsUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import {ERC1155Upgradeable} from "./ERC1155Upgradeable.sol";
 import {ERC1155Base} from "./ERC1155Base.sol";
 import {ERC20Wrapper} from "./ERC20Wrapper.sol";
@@ -105,10 +101,12 @@ abstract contract WrappedERC1155Token is ERC1155Base {
             // deploy wrapper
             ERC20Wrapper wrapper = ERC20Wrapper(wrapperTemplate.clone());
             string memory tokenIDString = tokenID.toString();
-            string memory name =
-                string(abi.encodePacked(baseName, tokenIDString));
-            string memory symbol =
-                string(abi.encodePacked(baseSymbol, tokenIDString));
+            string memory name = string(
+                abi.encodePacked(baseName, tokenIDString)
+            );
+            string memory symbol = string(
+                abi.encodePacked(baseSymbol, tokenIDString)
+            );
             wrapper.initialize(address(this), tokenID, name, symbol, decimals);
             tokenIDToWrapper[tokenID] = address(wrapper);
         }

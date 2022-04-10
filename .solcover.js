@@ -8,6 +8,6 @@ module.exports = {
     "moneymarkets/yvault/imports",
     "rewards/MPHToken.sol",
     "rewards/dumpers/imports",
-    "zaps/imports"
-  ]
+    "zaps/imports",
+  ],
 };

@@ -6,7 +6,7 @@ module.exports = async ({
   getNamedAccounts,
   deployments,
   getChainId,
-  artifacts
+  artifacts,
 }) => {
   const chainId = await getChainId();
   if (chainId == 1) {
@@ -17,7 +17,7 @@ module.exports = async ({
   const { deployer } = await getNamedAccounts();
 
   const deployResult = await deploy("MPHToken", {
-    from: deployer
+    from: deployer,
   });
   if (deployResult.newlyDeployed) {
     log(`MPHToken deployed at ${deployResult.address}`);
@@ -25,7 +25,7 @@ module.exports = async ({
     const MPHToken = artifacts.require("MPHToken");
     const contract = await MPHToken.at(deployResult.address);
     await contract.initialize({
-      from: deployer
+      from: deployer,
     });
     log(`Initialized MPHToken`);
   }

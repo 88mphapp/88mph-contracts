@@ -6,7 +6,7 @@ module.exports = async ({
   getNamedAccounts,
   deployments,
   getChainId,
-  artifacts
+  artifacts,
 }) => {
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
@@ -23,10 +23,10 @@ module.exports = async ({
       execute: {
         init: {
           methodName: "initialize",
-          args: [mphAddress, "Vested MPH", "veMPH"]
-        }
-      }
-    }
+          args: [mphAddress, "Vested MPH", "veMPH"],
+        },
+      },
+    },
   });
   if (deployResult.newlyDeployed) {
     log(`Vesting02 deployed at ${deployResult.address}`);

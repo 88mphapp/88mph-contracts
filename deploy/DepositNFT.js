@@ -15,7 +15,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     from: deployer,
     contract: "NFTWithSVG",
     libraries: {
-      NFTDescriptor: nftDescriptorDeployment.address
+      NFTDescriptor: nftDescriptorDeployment.address,
     },
     proxy: {
       owner: config.govTimelock,
@@ -23,10 +23,10 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
       execute: {
         init: {
           methodName: "initialize",
-          args: [nftName, nftSymbol]
-        }
-      }
-    }
+          args: [nftName, nftSymbol],
+        },
+      },
+    },
   });
 
   if (deployResult.newlyDeployed) {

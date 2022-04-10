@@ -9,7 +9,7 @@ module.exports = async ({
   getNamedAccounts,
   deployments,
   getChainId,
-  artifacts
+  artifacts,
 }) => {
   const { log, get, getOrNull, save } = deployments;
   const { deployer } = await getNamedAccounts();
@@ -43,7 +43,7 @@ module.exports = async ({
     await save(name, {
       abi: contract.abi,
       address: address,
-      receipt: deployReceipt
+      receipt: deployReceipt,
     });
     log(`${name} deployed at ${address}`);
   }
@@ -52,5 +52,5 @@ module.exports.tags = [name];
 module.exports.dependencies = [
   `${poolConfig.name}--${poolConfig.moneyMarket}`,
   "Factory",
-  "EMAOracleTemplate"
+  "EMAOracleTemplate",
 ];

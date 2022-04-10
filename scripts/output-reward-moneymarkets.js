@@ -8,7 +8,7 @@ const includedProtocols = [
   "BProtocol",
   "Compound",
   "Geist",
-  "Harvest"
+  "Harvest",
 ];
 
 /**
@@ -25,7 +25,7 @@ async function main() {
   } catch (err) {
     throw err;
   }
-  networkList = networkList.filter(n => !excludedNetworks.includes(n));
+  networkList = networkList.filter((n) => !excludedNetworks.includes(n));
 
   // add moneymarkets for each network
   let result = {};
@@ -39,7 +39,7 @@ async function main() {
     } catch (err) {
       throw err;
     }
-    moneyMarketFileNameList = moneyMarketFileNameList.filter(f => {
+    moneyMarketFileNameList = moneyMarketFileNameList.filter((f) => {
       if (
         !(
           f.includes("88mph") &&
@@ -86,7 +86,7 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch(error => {
+  .catch((error) => {
     console.error(error);
     process.exit(1);
   });

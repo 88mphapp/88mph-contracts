@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.4;
 
-import {
-    AccessControlUpgradeable
-} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {
-    AddressUpgradeable
-} from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {AddressUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import {Vesting02} from "./Vesting02.sol";
 import {FundingMultitoken} from "../tokens/FundingMultitoken.sol";
 import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
@@ -191,13 +187,14 @@ contract MPHMinterMainnet is AccessControlUpgradeable {
         if (interestAmount == 0 || mph.owner() != address(this)) {
             return;
         }
-        uint256 mintMPHAmount =
-            interestAmount.mul(poolFunderRewardMultiplier[msg.sender]);
+        uint256 mintMPHAmount = interestAmount.mul(
+            poolFunderRewardMultiplier[msg.sender]
+        );
         if (mintMPHAmount == 0) {
             return;
         }
-        FundingMultitoken fundingMultitoken =
-            DInterest(msg.sender).fundingMultitoken();
+        FundingMultitoken fundingMultitoken = DInterest(msg.sender)
+            .fundingMultitoken();
         mph.ownerMint(address(this), mintMPHAmount);
         mph.increaseAllowance(address(fundingMultitoken), mintMPHAmount);
         fundingMultitoken.distributeDividends(

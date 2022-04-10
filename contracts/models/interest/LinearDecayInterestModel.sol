@@ -39,9 +39,9 @@ contract LinearDecayInterestModel is IInterestModel {
         // interestAmount = depositAmount * (2 ** (moneyMarketInterestRatePerSecond * depositPeriodInSeconds) - 1) * IRMultiplier
         interestAmount = depositAmount
             .mul(
-            (moneyMarketInterestRatePerSecond * depositPeriodInSeconds).exp2() -
-                PRECISION
-        )
+                (moneyMarketInterestRatePerSecond * depositPeriodInSeconds)
+                    .exp2() - PRECISION
+            )
             .mul(getIRMultiplier(depositPeriodInSeconds));
     }
 }

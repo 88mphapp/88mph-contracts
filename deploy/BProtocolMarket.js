@@ -10,7 +10,7 @@ module.exports = async ({
   getNamedAccounts,
   deployments,
   getChainId,
-  artifacts
+  artifacts,
 }) => {
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
@@ -33,11 +33,11 @@ module.exports = async ({
             bprotocolConfig.comptroller,
             rewardRecipient,
             config.devWallet,
-            poolConfig.stablecoin
-          ]
-        }
-      }
-    }
+            poolConfig.stablecoin,
+          ],
+        },
+      },
+    },
   });
   if (deployResult.newlyDeployed) {
     log(`${name} deployed at ${deployResult.address}`);

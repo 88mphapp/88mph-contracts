@@ -10,8 +10,8 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     from: deployer,
     args: [
       BigNumber(config.interestRateMultiplierIntercept).toFixed(),
-      BigNumber(config.interestRateMultiplierSlope).toFixed()
-    ]
+      BigNumber(config.interestRateMultiplierSlope).toFixed(),
+    ],
   });
   if (deployResult.newlyDeployed) {
     log(`LinearDecayInterestModel deployed at ${deployResult.address}`);

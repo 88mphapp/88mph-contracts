@@ -3,14 +3,14 @@ module.exports = async ({
   getNamedAccounts,
   deployments,
   getChainId,
-  artifacts
+  artifacts,
 }) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
   const deployResult = await deploy("ZeroCouponBondTemplate", {
     from: deployer,
-    contract: "ZeroCouponBond"
+    contract: "ZeroCouponBond",
   });
   if (deployResult.newlyDeployed) {
     log(`ZeroCouponBondTemplate deployed at ${deployResult.address}`);

@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.4;
 
-import {
-    SafeCastUpgradeable
-} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
+import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "./SafeERC20.sol";
 import {ERC1155Base} from "./ERC1155Base.sol";
@@ -120,8 +118,9 @@ abstract contract ERC1155DividendToken is ERC1155Base {
         if (dividendTokenDataID == 0) {
             return 0;
         }
-        DividendTokenData storage data =
-            dividendTokenDataList[dividendTokenDataID];
+        DividendTokenData storage data = dividendTokenDataList[
+            dividendTokenDataID
+        ];
         return data.withdrawnDividends[tokenID][_owner];
     }
 
@@ -141,12 +140,12 @@ abstract contract ERC1155DividendToken is ERC1155Base {
         if (dividendTokenDataID == 0) {
             return 0;
         }
-        DividendTokenData storage data =
-            dividendTokenDataList[dividendTokenDataID];
+        DividendTokenData storage data = dividendTokenDataList[
+            dividendTokenDataID
+        ];
         return
             ((data.magnifiedDividendPerShare[tokenID] *
-                balanceOf(_owner, tokenID))
-                .toInt256() +
+                balanceOf(_owner, tokenID)).toInt256() +
                 data.magnifiedDividendCorrections[tokenID][_owner])
                 .toUint256() / magnitude;
     }
@@ -169,8 +168,9 @@ abstract contract ERC1155DividendToken is ERC1155Base {
         if (dividendTokenDataID == 0) {
             return 0;
         }
-        DividendTokenData storage data =
-            dividendTokenDataList[dividendTokenDataID];
+        DividendTokenData storage data = dividendTokenDataList[
+            dividendTokenDataID
+        ];
         return
             accumulativeDividendOf(tokenID, dividendToken, _owner) -
             data.withdrawnDividends[tokenID][_owner];
@@ -203,8 +203,9 @@ abstract contract ERC1155DividendToken is ERC1155Base {
             dividendTokenDataID != 0,
             "ERC1155DividendToken: invalid dividendToken"
         );
-        DividendTokenData storage data =
-            dividendTokenDataList[dividendTokenDataID];
+        DividendTokenData storage data = dividendTokenDataList[
+            dividendTokenDataID
+        ];
 
         data.magnifiedDividendPerShare[tokenID] +=
             (amount * magnitude) /
@@ -226,16 +227,20 @@ abstract contract ERC1155DividendToken is ERC1155Base {
         address dividendToken,
         address user
     ) internal {
-        uint256 _withdrawableDividend =
-            _withdrawableDividendOf(tokenID, dividendToken, user);
+        uint256 _withdrawableDividend = _withdrawableDividendOf(
+            tokenID,
+            dividendToken,
+            user
+        );
         if (_withdrawableDividend > 0) {
             uint256 dividendTokenDataID = dividendTokenToDataID[dividendToken];
             require(
                 dividendTokenDataID != 0,
                 "ERC1155DividendToken: invalid dividendToken"
             );
-            DividendTokenData storage data =
-                dividendTokenDataList[dividendTokenDataID];
+            DividendTokenData storage data = dividendTokenDataList[
+                dividendTokenDataID
+            ];
             data.withdrawnDividends[tokenID][user] += _withdrawableDividend;
             emit DividendWithdrawn(
                 tokenID,
@@ -279,13 +284,13 @@ abstract contract ERC1155DividendToken is ERC1155Base {
                 uint256 amount = amounts[i];
 
                 for (uint256 j = 1; j <= dividendTokenDataListLength; j++) {
-                    DividendTokenData storage dividendTokenData =
-                        dividendTokenDataList[j];
+                    DividendTokenData
+                        storage dividendTokenData = dividendTokenDataList[j];
                     dividendTokenData.magnifiedDividendCorrections[tokenID][
-                        to
-                    ] -= (dividendTokenData.magnifiedDividendPerShare[tokenID] *
-                        amount)
-                        .toInt256();
+                            to
+                        ] -= (dividendTokenData.magnifiedDividendPerShare[
+                        tokenID
+                    ] * amount).toInt256();
                 }
             }
         } else if (to == address(0)) {
@@ -295,13 +300,13 @@ abstract contract ERC1155DividendToken is ERC1155Base {
                 uint256 amount = amounts[i];
 
                 for (uint256 j = 1; j <= dividendTokenDataListLength; j++) {
-                    DividendTokenData storage dividendTokenData =
-                        dividendTokenDataList[j];
+                    DividendTokenData
+                        storage dividendTokenData = dividendTokenDataList[j];
                     dividendTokenData.magnifiedDividendCorrections[tokenID][
-                        from
-                    ] += (dividendTokenData.magnifiedDividendPerShare[tokenID] *
-                        amount)
-                        .toInt256();
+                            from
+                        ] += (dividendTokenData.magnifiedDividendPerShare[
+                        tokenID
+                    ] * amount).toInt256();
                 }
             }
         } else {
@@ -311,19 +316,18 @@ abstract contract ERC1155DividendToken is ERC1155Base {
                 uint256 amount = amounts[i];
 
                 for (uint256 j = 1; j <= dividendTokenDataListLength; j++) {
-                    DividendTokenData storage dividendTokenData =
-                        dividendTokenDataList[j];
-                    int256 _magCorrection =
-                        (dividendTokenData.magnifiedDividendPerShare[tokenID] *
-                            amount)
-                            .toInt256();
+                    DividendTokenData
+                        storage dividendTokenData = dividendTokenDataList[j];
+                    int256 _magCorrection = (dividendTokenData
+                        .magnifiedDividendPerShare[tokenID] * amount)
+                        .toInt256();
                     // Retain the rewards
                     dividendTokenData.magnifiedDividendCorrections[tokenID][
-                        from
-                    ] += _magCorrection;
+                            from
+                        ] += _magCorrection;
                     dividendTokenData.magnifiedDividendCorrections[tokenID][
-                        to
-                    ] -= _magCorrection;
+                            to
+                        ] -= _magCorrection;
                 }
             }
         }

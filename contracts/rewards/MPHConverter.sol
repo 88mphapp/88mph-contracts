@@ -2,15 +2,9 @@
 pragma solidity 0.8.4;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    SafeERC20
-} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {
-    PausableUpgradeable
-} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import {
-    OwnableUpgradeable
-} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {MPHMinter} from "./MPHMinter.sol";
 import {MPHToken} from "./MPHToken.sol";
@@ -45,8 +39,9 @@ contract MPHConverter is PausableUpgradeable, OwnableUpgradeable {
     }
 
     modifier updateDailyConvertLimit(IERC20 foreignToken, uint256 amount) {
-        DailyConvertLimit memory limit =
-            foreignToNativeDailyConvertLimit[address(foreignToken)];
+        DailyConvertLimit memory limit = foreignToNativeDailyConvertLimit[
+            address(foreignToken)
+        ];
         if (limit.lastResetTimestamp + 1 days <= block.timestamp) {
             // more than 1 day after the last reset
             // clear usage

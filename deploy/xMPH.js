@@ -9,9 +9,9 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
     from: deployer,
     proxy: {
       owner: config.govTimelock,
-      proxyContract: "OptimizedTransparentProxy"
+      proxyContract: "OptimizedTransparentProxy",
     },
-    log: true
+    log: true,
   });
   if (deployResult.newlyDeployed) {
     const xMPH = artifacts.require("xMPH");
@@ -32,13 +32,13 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
     const DEFAULT_ADMIN_ROLE = "0x00";
     const DISTRIBUTOR_ROLE = web3.utils.soliditySha3("DISTRIBUTOR_ROLE");
     await contract.grantRole(DEFAULT_ADMIN_ROLE, config.govTreasury, {
-      from: deployer
+      from: deployer,
     });
     log(`Give xMPH DEFAULT_ADMIN_ROLE to ${config.govTreasury}`);
 
     // renounce xMPH admin role
     await contract.renounceRole(DEFAULT_ADMIN_ROLE, deployer, {
-      from: deployer
+      from: deployer,
     });
     log(`Renounce xMPH DEFAULT_ADMIN_ROLE of ${deployer}`);
   }

@@ -34,11 +34,11 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
             interestOracleDeployment.address,
             depositNFTDeployment.address,
             fundingMultitokenDeployment.address,
-            mphMinterDeployment.address
-          ]
-        }
-      }
-    }
+            mphMinterDeployment.address,
+          ],
+        },
+      },
+    },
   });
   if (deployResult.newlyDeployed) {
     log(`${poolConfig.name} deployed at ${deployResult.address}`);
@@ -53,5 +53,5 @@ module.exports.dependencies = [
   `${poolConfig.nftNamePrefix}Deposit`,
   `${poolConfig.nftNamePrefix}Yield Token`,
   "DInterestLens",
-  "MPHMinterLegacy"
+  "MPHMinterLegacy",
 ];

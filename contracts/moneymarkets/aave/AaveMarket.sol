@@ -3,14 +3,10 @@ pragma solidity 0.8.4;
 
 import {SafeERC20} from "../../libs/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {
-    AddressUpgradeable
-} from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+import {AddressUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import {MoneyMarket} from "../MoneyMarket.sol";
 import {ILendingPool} from "./imports/ILendingPool.sol";
-import {
-    ILendingPoolAddressesProvider
-} from "./imports/ILendingPoolAddressesProvider.sol";
+import {ILendingPoolAddressesProvider} from "./imports/ILendingPoolAddressesProvider.sol";
 import {IAaveMining} from "./imports/IAaveMining.sol";
 
 contract AaveMarket is MoneyMarket {

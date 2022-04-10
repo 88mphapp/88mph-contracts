@@ -9,7 +9,7 @@ module.exports = async ({
   getNamedAccounts,
   deployments,
   getChainId,
-  artifacts
+  artifacts,
 }) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
@@ -26,11 +26,11 @@ module.exports = async ({
           args: [
             poolConfig.moneyMarketParams.cToken,
             config.govTreasury,
-            poolConfig.stablecoin
-          ]
-        }
-      }
-    }
+            poolConfig.stablecoin,
+          ],
+        },
+      },
+    },
   });
   if (deployResult.newlyDeployed) {
     log(`${name} deployed at ${deployResult.address}`);

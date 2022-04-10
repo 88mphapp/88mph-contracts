@@ -127,7 +127,7 @@ contract HarvestStakingMock is LPTokenWrapper, IRewardDistributionRecipient {
         _;
     }
 
-    modifier checkStart {
+    modifier checkStart() {
         require(block.timestamp >= starttime, "Rewards: not start");
         _;
     }

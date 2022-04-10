@@ -1,7 +1,7 @@
 const Base = require("../base");
 const BigNumber = require("bignumber.js");
 
-contract("E2E-MPHRewards", accounts => {
+contract("E2E-MPHRewards", (accounts) => {
   // Accounts
   const acc0 = accounts[0];
   const acc1 = accounts[1];
@@ -154,7 +154,7 @@ contract("E2E-MPHRewards", accounts => {
 
           // withdraw
           await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
-            from: acc0
+            from: acc0,
           });
 
           {
@@ -354,7 +354,7 @@ contract("E2E-MPHRewards", accounts => {
 
           // withdraw deposit
           await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
-            from: acc0
+            from: acc0,
           });
 
           {
@@ -409,7 +409,7 @@ contract("E2E-MPHRewards", accounts => {
 
           // withdraw deposit
           await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
-            from: acc0
+            from: acc0,
           });
 
           {
@@ -479,7 +479,7 @@ contract("E2E-MPHRewards", accounts => {
 
           // pay out interest
           await baseContracts.dInterestPool.payInterestToFunders(1, {
-            from: acc2
+            from: acc2,
           });
 
           {
@@ -578,7 +578,7 @@ contract("E2E-MPHRewards", accounts => {
             await baseContracts.mph.balanceOf(devWallet)
           );
           await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
-            from: acc0
+            from: acc0,
           });
 
           {
@@ -675,7 +675,7 @@ contract("E2E-MPHRewards", accounts => {
               await baseContracts.mph.balanceOf(govTreasury)
             );
             await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
-              from: acc0
+              from: acc0,
             });
 
             {
@@ -761,7 +761,7 @@ contract("E2E-MPHRewards", accounts => {
 
           // send native tokens to acc1
           await baseContracts.mph.transfer(acc1, Base.num2str(amount), {
-            from: acc0
+            from: acc0,
           });
 
           // convert native to foreign with acc1

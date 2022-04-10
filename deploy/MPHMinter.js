@@ -27,11 +27,11 @@ module.exports = async ({ web3, getNamedAccounts, deployments, artifacts }) => {
             config.devWallet,
             vesting02Deployment.address,
             BigNumber(config.devRewardMultiplier).toFixed(),
-            BigNumber(config.govRewardMultiplier).toFixed()
-          ]
-        }
-      }
-    }
+            BigNumber(config.govRewardMultiplier).toFixed(),
+          ],
+        },
+      },
+    },
   });
 
   // set MPHMinter address for Vesting02

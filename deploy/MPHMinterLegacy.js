@@ -7,7 +7,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const deployResult = await deploy("MPHMinterLegacy", {
     from: deployer,
     contract: "MPHMinterLegacy",
-    args: [mphMinterDeployment.address]
+    args: [mphMinterDeployment.address],
   });
   if (deployResult.newlyDeployed) {
     log(`MPHMinterLegacy deployed at ${deployResult.address}`);

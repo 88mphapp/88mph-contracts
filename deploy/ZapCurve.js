@@ -3,13 +3,13 @@ module.exports = async ({
   getNamedAccounts,
   deployments,
   getChainId,
-  artifacts
+  artifacts,
 }) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
   const deployResult = await deploy("ZapCurve", {
-    from: deployer
+    from: deployer,
   });
   if (deployResult.newlyDeployed) {
     log(`ZapCurve deployed at ${deployResult.address}`);

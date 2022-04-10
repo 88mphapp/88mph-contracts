@@ -8,7 +8,7 @@ module.exports = async ({
   getNamedAccounts,
   deployments,
   getChainId,
-  artifacts
+  artifacts,
 }) => {
   const { deploy, log, get } = deployments;
   const { deployer } = await getNamedAccounts();
@@ -45,11 +45,11 @@ module.exports = async ({
             interestOracleDeployment.address,
             depositNFTDeployment.address,
             fundingMultitokenDeployment.address,
-            mphMinterDeployment.address
-          ]
-        }
-      }
-    }
+            mphMinterDeployment.address,
+          ],
+        },
+      },
+    },
   });
   if (deployResult.newlyDeployed) {
     const DInterest = artifacts.require("DInterestWithDepositFee");
@@ -62,7 +62,7 @@ module.exports = async ({
       moneyMarketDeployment.address
     );
     await moneyMarketContract.transferOwnership(deployResult.address, {
-      from: deployer
+      from: deployer,
     });
     log(`Transferred MoneyMarket ownership to ${deployResult.address}`);
 
@@ -70,7 +70,7 @@ module.exports = async ({
     const NFT = artifacts.require("NFT");
     const depositNFTContract = await NFT.at(depositNFTDeployment.address);
     await depositNFTContract.transferOwnership(deployResult.address, {
-      from: deployer
+      from: deployer,
     });
     log(`Transferred DepositNFT ownership to ${deployResult.address}`);
 
@@ -118,21 +118,21 @@ module.exports = async ({
     );
     log(`Grant FundingMultitoken METADATA_ROLE to ${config.govTreasury}`);
     await fundingMultitokenContract.renounceRole(MINTER_BURNER_ROLE, deployer, {
-      from: deployer
+      from: deployer,
     });
     log(`Renounce FundingMultitoken MINTER_BURNER_ROLE of ${deployer}`);
     await fundingMultitokenContract.renounceRole(DIVIDEND_ROLE, deployer, {
-      from: deployer
+      from: deployer,
     });
     log(`Renounce FundingMultitoken DIVIDEND_ROLE of ${deployer}`);
     await fundingMultitokenContract.renounceRole(METADATA_ROLE, deployer, {
-      from: deployer
+      from: deployer,
     });
     log(`Renounce FundingMultitoken METADATA_ROLE of ${deployer}`);
 
     // Transfer DInterest ownership to gov
     await contract.transferOwnership(config.govTreasury, true, false, {
-      from: deployer
+      from: deployer,
     });
     log(`Transfer ${poolConfig.name} ownership to ${config.govTreasury}`);
 
@@ -149,5 +149,5 @@ module.exports.dependencies = [
   poolConfig.interestModel,
   `${poolConfig.name}--${poolConfig.interestOracle}`,
   `${poolConfig.nftNamePrefix}Deposit`,
-  `${poolConfig.nftNamePrefix}Yield Token`
+  `${poolConfig.nftNamePrefix}Yield Token`,
 ];

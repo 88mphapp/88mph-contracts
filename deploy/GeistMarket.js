@@ -28,11 +28,11 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
             geistConfig.geistMining,
             rewardRecipient,
             config.govTreasury,
-            poolConfig.stablecoin
-          ]
-        }
-      }
-    }
+            poolConfig.stablecoin,
+          ],
+        },
+      },
+    },
   });
   if (deployResult.newlyDeployed) {
     log(`${name} deployed at ${deployResult.address}`);

@@ -3,7 +3,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deployer } = await getNamedAccounts();
 
   const deployResult = await deploy("Factory", {
-    from: deployer
+    from: deployer,
   });
   if (deployResult.newlyDeployed) {
     log(`Factory deployed at ${deployResult.address}`);

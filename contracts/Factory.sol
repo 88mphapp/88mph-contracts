@@ -9,9 +9,7 @@ import {ZeroCouponBond} from "./zero-coupon-bond/ZeroCouponBond.sol";
 import {EMAOracle} from "./models/interest-oracle/EMAOracle.sol";
 import {AaveMarket} from "./moneymarkets/aave/AaveMarket.sol";
 import {BProtocolMarket} from "./moneymarkets/bprotocol/BProtocolMarket.sol";
-import {
-    CompoundERC20Market
-} from "./moneymarkets/compound/CompoundERC20Market.sol";
+import {CompoundERC20Market} from "./moneymarkets/compound/CompoundERC20Market.sol";
 import {CreamERC20Market} from "./moneymarkets/cream/CreamERC20Market.sol";
 import {HarvestMarket} from "./moneymarkets/harvest/HarvestMarket.sol";
 import {YVaultMarket} from "./moneymarkets/yvault/YVaultMarket.sol";
@@ -55,8 +53,9 @@ contract Factory {
         string memory _baseSymbol,
         uint8 _decimals
     ) external returns (FundingMultitoken) {
-        FundingMultitoken clone =
-            FundingMultitoken(template.cloneDeterministic(salt));
+        FundingMultitoken clone = FundingMultitoken(
+            template.cloneDeterministic(salt)
+        );
 
         // initialize
         clone.initialize(
@@ -84,8 +83,9 @@ contract Factory {
         string calldata _tokenName,
         string calldata _tokenSymbol
     ) external returns (ZeroCouponBond) {
-        ZeroCouponBond clone =
-            ZeroCouponBond(template.cloneDeterministic(salt));
+        ZeroCouponBond clone = ZeroCouponBond(
+            template.cloneDeterministic(salt)
+        );
 
         // initialize
         clone.initialize(
@@ -162,8 +162,9 @@ contract Factory {
         address _rescuer,
         address _stablecoin
     ) external returns (BProtocolMarket) {
-        BProtocolMarket clone =
-            BProtocolMarket(template.cloneDeterministic(salt));
+        BProtocolMarket clone = BProtocolMarket(
+            template.cloneDeterministic(salt)
+        );
 
         // initialize
         clone.initialize(
@@ -188,8 +189,9 @@ contract Factory {
         address _rescuer,
         address _stablecoin
     ) external returns (CompoundERC20Market) {
-        CompoundERC20Market clone =
-            CompoundERC20Market(template.cloneDeterministic(salt));
+        CompoundERC20Market clone = CompoundERC20Market(
+            template.cloneDeterministic(salt)
+        );
 
         // initialize
         clone.initialize(
@@ -212,8 +214,9 @@ contract Factory {
         address _rescuer,
         address _stablecoin
     ) external returns (CreamERC20Market) {
-        CreamERC20Market clone =
-            CreamERC20Market(template.cloneDeterministic(salt));
+        CreamERC20Market clone = CreamERC20Market(
+            template.cloneDeterministic(salt)
+        );
 
         // initialize
         clone.initialize(_cToken, _rescuer, _stablecoin);
@@ -307,8 +310,9 @@ contract Factory {
         bytes32 salt,
         DInterestWithDepositFeeParams calldata params
     ) external returns (DInterestWithDepositFee) {
-        DInterestWithDepositFee clone =
-            DInterestWithDepositFee(template.cloneDeterministic(salt));
+        DInterestWithDepositFee clone = DInterestWithDepositFee(
+            template.cloneDeterministic(salt)
+        );
 
         // initialize
         clone.initialize(

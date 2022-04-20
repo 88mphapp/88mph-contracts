@@ -19,6 +19,8 @@ const MPHMinter = (module.exports.MPHMinter = artifacts.require("MPHMinter"));
 const ERC20Mock = (module.exports.ERC20Mock = artifacts.require("ERC20Mock"));
 const EMAOracle = (module.exports.EMAOracle = artifacts.require("EMAOracle"));
 const Vesting02 = (module.exports.Vesting02 = artifacts.require("Vesting02"));
+const Vesting03 = (module.exports.Vesting03 = artifacts.require("Vesting03"));
+const Forwarder = (module.exports.Forwarder = artifacts.require("Forwarder"));
 const ERC20Wrapper = (module.exports.ERC20Wrapper =
   artifacts.require("ERC20Wrapper"));
 const MPHConverter = (module.exports.MPHConverter =
@@ -624,7 +626,7 @@ const setupTest = (module.exports.setupTest = async (
   );
   await vesting02.setMPHMinter(mphMinter.address);
   await mph.transferOwnership(mphMinter.address);
-  await mphMinter.grantRole(WHITELISTER_ROLE, acc0, { from: acc0 });
+  await mphMinter.grantRole(WHITELISTER_ROLE, acc0, { from: govTreasury });
 
   // Initialize MPHConverter
   foreignMPH = await ERC20Mock.new();
@@ -635,7 +637,9 @@ const setupTest = (module.exports.setupTest = async (
     foreignMPH.address,
     dailyConvertLimit
   );
-  await mphMinter.grantRole(CONVERTER_ROLE, converter.address, { from: acc0 });
+  await mphMinter.grantRole(CONVERTER_ROLE, converter.address, {
+    from: govTreasury,
+  });
   await mph.approve(converter.address, INF, { from: acc0 });
   await mph.approve(converter.address, INF, { from: acc1 });
   await mph.approve(converter.address, INF, { from: acc2 });
@@ -741,15 +745,17 @@ const setupTest = (module.exports.setupTest = async (
 
     // Set MPH minting multiplier for DInterest pool
     await mphMinter.grantRole(WHITELISTED_POOL_ROLE, dInterestPool.address, {
-      from: acc0,
+      from: govTreasury,
     });
     await mphMinter.setPoolDepositorRewardMintMultiplier(
       dInterestPool.address,
-      PoolDepositorRewardMintMultiplier
+      PoolDepositorRewardMintMultiplier,
+      { from: govTreasury }
     );
     await mphMinter.setPoolFunderRewardMultiplier(
       dInterestPool.address,
-      PoolFunderRewardMultiplier
+      PoolFunderRewardMultiplier,
+      { from: govTreasury }
     );
 
     // Transfer the ownership of the money market to the DInterest pool

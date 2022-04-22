@@ -29,12 +29,12 @@ contract Vesting03 is Vesting02 {
     /// Errors
     /// -----------------------------------------------------------------------
 
-    error Error_Overflow();
-    error Error_NotMinter();
-    error Error_NotVestOwner();
-    error Error_AmountTooLarge();
-    error Error_ForwarderNotDeployed();
-    error Error_NotRewardDistributor();
+    error Vesting03__Overflow();
+    error Vesting03__NotMinter();
+    error Vesting03__NotVestOwner();
+    error Vesting03__AmountTooLarge();
+    error Vesting03__ForwarderNotDeployed();
+    error Vesting03__NotRewardDistributor();
 
     /// -----------------------------------------------------------------------
     /// Events
@@ -122,7 +122,7 @@ contract Vesting03 is Vesting02 {
         /// -----------------------------------------------------------------------
 
         if (address(msg.sender) != address(mphMinter)) {
-            revert Error_NotMinter();
+            revert Vesting03__NotMinter();
         }
 
         /// -----------------------------------------------------------------------
@@ -153,7 +153,7 @@ contract Vesting03 is Vesting02 {
 
         // create vest object
         if (block.timestamp > type(uint64).max) {
-            revert Error_Overflow();
+            revert Vesting03__Overflow();
         }
         vestList.push(
             Vest({
@@ -167,7 +167,7 @@ contract Vesting03 is Vesting02 {
         );
         uint256 vestListLength = vestList.length;
         if (vestListLength > type(uint64).max) {
-            revert Error_Overflow();
+            revert Vesting03__Overflow();
         }
         vestID = uint64(vestListLength); // 1-indexed
         depositIDToVestID[pool][depositID] = vestID;
@@ -200,7 +200,7 @@ contract Vesting03 is Vesting02 {
         /// -----------------------------------------------------------------------
 
         if (address(msg.sender) != address(mphMinter)) {
-            revert Error_NotMinter();
+            revert Vesting03__NotMinter();
         }
 
         uint64 vestID = depositIDToVestID[pool][depositID];
@@ -317,7 +317,7 @@ contract Vesting03 is Vesting02 {
             /// -----------------------------------------------------------------------
 
             if (ownerOf(vestID) != msg.sender) {
-                revert Error_NotVestOwner();
+                revert Vesting03__NotVestOwner();
             }
 
             /// -----------------------------------------------------------------------
@@ -485,7 +485,7 @@ contract Vesting03 is Vesting02 {
             return;
         }
         if (!isRewardDistributor[msg.sender]) {
-            revert Error_NotRewardDistributor();
+            revert Vesting03__NotRewardDistributor();
         }
 
         /// -----------------------------------------------------------------------
@@ -522,7 +522,7 @@ contract Vesting03 is Vesting02 {
         }
         // prevent overflow when computing rewardPerToken
         if (newRewardRate >= ((type(uint256).max / PRECISION) / duration)) {
-            revert Error_AmountTooLarge();
+            revert Vesting03__AmountTooLarge();
         }
         rewardRate[pool] = newRewardRate;
         periodInfo[pool] = PeriodInfo({
@@ -537,7 +537,7 @@ contract Vesting03 is Vesting02 {
         // pull rewards from the forwarder contract
         Forwarder forwarder = forwarderOfPool(pool);
         if (address(forwarder).code.length == 0)
-            revert Error_ForwarderNotDeployed();
+            revert Vesting03__ForwarderNotDeployed();
         forwarder.pullTokens(address(mphMinter.mph()), reward);
 
         emit RewardAdded(pool, reward);

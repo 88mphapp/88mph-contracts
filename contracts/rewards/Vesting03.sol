@@ -103,8 +103,8 @@ contract Vesting03 is Vesting02 {
     /// Constructor
     /// -----------------------------------------------------------------------
 
-    constructor() {
-        forwarderTemplate = new Forwarder(address(this));
+    constructor(Forwarder forwarderTemplate_) {
+        forwarderTemplate = forwarderTemplate_;
     }
 
     /// -----------------------------------------------------------------------

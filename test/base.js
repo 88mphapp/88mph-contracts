@@ -25,6 +25,7 @@ const ERC20Wrapper = (module.exports.ERC20Wrapper =
   artifacts.require("ERC20Wrapper"));
 const MPHConverter = (module.exports.MPHConverter =
   artifacts.require("MPHConverter"));
+const OZProxy = (module.exports.OZProxy = artifacts.require("OZProxy"));
 
 // Constants
 const PRECISION = (module.exports.PRECISION = 1e18);
@@ -613,7 +614,9 @@ const setupTest = (module.exports.setupTest = async (
   // Initialize MPH
   mph = await MPHToken.new();
   await mph.initialize();
-  vesting02 = await Vesting02.new();
+  const vesting02Logic = await Vesting02.new();
+  vesting02 = await OZProxy.new(vesting02Logic.address, devWallet, "0x");
+  vesting02 = await Vesting02.at(vesting02.address); // wrap in Vesting02 for ABI
   await vesting02.initialize(mph.address, "Vested MPH", "veMPH");
   mphMinter = await MPHMinter.new();
   await mphMinter.initialize(

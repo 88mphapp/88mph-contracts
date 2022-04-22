@@ -27,22 +27,31 @@ contract("E2E-MPHRewards-Vesting03", (accounts) => {
       beforeEach(async () => {
         baseContracts = await Base.setupTest(accounts, moneyMarketModule);
 
-        // deploy Vesting03
-        baseContracts.vesting03 = await Base.Vesting03.new();
-        await baseContracts.vesting03.initialize(
-          baseContracts.mph.address,
-          "Vested MPH",
-          "veMPH",
-          { from: acc0 }
+        // make 1 deposit before Vesting03 upgrade to test the migration
+        const blockNow = await Base.latestBlockTimestamp();
+        await baseContracts.dInterestPool.deposit(
+          Base.num2str(depositAmount),
+          Base.num2str(blockNow + Base.YEAR_IN_SEC),
+          { from: acc2 }
         );
-        await baseContracts.vesting03.setMPHMinter(
-          baseContracts.mphMinter.address,
-          { from: acc0 }
+
+        // deploy Vesting03 and upgrade from Vesting02
+        const forwarderTemplate = await Base.Forwarder.new(
+          baseContracts.vesting02.address
         );
-        await baseContracts.mphMinter.setVesting02(
-          baseContracts.vesting03.address,
-          { from: govTreasury }
+        const vesting03Logic = await Base.Vesting03.new(
+          forwarderTemplate.address
         );
+        await (
+          await Base.OZProxy.at(baseContracts.vesting02.address)
+        ).upgradeTo(vesting03Logic.address, {
+          from: devWallet,
+        });
+        baseContracts.vesting03 = await Base.Vesting03.at(
+          baseContracts.vesting02.address
+        );
+
+        // initialize Vesting03 specific params
         await baseContracts.vesting03.updateDuration(DURATION, { from: acc0 });
         await baseContracts.vesting03.setRewardDistributor(acc0, true, {
           from: acc0,
@@ -76,6 +85,215 @@ contract("E2E-MPHRewards-Vesting03", (accounts) => {
         );
       });
 
+      describe("upgrade migration test", () => {
+        it("works", async () => {
+          // wait for maturation
+          await moneyMarketModule.timePass(1);
+
+          // claim rewards
+          const beforeMPHBalance = BigNumber(
+            await baseContracts.mph.balanceOf(acc2)
+          );
+          await baseContracts.vesting02.withdraw(1, { from: acc2 });
+
+          // check reward amount
+          const actualRewardAmount = BigNumber(
+            await baseContracts.mph.balanceOf(acc2)
+          ).minus(beforeMPHBalance);
+          const expectedRewardAmount = BigNumber(
+            Base.PoolDepositorRewardMintMultiplier
+          )
+            .times(depositAmount)
+            .times(Base.YEAR_IN_SEC)
+            .div(Base.PRECISION);
+          Base.assertEpsilonEq(
+            actualRewardAmount,
+            expectedRewardAmount,
+            "deposit reward incorrect"
+          );
+        });
+
+        it("doesn't give more reward after maturation", async () => {
+          // wait for long after maturation
+          await moneyMarketModule.timePass(2);
+
+          // claim rewards
+          const beforeMPHBalance = BigNumber(
+            await baseContracts.mph.balanceOf(acc2)
+          );
+          await baseContracts.vesting02.withdraw(1, { from: acc2 });
+
+          // check reward amount
+          const actualRewardAmount = BigNumber(
+            await baseContracts.mph.balanceOf(acc2)
+          ).minus(beforeMPHBalance);
+          const expectedRewardAmount = BigNumber(
+            Base.PoolDepositorRewardMintMultiplier
+          )
+            .times(depositAmount)
+            .times(Base.YEAR_IN_SEC)
+            .div(Base.PRECISION);
+          Base.assertEpsilonEq(
+            actualRewardAmount,
+            expectedRewardAmount,
+            "deposit reward incorrect"
+          );
+        });
+
+        it("early withdraw gives reward earned so far", async () => {
+          // wait for half a year
+          await moneyMarketModule.timePass(0.5);
+
+          {
+            // claim rewards
+            const beforeMPHBalance = BigNumber(
+              await baseContracts.mph.balanceOf(acc2)
+            );
+            await baseContracts.vesting02.withdraw(1, { from: acc2 });
+
+            // check reward amount
+            const actualRewardAmount = BigNumber(
+              await baseContracts.mph.balanceOf(acc2)
+            ).minus(beforeMPHBalance);
+            const expectedRewardAmount = BigNumber(
+              Base.PoolDepositorRewardMintMultiplier
+            )
+              .times(depositAmount)
+              .times(Base.YEAR_IN_SEC)
+              .times(0.5)
+              .div(Base.PRECISION);
+            Base.assertEpsilonEq(
+              actualRewardAmount,
+              expectedRewardAmount,
+              "deposit reward incorrect"
+            );
+          }
+
+          // withdraw early
+          let virtualTokenTotalSupply = BigNumber(
+            (await baseContracts.dInterestPool.getDeposit(1))
+              .virtualTokenTotalSupply
+          );
+          let withdrawVirtualTokenAmount = virtualTokenTotalSupply
+            .times(0.5)
+            .integerValue();
+          await baseContracts.dInterestPool.withdraw(
+            1,
+            Base.num2str(withdrawVirtualTokenAmount),
+            true,
+            { from: acc2 }
+          );
+
+          // wait for maturation
+          await moneyMarketModule.timePass(0.5);
+
+          // withdraw
+          await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
+            from: acc2,
+          });
+
+          {
+            // claim rewards
+            const beforeMPHBalance = BigNumber(
+              await baseContracts.mph.balanceOf(acc2)
+            );
+            await baseContracts.vesting02.withdraw(1, { from: acc2 });
+
+            // check reward amount
+            const actualRewardAmount = BigNumber(
+              await baseContracts.mph.balanceOf(acc2)
+            ).minus(beforeMPHBalance);
+            const expectedRewardAmount = BigNumber(
+              Base.PoolDepositorRewardMintMultiplier
+            )
+              .times(depositAmount)
+              .times(0.5)
+              .times(Base.YEAR_IN_SEC)
+              .times(0.5)
+              .div(Base.PRECISION);
+            Base.assertEpsilonEq(
+              actualRewardAmount,
+              expectedRewardAmount,
+              "deposit reward incorrect"
+            );
+          }
+        });
+
+        it("topup increases the reward earned after", async () => {
+          // acc0 deposits for 1 year
+          const blockNow = await Base.latestBlockTimestamp();
+          await baseContracts.dInterestPool.deposit(
+            Base.num2str(depositAmount),
+            Base.num2str(blockNow + Base.YEAR_IN_SEC),
+            { from: acc2 }
+          );
+
+          // wait for half a year
+          await moneyMarketModule.timePass(0.5);
+
+          {
+            // claim rewards
+            const beforeMPHBalance = BigNumber(
+              await baseContracts.mph.balanceOf(acc2)
+            );
+            await baseContracts.vesting02.withdraw(1, { from: acc2 });
+
+            // check reward amount
+            const actualRewardAmount = BigNumber(
+              await baseContracts.mph.balanceOf(acc2)
+            ).minus(beforeMPHBalance);
+            const expectedRewardAmount = BigNumber(
+              Base.PoolDepositorRewardMintMultiplier
+            )
+              .times(depositAmount)
+              .times(Base.YEAR_IN_SEC)
+              .times(0.5)
+              .div(Base.PRECISION);
+            Base.assertEpsilonEq(
+              actualRewardAmount,
+              expectedRewardAmount,
+              "deposit reward incorrect"
+            );
+          }
+
+          // topup the same amount
+          await baseContracts.dInterestPool.topupDeposit(
+            1,
+            Base.num2str(depositAmount),
+            { from: acc2 }
+          );
+
+          // wait until maturation
+          await moneyMarketModule.timePass(0.5);
+
+          {
+            // claim rewards
+            const beforeMPHBalance = BigNumber(
+              await baseContracts.mph.balanceOf(acc2)
+            );
+            await baseContracts.vesting02.withdraw(1, { from: acc2 });
+
+            // check reward amount
+            const actualRewardAmount = BigNumber(
+              await baseContracts.mph.balanceOf(acc2)
+            ).minus(beforeMPHBalance);
+            const expectedRewardAmount = BigNumber(
+              Base.PoolDepositorRewardMintMultiplier
+            )
+              .times(depositAmount)
+              .times(2)
+              .times(Base.YEAR_IN_SEC)
+              .times(0.5)
+              .div(Base.PRECISION);
+            Base.assertEpsilonEq(
+              actualRewardAmount,
+              expectedRewardAmount,
+              "deposit reward incorrect"
+            );
+          }
+        });
+      });
+
       describe("depositor rewards", () => {
         it("works", async () => {
           // acc0 deposits for 1 year
@@ -94,7 +312,7 @@ contract("E2E-MPHRewards-Vesting03", (accounts) => {
             await baseContracts.mph.balanceOf(acc0)
           );
 
-          await baseContracts.vesting03.withdraw(1, { from: acc0 });
+          await baseContracts.vesting03.withdraw(2, { from: acc0 });
 
           // check reward amount
           const actualRewardAmount = BigNumber(
@@ -125,7 +343,7 @@ contract("E2E-MPHRewards-Vesting03", (accounts) => {
             await baseContracts.mph.balanceOf(acc0)
           );
 
-          await baseContracts.vesting03.withdraw(1, { from: acc0 });
+          await baseContracts.vesting03.withdraw(2, { from: acc0 });
 
           // check reward amount
           const actualRewardAmount = BigNumber(
@@ -156,7 +374,7 @@ contract("E2E-MPHRewards-Vesting03", (accounts) => {
             const beforeMPHBalance = BigNumber(
               await baseContracts.mph.balanceOf(acc0)
             );
-            await baseContracts.vesting03.withdraw(1, { from: acc0 });
+            await baseContracts.vesting03.withdraw(2, { from: acc0 });
 
             // check reward amount
             const actualRewardAmount = BigNumber(
@@ -179,7 +397,7 @@ contract("E2E-MPHRewards-Vesting03", (accounts) => {
             .times(0.5)
             .integerValue();
           await baseContracts.dInterestPool.withdraw(
-            1,
+            2,
             Base.num2str(withdrawVirtualTokenAmount),
             true,
             { from: acc0 }
@@ -189,7 +407,7 @@ contract("E2E-MPHRewards-Vesting03", (accounts) => {
           await moneyMarketModule.timePass(0.5);
 
           // withdraw
-          await baseContracts.dInterestPool.withdraw(1, Base.INF, false, {
+          await baseContracts.dInterestPool.withdraw(2, Base.INF, false, {
             from: acc0,
           });
 
@@ -198,7 +416,7 @@ contract("E2E-MPHRewards-Vesting03", (accounts) => {
             const beforeMPHBalance = BigNumber(
               await baseContracts.mph.balanceOf(acc0)
             );
-            await baseContracts.vesting03.withdraw(1, { from: acc0 });
+            await baseContracts.vesting03.withdraw(2, { from: acc0 });
 
             // check reward amount
             const actualRewardAmount = BigNumber(
@@ -237,7 +455,7 @@ contract("E2E-MPHRewards-Vesting03", (accounts) => {
             const beforeMPHBalance = BigNumber(
               await baseContracts.mph.balanceOf(acc0)
             );
-            await baseContracts.vesting03.withdraw(1, { from: acc0 });
+            await baseContracts.vesting03.withdraw(2, { from: acc0 });
 
             // check reward amount
             const actualRewardAmount = BigNumber(
@@ -253,7 +471,7 @@ contract("E2E-MPHRewards-Vesting03", (accounts) => {
 
           // topup the same amount
           await baseContracts.dInterestPool.topupDeposit(
-            1,
+            2,
             Base.num2str(depositAmount),
             { from: acc0 }
           );
@@ -266,7 +484,7 @@ contract("E2E-MPHRewards-Vesting03", (accounts) => {
             const beforeMPHBalance = BigNumber(
               await baseContracts.mph.balanceOf(acc0)
             );
-            await baseContracts.vesting03.withdraw(1, { from: acc0 });
+            await baseContracts.vesting03.withdraw(2, { from: acc0 });
 
             // check reward amount
             const actualRewardAmount = BigNumber(
@@ -334,7 +552,7 @@ contract("E2E-MPHRewards-Vesting03", (accounts) => {
           await moneyMarketModule.timePass(1);
 
           // withdraw
-          await pool1.withdraw(1, Base.INF, false, { from: acc0 });
+          await pool1.withdraw(2, Base.INF, false, { from: acc0 });
           await pool2.withdraw(1, Base.INF, false, { from: acc1 });
 
           {
@@ -342,7 +560,7 @@ contract("E2E-MPHRewards-Vesting03", (accounts) => {
             const beforeMPHBalance = BigNumber(
               await baseContracts.mph.balanceOf(acc0)
             );
-            await baseContracts.vesting03.withdraw(1, { from: acc0 });
+            await baseContracts.vesting03.withdraw(2, { from: acc0 });
 
             // check reward amount
             const actualRewardAmount = BigNumber(
@@ -361,7 +579,7 @@ contract("E2E-MPHRewards-Vesting03", (accounts) => {
             const beforeMPHBalance = BigNumber(
               await baseContracts.mph.balanceOf(acc1)
             );
-            await baseContracts.vesting03.withdraw(2, { from: acc1 });
+            await baseContracts.vesting03.withdraw(3, { from: acc1 });
 
             // check reward amount
             const actualRewardAmount = BigNumber(

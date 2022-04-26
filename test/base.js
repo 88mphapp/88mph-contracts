@@ -483,6 +483,7 @@ const fuseERC20MoneyMarketModule = () => {
       DEFAULT_SALT,
       fToken.address,
       rewardsDistributor.address,
+      rewards,
       accounts[0],
       stablecoin.address
     );
@@ -622,7 +623,76 @@ const yvaultMoneyMarketModule = () => {
   };
 };
 
+const aaveV3MoneyMarketModule = () => {
+  // Contract artifacts
+  const AaveV3Market = artifacts.require("AaveV3Market");
+  const ATokenMock = artifacts.require("ATokenMock");
+  const AaveV3PoolMock = artifacts.require("AaveV3PoolMock");
+  const AaveV3PoolAddressesProviderMock = artifacts.require(
+    "AaveV3PoolAddressesProviderMock"
+  );
+  const AaveV3RewardsMock = artifacts.require("AaveV3RewardsMock");
+  const ERC20Mock = artifacts.require("ERC20Mock");
+
+  let aToken;
+  let aaveV3Pool;
+  let aaveV3PoolAddressesProvider;
+  let aaveV3Rewards;
+  let aave;
+  const aTokenAddresssList = [];
+
+  const deployMoneyMarket = async (accounts, factory, stablecoin, rewards) => {
+    // Initialize mock Aave contracts
+    aToken = await ATokenMock.new(stablecoin.address);
+    if (!aTokenAddresssList.includes(aToken.address)) {
+      aTokenAddresssList.push(aToken.address);
+    }
+    aaveV3Pool = await AaveV3PoolMock.new();
+    await aaveV3Pool.setReserveAToken(stablecoin.address, aToken.address);
+    aaveV3PoolAddressesProvider = await AaveV3PoolAddressesProviderMock.new();
+    await aaveV3PoolAddressesProvider.setPoolImpl(aaveV3Pool.address);
+    aave = await ERC20Mock.new();
+    aaveV3Rewards = await AaveV3RewardsMock.new();
+
+    // Mint stablecoins
+    const mintAmount = 1000 * STABLECOIN_PRECISION;
+    await stablecoin.mint(aaveV3Pool.address, num2str(mintAmount));
+
+    // Initialize the money market
+    const marketTemplate = await AaveV3Market.new();
+    const marketReceipt = await factory.createAaveV3Market(
+      marketTemplate.address,
+      DEFAULT_SALT,
+      aaveV3PoolAddressesProvider.address,
+      aToken.address,
+      aaveV3Rewards.address,
+      rewards,
+      aave.address,
+      accounts[0],
+      stablecoin.address
+    );
+    return await factoryReceiptToContract(marketReceipt, AaveV3Market);
+  };
+
+  const timePass = async timeInYears => {
+    await timeTravel(timeInYears * YEAR_IN_SEC);
+    for (const aTokenAddress of aTokenAddresssList) {
+      const aToken = await ATokenMock.at(aTokenAddress);
+      await aToken.mintInterest(num2str(timeInYears * YEAR_IN_SEC));
+    }
+  };
+
+  return {
+    deployMoneyMarket,
+    timePass
+  };
+};
+
 const moneyMarketModuleList = (module.exports.moneyMarketModuleList = [
+  {
+    name: "FuseERC20",
+    moduleGenerator: fuseERC20MoneyMarketModule
+  },
   {
     name: "Aave",
     moduleGenerator: aaveMoneyMarketModule
@@ -648,8 +718,8 @@ const moneyMarketModuleList = (module.exports.moneyMarketModuleList = [
     moduleGenerator: yvaultMoneyMarketModule
   },
   {
-    name: "FuseERC20",
-    moduleGenerator: fuseERC20MoneyMarketModule
+    name: "AaveV3",
+    moduleGenerator: aaveV3MoneyMarketModule
   }
 ]);
 

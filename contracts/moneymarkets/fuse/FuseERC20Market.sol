@@ -20,12 +20,14 @@ contract FuseERC20Market is MoneyMarket {
 
     IFERC20 public fToken;
     ERC20 public override stablecoin;
-    address public rewards;
     IRewardsDistributor public rewardsDistributor;
+    address public rewards;
+    ERC20 public rewardToken;
 
     function initialize(
         address _fToken,
         address _rewardsDistributor,
+        address _rewards,
         address _rescuer,
         address _stablecoin
     ) external initializer {
@@ -36,31 +38,32 @@ contract FuseERC20Market is MoneyMarket {
             "FuseERC20Market: An input address is not a contract"
         );
         if (_rewardsDistributor != address(0)) {
-            IRewardsDistributor rewDist =
-                IRewardsDistributor(_rewardsDistributor);
+            rewardsDistributor = IRewardsDistributor(_rewardsDistributor);
             require(
-                rewDist.isRewardsDistributor(),
-                "RewardsDistributor: contract is not rewards distributor"
+                rewardsDistributor.isRewardsDistributor() &&
+                    isMarketRewDist(_fToken, rewardsDistributor) &&
+                    _rewards != address(0),
+                "FuseERC20Market: Bad Rewards"
             );
-            require(
-                isMarketRewDist(_fToken, rewDist),
-                "RewardsDistributor: rewards distributor not supported for this market"
-            );
-            rewardsDistributor = rewDist;
+
+            rewards = _rewards;
+            rewardToken = ERC20(rewardsDistributor.rewardToken());
         }
 
         fToken = IFERC20(_fToken);
         stablecoin = ERC20(_stablecoin);
     }
 
+    // checks if `_rewardsDistributor` supports `market`
     function isMarketRewDist(
-        address _fToken,
+        address market,
         IRewardsDistributor _rewardsDistributor
     ) public view returns (bool) {
         unchecked {
             address[] memory markets = _rewardsDistributor.getAllMarkets();
-            for (uint256 i = 0; i < markets.length; i++) {
-                if (_fToken == markets[i]) return true;
+            uint256 length = markets.length;
+            for (uint256 i = 0; i < length; ++i) {
+                if (market == markets[i]) return true;
             }
         }
         return false;
@@ -91,7 +94,7 @@ contract FuseERC20Market is MoneyMarket {
             "FuseERC20Market: amountInUnderlying is 0"
         );
 
-        // Withdraw `amountInUnderlying` stablecoin from cToken
+        // Withdraw `amountInUnderlying` stablecoin from fToken
         require(
             fToken.redeemUnderlying(amountInUnderlying) == ERRCODE_OK,
             "FuseERC20Market: Failed to redeem"
@@ -106,22 +109,24 @@ contract FuseERC20Market is MoneyMarket {
     function claimRewards() external override {
         require(
             address(rewardsDistributor) != address(0),
-            "RewardsDistributor: No Rewards"
+            "FuseERC20Market: No Rewards"
         );
         address[] memory fTokens = new address[](1);
         fTokens[0] = address(fToken);
 
-        ERC20 rewTok = ERC20(rewardsDistributor.rewardToken());
-        uint256 beforeBalance = rewTok.balanceOf(address(this));
+        uint256 beforeBalance = ERC20(rewardToken).balanceOf(address(this));
 
         rewardsDistributor.claimRewards(address(this), fTokens);
 
-        rewTok.safeTransfer(
+        rewardToken.safeTransfer(
             rewards,
-            rewTok.balanceOf(address(this)) - beforeBalance
+            ERC20(rewardToken).balanceOf(address(this)) - beforeBalance
         );
     }
 
+    /**
+        Param setters
+     */
     function setRewards(address newValue) external override onlyOwner {
         require(newValue != address(0), "FuseERC20Market: 0 address");
         rewards = newValue;

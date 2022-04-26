@@ -8,6 +8,7 @@ import {NFTWithSVG} from "./tokens/NFTWithSVG.sol";
 import {ZeroCouponBond} from "./zero-coupon-bond/ZeroCouponBond.sol";
 import {EMAOracle} from "./models/interest-oracle/EMAOracle.sol";
 import {AaveMarket} from "./moneymarkets/aave/AaveMarket.sol";
+import {AaveV3Market} from "./moneymarkets/aavev3/AaveV3Market.sol";
 import {BProtocolMarket} from "./moneymarkets/bprotocol/BProtocolMarket.sol";
 import {
     CompoundERC20Market
@@ -265,6 +266,7 @@ contract Factory {
         bytes32 salt,
         address _fToken,
         address _rewardsDistributor,
+        address _rewards,
         address _rescuer,
         address _stablecoin
     ) external returns (FuseERC20Market) {
@@ -272,10 +274,45 @@ contract Factory {
             FuseERC20Market(template.cloneDeterministic(salt));
 
         // initialize
-        clone.initialize(_fToken, _rewardsDistributor, _rescuer, _stablecoin);
+        clone.initialize(
+            _fToken,
+            _rewardsDistributor,
+            _rewards,
+            _rescuer,
+            _stablecoin
+        );
         clone.transferOwnership(msg.sender);
 
         emit CreateClone("FuseERC20Market", template, salt, address(clone));
+        return clone;
+    }
+
+    function createAaveV3Market(
+        address template,
+        bytes32 salt,
+        address _provider,
+        address _aToken,
+        address _aaveReward,
+        address _rewards,
+        address _rewardToken,
+        address _rescuer,
+        address _stablecoin
+    ) external returns (AaveV3Market) {
+        AaveV3Market clone = AaveV3Market(template.cloneDeterministic(salt));
+
+        // initialize
+        clone.initialize(
+            _provider,
+            _aToken,
+            _aaveReward,
+            _rewards,
+            _rewardToken,
+            _rescuer,
+            _stablecoin
+        );
+        clone.transferOwnership(msg.sender);
+
+        emit CreateClone("AaveV3Market", template, salt, address(clone));
         return clone;
     }
 

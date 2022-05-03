@@ -2,15 +2,15 @@
 
 ## Set parameters
 
-1. Ensure the network config file `deployment-configs/networks/[networkName].json` has the correct global parameters
-2. Ensure the pool config file `deployment-configs/pools/[networkName]/[poolName].json` has the correct pool-scope parameters
+1. Ensure the network config file `deploy-configs/networks/[networkName].json` has the correct global parameters
+2. Ensure the pool config file `deploy-configs/pools/[networkName]/[poolName].json` has the correct pool-scope parameters
    - Can just copy a config file from another pool. Need to make sure that `EMAInitial`, `stablecoin`, `moneyMarketParams`, and `MinDepositAmount` are updated correctly, as well as the pool names.
-3. Ensure the protocol config file `deployment-configs/protocols/[networkName]/[moneyMarketName].json` has the correct protocol specific addresses
+3. Ensure the protocol config file `deploy-configs/protocols/[networkName]/[moneyMarketName].json` has the correct protocol specific addresses
    - Even if the protocol doesn't have protocol specific addresses, the file still must be created, with `{}` as the content.
 
 ## Deploy DInterest pool
 
-Put the array of configs (in the format of `deployment-configs/config.json`) of the pools you want to deploy in `scripts/deploy-pool-list.json`. The list of configs should be in the following format:
+Put the array of configs (in the format of `deploy-configs/config.json`) of the pools you want to deploy in `scripts/deploy-pool-list.json`. The list of configs should be in the following format:
 
 ```json
 [

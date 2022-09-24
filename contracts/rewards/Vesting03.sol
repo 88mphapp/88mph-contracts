@@ -178,6 +178,7 @@ contract Vesting03 is Vesting02 {
         // accrue rewards
         rewardPerTokenStored[pool] = rewardPerToken_;
         periodInfo[pool].lastUpdateTime = lastTimeRewardApplicable_;
+        vestRewardPerTokenPaid[vestID] = rewardPerToken_;
 
         // update stored totalDeposit
         totalDepositStored[pool] = totalDeposit;
@@ -574,10 +575,14 @@ contract Vesting03 is Vesting02 {
         uint256 rewardPerToken_,
         uint256 accountRewards
     ) internal view returns (uint256) {
+        uint256 vestRewardPerTokenPaid_ = vestRewardPerTokenPaid[vestID];
+        if (vestRewardPerTokenPaid_ == 0) {
+            return 0;
+        }
         return
             FullMath.mulDiv(
                 accountBalance,
-                rewardPerToken_ - vestRewardPerTokenPaid[vestID],
+                rewardPerToken_ - vestRewardPerTokenPaid_,
                 PRECISION
             ) + accountRewards;
     }

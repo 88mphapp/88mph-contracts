@@ -1,5 +1,6 @@
 const Base = require("../base");
 const BigNumber = require("bignumber.js");
+const { assert } = require("hardhat");
 
 contract("E2E-MPHRewards-Vesting03", (accounts) => {
   // Accounts
@@ -323,6 +324,44 @@ contract("E2E-MPHRewards-Vesting03", (accounts) => {
             actualRewardAmount,
             expectedRewardAmount,
             "deposit reward incorrect"
+          );
+        });
+
+        it("reward should be 0 after deposit", async () => {
+          // make first deposit
+          let blockNow = await Base.latestBlockTimestamp();
+          await baseContracts.dInterestPool.deposit(
+            Base.num2str(depositAmount),
+            Base.num2str(blockNow + Base.YEAR_IN_SEC),
+            { from: acc0 }
+          );
+
+          // wait a bit
+          await moneyMarketModule.timePass(0.5);
+
+          // acc0 deposits for 1 year
+          blockNow = await Base.latestBlockTimestamp();
+          await baseContracts.dInterestPool.deposit(
+            Base.num2str(depositAmount),
+            Base.num2str(blockNow + Base.YEAR_IN_SEC),
+            { from: acc0 }
+          );
+
+          // claim rewards
+          const beforeMPHBalance = BigNumber(
+            await baseContracts.mph.balanceOf(acc0)
+          );
+          // withdraw the second vest
+          await baseContracts.vesting03.withdraw(3, { from: acc0 });
+
+          // check reward amount
+          const actualRewardAmount = BigNumber(
+            await baseContracts.mph.balanceOf(acc0)
+          ).minus(beforeMPHBalance);
+          const expectedMaxRewardAmount = BigNumber(1e13);
+          assert(
+            expectedMaxRewardAmount.gt(actualRewardAmount),
+            "reward not 0 after deposit"
           );
         });
 

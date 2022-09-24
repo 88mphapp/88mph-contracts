@@ -49,10 +49,10 @@ const config: HardhatUserConfig = {
       forking: {
         url: "https://eth-mainnet.g.alchemy.com/v2/pvGDp1uf8J7QZ7MXpLhYs_SnMnsE0TY5"
       },
-      accounts: [{
+      /*accounts: [{
         privateKey: secret,
         balance: 100e18.toString()
-      }]
+      }]*/
     },
     mainnet: {
       url: "https://eth-mainnet.g.alchemy.com/v2/pvGDp1uf8J7QZ7MXpLhYs_SnMnsE0TY5",

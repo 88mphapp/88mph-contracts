@@ -80,9 +80,9 @@ contract Vesting03 is Vesting02 {
     /// @dev vestId => value
     mapping(uint64 => uint256) public vestRewardPerTokenPaid;
 
-    /// @notice The earned() value when a vest last staked/withdrew/withdrew rewards
-    /// @dev vestId => value
-    mapping(uint64 => uint256) public rewards;
+    /// @notice Deprecated version of rewards
+    /// @dev Kept here to keep storage slots the same
+    mapping(uint64 => uint256) public deprecatedRewards;
 
     /// @notice The total virtual tokens staked in each pool
     /// @dev pool => value
@@ -98,6 +98,10 @@ contract Vesting03 is Vesting02 {
 
     /// @notice The duration of each reward period, in seconds
     uint64 public DURATION;
+
+    /// @notice The earned() value when a vest last staked/withdrew/withdrew rewards
+    /// @dev vestId => value
+    mapping(uint64 => uint256) public rewards;
 
     /// -----------------------------------------------------------------------
     /// Constructor
